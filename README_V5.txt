@@ -1,0 +1,1 @@
+VERSION 5: Export a JSON backup before upgrading. In Settings select Apply audited built-in recipe corrections. Set your usual package sizes in Settings. Missing and estimated conversions are explicitly flagged. Family data remains in Supabase. RECIPE_AUDIT.csv is for your review and does not need uploading to GitHub.
