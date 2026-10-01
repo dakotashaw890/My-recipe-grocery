@@ -1,0 +1,1 @@
+Version 6: Ingredient Inspector, clearly visible red/green shopping toggles, modern visual refresh. Export a backup before updating. Upload index.html, manifest.json, sw.js and icons to existing GitHub Pages repository. Do not upload SQL or CSV. Existing Supabase project and accounts remain unchanged.

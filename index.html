@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#2f6f4e">
+<meta name="theme-color" content="#123f35">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>My Recipe & Grocery</title>
@@ -38,6 +38,27 @@ label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}
 .modal{position:fixed;inset:0;background:#0007;z-index:50;display:none;align-items:flex-end}.modal.show{display:flex}.sheet{background:var(--bg);width:100%;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px;max-width:760px;margin:auto}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.section-title{display:flex;justify-content:space-between;align-items:center}
 @media(min-width:700px){body{padding-bottom:0}nav{position:static;margin-top:20px}.navinner{border:1px solid var(--line);border-radius:14px;overflow:hidden}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* V6 visual refresh */
+:root{--green:#176c53;--green2:#20a079;--bg:#f2f6f3;--card:#fff;--text:#17352e;--muted:#667b72;--line:#e0eae4;--shadow:0 8px 30px #153e2b0c}
+body{background:radial-gradient(ellipse at 85% 0%,#dff4e8 0,transparent 32%),var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+header{background:linear-gradient(115deg,#123f35,#19775a);padding:21px 20px;border-radius:0 0 22px 22px;box-shadow:0 10px 24px #123f3524}
+.brand{font-size:23px;letter-spacing:-.6px}.sub{margin-top:4px;letter-spacing:.3px}
+main{padding:19px 16px}h1{font-size:29px;letter-spacing:-1.1px;margin:10px 0 17px}h2{letter-spacing:-.5px}
+.card{border:1px solid #e3ece6;border-radius:21px;padding:18px;box-shadow:var(--shadow);margin:13px 0}
+.btn{border-radius:12px;padding:11px 16px;transition:transform .12s,filter .12s}.btn:active{transform:scale(.97)}.btn.secondary{background:#e9f5ee;color:#176c53}
+.search,input[type=text],input[type=number],select,textarea{border-radius:13px;border:1px solid #d5e4db;outline-color:#25a47a}
+.pill{background:#e9f6ee;color:#287352;font-weight:650;padding:5px 9px}
+nav{background:#fffefa;border-top:1px solid #e2ebe5;box-shadow:0 -6px 22px #123f350b}.navbtn{background:transparent;padding:12px 2px}.navbtn.active{background:#e9f6ee;color:#126648;border-radius:13px}
+.sheet{border-radius:27px 27px 0 0;padding:23px;background:#f7faf7}.modal{backdrop-filter:blur(3px)}
+.recipe-card{transition:box-shadow .15s,border-color .15s}.recipe-card.is-selected{border:2px solid #22a16f;background:linear-gradient(125deg,#fff,#f0fcf5)}
+.recipe-card h3{font-size:18px;letter-spacing:-.4px}
+.shopping-toggle{display:inline-flex;align-items:center;gap:9px;border-radius:999px;padding:6px 8px 6px 13px;font-weight:750;font-size:12px;min-height:39px;white-space:nowrap;transition:background .18s}
+.shopping-toggle.off{background:#fcebe9;color:#a83732}.shopping-toggle.on{background:#d9f5e6;color:#126c46}
+.toggle-track{display:flex;align-items:center;width:39px;height:23px;border-radius:999px;padding:3px;transition:background .18s}.off .toggle-track{background:#dc6860}.on .toggle-track{background:#259a6c}
+.toggle-knob{width:17px;height:17px;background:white;border-radius:50%;box-shadow:0 1px 3px #0003;transition:transform .18s}.on .toggle-knob{transform:translateX(16px)}
+.inspector-entry{padding:12px 0;border-top:1px solid var(--line)}.inspector-entry:first-child{border-top:0}.inspector-flag{font-size:12px;color:#995f12;background:#fff4db;border-radius:8px;padding:7px;margin-top:5px}
+@media(min-width:700px){nav{border-radius:18px}main{padding:25px}.sheet{border-radius:24px;margin:auto auto;max-height:85vh}}
 </style>
 </head>
 <body>
@@ -96,7 +117,7 @@ label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}
 </div>
 </div>
 <div class="card">
-<h3>Shopping package preferences</h3><p class="muted small">Set your usual package size once. This changes future shopping calculations for both family members.</p><div id="packageEditor"></div><div class="actions"><button class="btn secondary" onclick="openPackageEditor()">Edit package sizes</button><button class="btn secondary" onclick="applyAudit()">Apply audited built-in recipe corrections</button></div><p class="tiny muted">Corrections update built-in recipes only when their ingredient values still match the old app. Your custom changes are kept. Export a backup first.</p></div><div class="card"><h3>Spreadsheet import</h3><p class="muted small">This version includes the recipes and ingredient/container data from your uploaded Groceries.xlsx workbook.</p>
+<h3>Shopping package preferences</h3><p class="muted small">Set your usual package size once. This changes future shopping calculations for both family members.</p><div id="packageEditor"></div><div class="actions"><button class="btn" onclick="openIngredientInspector()">🔎 Ingredient Inspector</button><button class="btn secondary" onclick="openPackageEditor()">Edit package sizes</button><button class="btn secondary" onclick="applyAudit()">Apply audited built-in recipe corrections</button></div><p class="tiny muted">Corrections update built-in recipes only when their ingredient values still match the old app. Your custom changes are kept. Export a backup first.</p></div><div class="card"><h3>Spreadsheet import</h3><p class="muted small">This version includes the recipes and ingredient/container data from your uploaded Groceries.xlsx workbook.</p>
 <p class="tiny muted">Version 5 ignores unreliable spreadsheet container fractions. It converts compatible recipe units to configurable shopping packages and flags unresolved measurements.</p>
 </div>
 <div class="card">
@@ -164,10 +185,10 @@ function openModal(html){document.getElementById('sheet').innerHTML=html;documen
 
 function recipeCard(name){
   const r=state.data.recipes[name], fav=state.favorites.includes(name);
-  return `<div class="card">
+  return `<div class="card recipe-card ${state.selected[name]?'is-selected':''}">
     <div class="row between"><div class="grow"><h3>${esc(name)}</h3><span class="pill">${r.ingredients.length} ingredients</span><span class="pill">base ${r.baseServings} servings</span>${(r.tags||[]).filter(Boolean).slice(0,2).map(t=>`<span class="pill">${esc(t)}</span>`).join("")}</div>
     <button class="iconbtn favorite" onclick="toggleFavorite('${esc(name).replace(/'/g,"\\'")}')">${fav?'★':'☆'}</button></div>
-    <div class="actions"><button class="btn" onclick="openRecipe('${esc(name).replace(/'/g,"\\'")}')">View recipe</button><button class="btn secondary" onclick="addRecipeSelection('${esc(name).replace(/'/g,"\\'")}')">Add to shopping</button></div>
+    <div class="actions"><button class="btn" onclick="openRecipe('${esc(name).replace(/'/g,"\\'")}')">View recipe</button><button class="shopping-toggle ${state.selected[name]?'on':'off'}" role="switch" aria-checked="${!!state.selected[name]}" aria-label="${state.selected[name]?'Remove':'Add'} ${esc(name)} ${state.selected[name]?'from':'to'} shopping" onclick="toggleRecipeSelection('${esc(name).replace(/'/g,"\\'")}')"><span>${state.selected[name]?'Added':'Not added'}</span><span class="toggle-track"><span class="toggle-knob"></span></span></button></div>
   </div>`
 }
 function renderHome(){
@@ -194,8 +215,19 @@ const V5_AUDIT_STARTER = STARTER_RECIPES;
 function normUnit(u){const a={'lbs.':'lb','lbs':'lb','pounds':'lb','oz.':'oz','ounces':'oz','ea':'ea.','each':'ea.','cups':'cup','tablespoons':'tbsp','teaspoons':'tsp','packets':'packet','cans':'can'};u=String(u||'').trim().toLowerCase();return a[u]||u}
 function compatible(q,from,to,name){from=normUnit(from);to=normUnit(to);if(from===to)return {qty:q,estimate:false};const mass={oz:1,lb:16,g:0.03527396,kg:35.27396},vol={tsp:1,tbsp:3,cup:48,'fl oz':6,ml:0.202884};if(mass[from]&&mass[to])return {qty:q*mass[from]/mass[to],estimate:false};if(vol[from]&&vol[to])return {qty:q*vol[from]/vol[to],estimate:false};const densities={"shredded cheese":4,"shredded mexican cheese":4,"shredded cheddar cheese":4,"shredded mozzarella cheese":4,"mozzarella cheese":4,"cheddar cheese":4,"parmesan cheese":3.5,"rice":6.5,"white rice":6.5,"flour":4.25,"sour cream":8,"ricotta cheese":8,"plain greek yogurt":8,"cream cheese":8,"breadcrumbs":4,"frozen mixed vegetables":5,"broccoli":3,"frozen broccoli":3};if(from==='cup'&&mass[to]&&densities[name])return {qty:q*densities[name]/mass[to],estimate:true};return null}
 function getPackage(name){const key=name.toLowerCase().trim();return state.packagePrefs?.[key]||PACKAGE_DEFAULTS[key]||null}
+function ingredientUses(key){const out=[];for(const [name,r] of Object.entries(state.data.recipes)){for(let idx=0;idx<r.ingredients.length;idx++){const i=r.ingredients[idx];if(i.name.toLowerCase().trim()===key)out.push({name,i,idx})}}return out}
+function openIngredientInspector(initial=''){
+ const keys=[...new Set(Object.values(state.data.recipes).flatMap(r=>r.ingredients.map(i=>i.name.toLowerCase().trim())))].sort();window.inspectorKeys=keys;
+ openModal(`<div class="row between"><h2>🔎 Ingredient Inspector</h2><button class="iconbtn" onclick="closeModal()">✕</button></div><p class="muted small">Find an ingredient, see every recipe that uses it and compare recipe units to your shopping package. Open a recipe to correct its measurements.</p><input id="inspectorSearch" class="search" placeholder="Search ingredients…" value="${esc(initial)}" oninput="renderInspector()"><div id="inspectorResults"></div>`);
+ renderInspector();
+}
+function renderInspector(){const q=document.getElementById('inspectorSearch').value.toLowerCase().trim(),keys=window.inspectorKeys.filter(k=>k.includes(q));const results=document.getElementById('inspectorResults');
+ if(!q){results.innerHTML='<p class="muted small">Start typing an ingredient name to see which recipes use it.</p>';return}
+ results.innerHTML=keys.slice(0,30).map(k=>{const uses=ingredientUses(k),p=getPackage(k);return `<div class="card"><div class="row between"><h3>${esc(k)}</h3><span class="pill">${uses.length} recipe${uses.length===1?'':'s'}</span></div><div class="small muted">Usual package: ${p?`${fmt(p.qty)} ${esc(p.unit)} ${esc(p.label)}`:'Not set'}</div>${uses.map(({name,i})=>{const c=p?compatible(num(i.qty),i.unit,p.unit,k):null;return `<div class="inspector-entry"><b>${esc(name)}</b><div class="small">Recipe uses: <b>${esc(i.qty)} ${esc(i.unit)}</b>${p&&c?` · Converts to ${fmt(c.qty)} ${esc(p.unit)}${c.estimate?' (estimate)':''}`:''}</div>${p&&!c?'<div class="inspector-flag">⚠ Recipe and package units do not convert automatically.</div>':''}${i.auditStatus&&i.auditStatus.startsWith('Review')?`<div class="inspector-flag">⚠ ${esc(i.auditStatus)}</div>`:''}<div class="actions"><button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encodeURIComponent(name)}'))">Edit recipe</button></div></div>`}).join('')}<button class="btn secondary" onclick="openPackageEditorFor(decodeURIComponent('${encodeURIComponent(k)}'))">Edit package size</button></div>`}).join('')+(keys.length>30?'<p class="small muted">Showing first 30 matching ingredients. Refine your search.</p>':'');
+}
+function openPackageEditorFor(key){openPackageEditor();const el=document.getElementById('pkgSearch');el.value=key;renderPackageRows()}
 function openPackageEditor(){const keys=[...new Set([...Object.keys(PACKAGE_DEFAULTS),...Object.values(state.data.recipes).flatMap(r=>r.ingredients.map(i=>i.name.toLowerCase().trim()))])].sort();openModal('<div class="row between"><h2>Usual grocery package sizes</h2><button class="iconbtn" onclick="closeModal()">✕</button></div><p class="small muted">Change the package size and unit. Use compatible units (e.g., 16 oz bag or 32 fl oz carton). Changes sync to your family.</p><input class="search" id="pkgSearch" placeholder="Find ingredient" oninput="renderPackageRows()"><div id="pkgRows" style="max-height:60vh;overflow:auto"></div>');window.pkgKeys=keys;renderPackageRows()}
-function renderPackageRows(){const term=document.getElementById('pkgSearch').value.toLowerCase();const keys=window.pkgKeys.filter(k=>k.includes(term)).slice(0,50);document.getElementById('pkgRows').innerHTML=keys.map(k=>{const p=getPackage(k)||{qty:'',unit:'',label:''};const id=window.pkgKeys.indexOf(k);return `<div class="card" style="margin:6px 0"><b>${esc(k)}</b><div class="formrow"><div><label>Package amount</label><input id="pq${id}" type="number" min="0.001" step="any" value="${esc(p.qty)}"></div><div><label>Unit</label><input id="pu${id}" value="${esc(p.unit)}" placeholder="oz, fl oz, ea., packet"></div></div><label>Package type</label><input id="pl${id}" value="${esc(p.label)}" placeholder="bag, jar, carton"><button class="btn secondary" onclick="savePackage(${id})">Save size</button></div>`}).join('')}
+function renderPackageRows(){const term=document.getElementById('pkgSearch').value.toLowerCase();const keys=window.pkgKeys.filter(k=>k.includes(term));document.getElementById('pkgRows').innerHTML=keys.map(k=>{const p=getPackage(k)||{qty:'',unit:'',label:''};const id=window.pkgKeys.indexOf(k);return `<div class="card" style="margin:6px 0"><b>${esc(k)}</b><div class="actions"><button class="btn secondary" onclick="openIngredientInspector(decodeURIComponent('${encodeURIComponent(k)}'))">View recipes & units (${ingredientUses(k).length})</button></div><div class="formrow"><div><label>Package amount</label><input id="pq${id}" type="number" min="0.001" step="any" value="${esc(p.qty)}"></div><div><label>Unit</label><input id="pu${id}" value="${esc(p.unit)}" placeholder="oz, fl oz, ea., packet"></div></div><label>Package type</label><input id="pl${id}" value="${esc(p.label)}" placeholder="bag, jar, carton"><button class="btn secondary" onclick="savePackage(${id})">Save size</button></div>`}).join('')}
 function savePackage(id){const k=window.pkgKeys[id],qty=num(document.getElementById('pq'+id).value),unit=normUnit(document.getElementById('pu'+id).value),label=document.getElementById('pl'+id).value.trim();if(!qty||qty<=0||!unit||!label)return alert('Enter a positive package amount, unit and package name.');state.packagePrefs=state.packagePrefs||{};state.packagePrefs[k]={qty,unit,label};save();toast('Package size saved');renderPackageRows()}
 function applyAudit(){if(!confirm('First export a backup in Settings. Apply corrected built-in ingredient units to recipes that still match their old built-in values? Your edited ingredients will be preserved.'))return;let changed=0,skipped=0;for(const [oldSet,newSet] of [[LEGACY_ORIGINAL,V5_AUDIT_ORIGINAL],[LEGACY_STARTER,V5_AUDIT_STARTER]])for(const [name,recipe] of Object.entries(newSet)){const current=state.data.recipes[name],old=oldSet[name];if(!current||!old)continue;for(let idx=0;idx<recipe.ingredients.length;idx++){const ni=recipe.ingredients[idx],oi=old.ingredients[idx],ci=current.ingredients[idx];if(!oi||!ci||ci.name!==oi.name)continue;const oldQty=oi.recipeQty??oi.qty,oldUnit=oi.recipeUnit??oi.unit;const isLegacy=(String(ci.qty)===String(oi.qty)&&ci.unit===oi.unit)||(String(ci.qty)===String(oldQty)&&ci.unit===oldUnit);if(!isLegacy){skipped++;continue}current.ingredients[idx]={...ci,qty:ni.qty,unit:ni.unit,fraction:null,catalog:null,auditStatus:ni.auditStatus,auditNote:ni.auditNote};changed++}}state.auditVersion=5;save();alert('Audited '+changed+' built-in ingredient rows; preserved '+skipped+' edited rows. Missing or estimated conversions are still flagged for review.')}
 
@@ -219,7 +251,7 @@ function openRecipe(name){
   <div class="card"><div class="row between"><b>Servings</b><div class="row"><button class="btn secondary" onclick="changeDetailServings(-1)">−</button><input id="detailServings" class="qty" type="number" min="1" value="${r.baseServings}" onchange="renderDetailIngredients('${esc(name).replace(/'/g,"\\'")}')"><button class="btn secondary" onclick="changeDetailServings(1)">＋</button></div></div></div>
   <h2>Ingredients</h2><div id="detailIngredients"></div>
   ${r.directions.length?`<h2>Instructions</h2><div class="card">${r.directions.map((d,i)=>`<div class="ingredient">${esc(d)}</div>`).join('')}</div>`:''}
-  <div class="actions"><button class="btn" onclick="addRecipeSelection('${esc(name).replace(/'/g,"\\'")}');closeModal()">🛒 Add to shopping list</button><button class="btn secondary" onclick="openRecipeEditor('${esc(name).replace(/'/g,"\\'")}')">Edit recipe</button><button class="btn secondary" onclick="toggleFavorite('${esc(name).replace(/'/g,"\\'")}');openRecipe('${esc(name).replace(/'/g,"\\'")}')">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
+  <div class="actions"><button class="btn" onclick="toggleRecipeSelection('${esc(name).replace(/'/g,"\\'")}');openRecipe('${esc(name).replace(/'/g,"\\'")}')">${state.selected[name]?'✓ Remove from shopping':'＋ Add to shopping'}</button><button class="btn secondary" onclick="openRecipeEditor('${esc(name).replace(/'/g,"\\'")}')">Edit recipe</button><button class="btn secondary" onclick="toggleFavorite('${esc(name).replace(/'/g,"\\'")}');openRecipe('${esc(name).replace(/'/g,"\\'")}')">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
   renderDetailIngredients(name);
 }
 function changeDetailServings(delta){const el=document.getElementById('detailServings');el.value=Math.max(1,(num(el.value)||1)+delta);renderDetailIngredients(currentModalRecipe())}
@@ -232,6 +264,10 @@ function addRecipeSelection(name, servings){
   const r=state.data.recipes[name], s=servings||r.baseServings;
   state.selected[name]=(state.selected[name]||0)+s;
   save();toast(`${name} added to shopping list`);
+}
+function toggleRecipeSelection(name){
+ if(state.selected[name]){delete state.selected[name];save();toast(name+' removed from shopping')}
+ else{state.selected[name]=state.data.recipes[name].baseServings;save();toast(name+' added to shopping')}
 }
 function removeSelection(name){delete state.selected[name];save()}
 
