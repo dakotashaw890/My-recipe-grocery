@@ -1,9 +1,1 @@
-# My Recipe & Grocery — Expanded
-
-Includes the original 11 spreadsheet recipes plus 39 family-friendly starter recipes.
-
-New: online recipe search/import via TheMealDB, preview before importing, source links, ingredient matching to the existing catalog, and editable imported recipes.
-
-TheMealDB documents its free test API key for development/personal use; app-store publication requires a supporter key.
-
-Host these files on HTTPS and install from Chrome on Android.
+Version 4: shared family sync. FIRST run the included SUPABASE_SETUP.sql in Supabase SQL Editor. Deploy all web files to GitHub Pages. Create separate accounts, create family on first phone, join family on second using ID. Export existing backup before first sync.
