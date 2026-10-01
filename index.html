@@ -24,7 +24,7 @@ h1{font-size:24px;margin:8px 0 14px}h2{font-size:20px;margin:18px 0 10px}h3{marg
 .muted{color:var(--muted)}.small{font-size:13px}.tiny{font-size:11px}.pill{display:inline-block;background:#edf3ef;color:var(--green);border-radius:999px;padding:4px 8px;font-size:12px;margin:2px}
 .search{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:white;margin-bottom:12px}
 nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:20;display:flex;justify-content:center}
-.navinner{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(6,1fr)}
+.navinner{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(8,1fr)}
 .navbtn{padding:8px 2px;background:#fff;color:var(--muted);font-size:11px}.navbtn.active{color:var(--green);font-weight:800}.navicon{display:block;font-size:20px;line-height:20px}
 .ingredient{padding:9px 0;border-bottom:1px solid #edf0ed}.ingredient:last-child{border-bottom:0}
 .check{width:22px;height:22px;accent-color:var(--green)}
@@ -61,6 +61,9 @@ nav{background:#fffefa;border-top:1px solid #e2ebe5;box-shadow:0 -6px 22px #123f
 @media(min-width:700px){nav{border-radius:18px}main{padding:25px}.sheet{border-radius:24px;margin:auto auto;max-height:85vh}}
 /* V7 package editor: persistent inline recipe inspection and unmistakable save feedback */
 .pkg-card{scroll-margin-top:12px}.pkg-card .pkg-saved{display:none;color:#116b45;background:#e1f8e9;border:1px solid #a6dfbd;border-radius:10px;padding:9px 11px;font-size:13px;font-weight:750;margin-top:10px}.pkg-card .pkg-saved.visible{display:block}.pkg-card .pkg-savebtn.saved{background:#188450;color:white}.pkg-details{margin-top:12px;padding:12px;border:1px solid #cce5d7;border-radius:13px;background:#f7fcf9}.pkg-details[hidden]{display:none}.pkg-details .inspector-entry{overflow-wrap:anywhere}.pkg-details .btn{font-size:12px;padding:8px 10px}.online-fresh{display:flex;align-items:center;justify-content:center;height:23px}
+
+/* v8 */
+.navbtn{font-size:10px}.navicon{font-size:19px}.edit-inline{background:#f3faf6;border:1px solid #d7eadf;border-radius:14px;padding:12px;margin:8px 0}.department{margin:18px 0}.department summary{font-weight:800;font-size:17px;padding:12px;cursor:pointer;background:#e9f5ee;border-radius:13px}.price-row{display:none}.prices-visible .price-row{display:block}.stat{padding:16px;background:#e7f5ec;border-radius:15px}.budget-progress{height:10px;background:#d7e4dc;border-radius:20px;overflow:hidden}.budget-progress>div{height:100%;background:#16805c}.chip{border:1px solid #d5e7da;background:white;padding:8px 12px;border-radius:999px;margin:3px}.dashboard-hero{background:linear-gradient(120deg,#103c32,#26835c);border-radius:22px;color:white;padding:23px}.dashboard-hero h1{color:white}.listitem{align-items:flex-start}.navinner{overflow-x:auto}.navbtn{min-width:0}
 </style>
 </head>
 <body>
@@ -68,7 +71,7 @@ nav{background:#fffefa;border-top:1px solid #e2ebe5;box-shadow:0 -6px 22px #123f
 
 <main>
 <section id="home" class="screen active">
-<h1>Plan your week</h1>
+<div class="dashboard-hero"><div class="small">YOUR FAMILY KITCHEN</div><h1>What's cooking?</h1><div>Meals, groceries and recipes together.</div></div><div id="homeDashboard" class="grid" style="margin:14px 0"></div>
 <div class="card">
   <div class="row between"><div><b id="planSummary">No meals planned</b><div class="muted small">Your shopping list follows your weekly plan.</div></div><button class="btn" onclick="showScreen('plan')">Plan meals</button></div>
 </div>
@@ -78,7 +81,7 @@ nav{background:#fffefa;border-top:1px solid #e2ebe5;box-shadow:0 -6px 22px #123f
 
 <section id="recipes" class="screen">
 <div class="section-title"><h1>Recipes</h1><button class="btn" onclick="openRecipeEditor()">＋ Add</button></div>
-<input id="recipeSearch" class="search" placeholder="Search recipes…" oninput="renderRecipes()">
+<button class="btn secondary" onclick="document.getElementById('recipeSearch').value='';setRecipeFilter('all');toast('Recipe search cleared')">Clear search</button><input id="recipeSearch" class="search" placeholder="Search recipes…" oninput="renderRecipes()">
 <div class="row" style="margin-bottom:12px">
 <button id="allFilter" class="btn secondary" onclick="setRecipeFilter('all')">All</button>
 <button id="favFilter" class="btn secondary" onclick="setRecipeFilter('favorites')">★ Favorites</button>
@@ -89,20 +92,20 @@ nav{background:#fffefa;border-top:1px solid #e2ebe5;box-shadow:0 -6px 22px #123f
 <section id="plan" class="screen">
 <div class="section-title"><h1>Weekly Meal Planner</h1><button class="btn secondary" onclick="clearPlan()">Clear</button></div>
 <div class="card small muted">Choose a recipe for each meal. Servings are adjustable and the shopping list combines everything planned for the week.</div>
-<div id="planner"></div>
+<div class="actions"><button class="btn secondary" onclick="copyPlan()">Copy current plan</button><button class="btn secondary" onclick="fillPlan()">Suggest empty dinners</button></div><div id="planner"></div>
 </section>
 
 <section id="shopping" class="screen">
 <div class="section-title"><h1>Shopping List</h1><button class="btn secondary" onclick="clearChecks()">Uncheck all</button></div>
-<div id="shoppingMeta" class="muted small"></div><div class="card small muted">Shopping quantities are calculated from compatible units. Approximate density conversions and missing package sizes are marked for review. Edit your usual package sizes in Settings.</div>
+<div class="actions"><button class="btn secondary" onclick="togglePrices()" id="priceToggle">Show prices</button><button class="btn secondary" onclick="clearSelections()">Clear shopping selections</button></div><div id="shoppingTotal" class="stat" style="display:none;margin-top:10px"></div><div id="shoppingMeta" class="muted small"></div><div class="card small muted">Shopping quantities are calculated from compatible units. Approximate density conversions and missing package sizes are marked for review. Edit your usual package sizes in Settings.</div>
 <div id="shoppingList"></div>
 </section>
 
-<section id="online" class="screen">
+<section id="ingredients" class="screen"><div class="section-title"><h1>Ingredients</h1><button class="btn secondary" onclick="clearSelections()">Clear shopping selections</button></div><input id="ingredientSearch" class="search" placeholder="Find an ingredient" oninput="renderIngredients()"><div id="ingredientCatalog"></div></section><section id="spending" class="screen"><h1>Grocery Spending</h1><div id="spendingDashboard"></div><div class="card"><h3>Record a shopping trip</h3><label>Store</label><input id="tripStore" placeholder="Store name"><label>Date</label><input id="tripDate" type="date"><label>Actual total paid ($)</label><input id="tripTotal" type="number" step="0.01" min="0"><label>Notes (optional)</label><input id="tripNotes" placeholder="Optional notes"><div class="actions"><button class="btn" onclick="addTrip()">Save trip</button></div></div><div id="tripHistory"></div></section><section id="online" class="screen">
 <div class="section-title"><h1>Find Online Recipes</h1><button class="btn secondary" onclick="showScreen('recipes')">My Recipes</button></div>
 <div class="card"><div class="muted small">Search TheMealDB for recipes you can preview and add to your recipe bank. Imported recipes can be edited afterward, including package/container sizes.</div>
 <div class="row" style="margin-top:10px"><input id="onlineSearch" class="search" style="margin:0" placeholder="Try chicken, tacos, casserole…" onkeydown="if(event.key==='Enter')searchOnline()"><button class="btn" onclick="searchOnline()">Search</button></div></div>
-<div id="onlineResults"></div>
+<div class="card"><div class="actions"><button class="chip" onclick="discoverCategory('Chicken')">Chicken</button><button class="chip" onclick="discoverCategory('Beef')">Beef</button><button class="chip" onclick="discoverCategory('Pasta')">Pasta</button><button class="chip" onclick="discoverCategory('Vegetarian')">Vegetarian</button><button class="chip" onclick="surpriseMeal()">Surprise me</button></div><label>Search mode</label><select id="onlineMode"><option value="name">Recipe name</option><option value="ingredient">Main ingredient</option><option value="category">Category</option><option value="area">Cuisine</option></select></div><div id="onlineResults"></div>
 <div class="card small muted">Online recipe data and artwork are provided by TheMealDB.</div></section>
 <section id="settings" class="screen">
 <h1>Settings & Data</h1>
@@ -133,7 +136,7 @@ nav{background:#fffefa;border-top:1px solid #e2ebe5;box-shadow:0 -6px 22px #123f
 <button class="navbtn" data-screen="recipes" onclick="showScreen('recipes')"><span class="navicon">📖</span>Recipes</button>
 <button class="navbtn" data-screen="plan" onclick="showScreen('plan')"><span class="navicon">📅</span>Plan</button>
 <button class="navbtn" data-screen="shopping" onclick="showScreen('shopping')"><span class="navicon">🛒</span>Shop</button><button class="navbtn" data-screen="online" onclick="showScreen('online')"><span class="navicon online-fresh" aria-hidden="true"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-3.2 3-3.2 15 0 18M12 3c3.2 3 3.2 15 0 18"/><path d="m15.7 5.7 2.6-2.1" stroke="#20a079" stroke-width="2.4"/></svg></span>Online</button>
-<button class="navbtn" data-screen="settings" onclick="showSettings()"><span class="navicon">⚙️</span>More</button>
+<button class="navbtn" data-screen="ingredients" onclick="showScreen('ingredients')"><span class="navicon">🥕</span>Items</button><button class="navbtn" data-screen="spending" onclick="showScreen('spending')"><span class="navicon">💳</span>Spending</button><button class="navbtn" data-screen="settings" onclick="showSettings()"><span class="navicon">⚙️</span>More</button>
 </div></nav>
 
 <div id="modal" class="modal" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
@@ -178,7 +181,7 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));
   document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.screen===id));
-  if(id==='home')renderHome(); if(id==='recipes')renderRecipes(); if(id==='plan')renderPlanner(); if(id==='shopping')renderShopping();
+  if(id==='home')renderHome(); if(id==='recipes')renderRecipes(); if(id==='plan')renderPlanner(); if(id==='shopping')renderShopping();if(id==='ingredients')renderIngredients();if(id==='spending')renderSpending();
   window.scrollTo(0,0);
 }
 function showSettings(){showScreen('settings')}
@@ -196,7 +199,7 @@ function recipeCard(name){
 function renderHome(){
   const fav=state.favorites.filter(n=>state.data.recipes[n]);
   document.getElementById('homeFavorites').innerHTML=fav.length?fav.slice(0,4).map(recipeCard).join(''):`<div class="card" style="grid-column:1/-1"><div class="empty">No favorites yet. Tap ☆ on a recipe to add one.</div></div>`;
-  const count=Object.values(state.plan).filter(x=>x?.recipe).length;
+  const dash=document.getElementById('homeDashboard');if(dash){const n=Object.keys(state.selected||{}).length,checked=Object.values(state.checks||{}).filter(Boolean).length;dash.innerHTML=`<div class="stat"><b>${n}</b><div class="small">Selected recipes</div><button class="btn secondary" onclick="showScreen('recipes')">Browse</button></div><div class="stat"><b>${checked}</b><div class="small">Items checked</div><button class="btn secondary" onclick="showScreen('shopping')">Shopping</button></div><div class="stat"><b>${Object.keys(state.plan||{}).length}</b><div class="small">Planned meals</div><button class="btn secondary" onclick="showScreen('plan')">Planner</button></div><div class="stat"><b>Spending</b><div class="small">Your grocery budget</div><button class="btn secondary" onclick="showScreen('spending')">View</button></div>`;}const count=Object.values(state.plan).filter(x=>x?.recipe).length;
   document.getElementById('planSummary').textContent=count?`${count} meal${count===1?'':'s'} planned`:'No meals planned';
 }
 function setRecipeFilter(f){recipeFilter=f;renderRecipes()}
@@ -324,11 +327,33 @@ function renderShopping(){
  const converted=compatible(q,unit,pkg.unit,key);if(!converted){row.issues.push('Cannot convert '+unit+' to '+pkg.unit+'; check recipe and package units');continue}
  row.qty+=converted.qty*scale;if(converted.estimate)row.issues.push('Approximate ingredient-specific cup-to-weight conversion');if(i.auditStatus&&i.auditStatus.startsWith('Review'))row.issues.push(i.auditStatus);
  }}
- const rows=Object.values(combined).sort((a,b)=>a.name.localeCompare(b.name));
- document.getElementById('shoppingList').innerHTML=rows.length?rows.map(x=>{const id=x.name.toLowerCase(),done=!!state.checks[id],p=x.pkg,issues=[...new Set(x.issues)],safe=p&&issues.every(t=>!t.startsWith('Cannot')&&!t.startsWith('Check recipe'));
- const amount=x.qty>0?fmt(x.qty)+' '+esc(x.unit):'Quantity unavailable';const packs=safe&&p&&x.qty>0?Math.ceil((x.qty/p.qty)-1e-9):null;
- return `<div class="listitem ${done?'done':''}"><input class="check" type="checkbox" ${done?'checked':''} onchange="toggleCheck('${esc(id).replace(/'/g,"\\'")}')"><div class="grow itemtext"><b>${esc(x.name)}</b><div class="small">Need: ${amount}${packs!==null?` • Buy ${packs} ${esc(p.label)}${packs===1?'':'s'} (${fmt(p.qty)} ${esc(p.unit)} each)`:''}</div>${issues.length?`<div class="tiny" style="color:#a35a13">⚠ ${issues.map(esc).join('; ')}</div>`:''}${!p?`<button class="btn secondary" onclick="openPackageEditor()">Set package size</button>`:''}</div></div>`}).join(''):'<div class="empty">Your shopping list is empty.</div>';
+ const rows=Object.values(combined).sort((a,b)=>a.name.localeCompare(b.name));window.lastShoppingRows=rows;
+ const groups={};let estimated=0,priced=0;
+ for(const x of rows){const category=departmentFor(x.name);(groups[category]??=[]).push(x);const p=x.pkg,issues=x.issues||[],safe=p&&issues.every(t=>!t.startsWith('Cannot')&&!t.startsWith('Check recipe'));const packs=safe&&x.qty>0?Math.ceil(x.qty/p.qty-1e-9):null;const price=state.itemMeta?.[x.name.toLowerCase()]?.price;if(packs!==null&&Number.isFinite(Number(price))&&price!==undefined&&price!==''){estimated+=packs*Number(price);priced++}}
+ const totalBox=document.getElementById('shoppingTotal');totalBox.style.display=showPrices?'block':'none';totalBox.innerHTML=`<b>Estimated cart: $${estimated.toFixed(2)}</b><div class="small">${priced} priced items out of ${rows.length}; missing prices excluded. Estimates only.</div>`;document.getElementById('priceToggle').textContent=showPrices?'Hide prices':'Show prices';
+ const order=['Produce','Meat & Seafood','Dairy & Refrigerated','Bakery','Pantry & Canned','Frozen','Household','Other / Uncategorized'];
+ document.getElementById('shoppingList').innerHTML=rows.length?order.filter(g=>groups[g]?.length).map(g=>`<details class="department" open><summary>${esc(g)} (${groups[g].length})</summary>${groups[g].map(x=>{const key=x.name.toLowerCase(),id=encodeURIComponent(key),done=!!state.checks[key],p=x.pkg,issues=[...new Set(x.issues)],safe=p&&issues.every(t=>!t.startsWith('Cannot')&&!t.startsWith('Check recipe'));const packs=safe&&x.qty>0?Math.ceil(x.qty/p.qty-1e-9):null;const price=state.itemMeta?.[key]?.price;return `<div class="listitem ${done?'done':''}"><input class="check" type="checkbox" ${done?'checked':''} onchange="toggleCheck(decodeURIComponent('${id}'))"><div class="grow itemtext"><b>${esc(x.name)}</b><div class="small">Need ${x.qty>0?fmt(x.qty)+' '+esc(x.unit):'quantity review'}${packs!==null?` · Buy ${packs} ${esc(p.label)}${packs===1?'':'s'}`:''}</div>${issues.length?`<div class="tiny" style="color:#a35a13">⚠ ${issues.map(esc).join('; ')}</div>`:''}${showPrices&&price!==undefined?`<div class="small price-row" style="display:block">Est. $${(Number(price)*(packs||0)).toFixed(2)}</div>`:''}<button class="btn secondary" onclick="toggleInlineIngredient('${id}','shop')">Edit ingredient</button><div id="inline-shop-${id}"></div></div></div>`}).join('')}</details>`).join(''):'<div class="empty">Your shopping list is empty.</div>';
+
 }
+
+const DEPARTMENTS=['Produce','Meat & Seafood','Dairy & Refrigerated','Bakery','Pantry & Canned','Frozen','Household','Other / Uncategorized'];
+let showPrices=false;
+function togglePrices(){showPrices=!showPrices;renderShopping()}
+function departmentFor(name){const k=name.toLowerCase(),saved=state.itemMeta?.[k]?.department;if(saved)return saved;
+ if(/frozen|ice cream/.test(k))return 'Frozen';if(/chicken|beef|pork|sausage|bacon|turkey|salmon|shrimp|fish|hot dogs|ham|steak/.test(k))return 'Meat & Seafood';if(/milk|cheese|butter|yogurt|egg|cream/.test(k))return 'Dairy & Refrigerated';if(/bread|bun|tortilla|bagel|roll/.test(k))return 'Bakery';if(/apple|onion|tomato|potato|lettuce|carrot|pepper|broccoli|banana|celery|spinach|garlic|lime|lemon/.test(k))return 'Produce';if(/rice|pasta|sauce|salsa|oil|flour|sugar|salt|pepper|seasoning|broth|bean|can|cereal|breadcrumb|noodle/.test(k))return 'Pantry & Canned';return 'Other / Uncategorized'}
+function allIngredients(){return [...new Set([...Object.keys(PACKAGE_DEFAULTS),...Object.values(state.data.recipes).flatMap(r=>r.ingredients.map(i=>i.name.toLowerCase().trim())),...Object.keys(state.itemMeta||{})])].sort()}
+function renderIngredients(){const q=(document.getElementById('ingredientSearch')?.value||'').toLowerCase(),keys=allIngredients().filter(k=>k.includes(q));document.getElementById('ingredientCatalog').innerHTML=keys.slice(0,90).map(k=>{const id=encodeURIComponent(k),p=getPackage(k);return `<div class="card"><div class="row between"><div><b>${esc(k)}</b><div class="small muted">${esc(departmentFor(k))} · ${p?fmt(p.qty)+' '+esc(p.unit)+' '+esc(p.label):'No package size'}</div></div><button class="btn secondary" onclick="toggleInlineIngredient('${id}','catalog')">Edit</button></div><div id="inline-catalog-${id}"></div></div>`}).join('')+(keys.length>90?'<p class="small">Showing 90 results. Search to narrow down.</p>':'')}
+function toggleInlineIngredient(encoded,location){const k=decodeURIComponent(encoded),box=document.getElementById(`inline-${location}-${encoded}`);if(!box)return;if(box.innerHTML){box.innerHTML='';return}const p=getPackage(k)||{qty:'',unit:'',label:''},meta=state.itemMeta?.[k]||{};box.innerHTML=`<div class="edit-inline"><h3>Edit ${esc(k)}</h3><div class="formrow"><div><label>Package quantity</label><input id="iq-${location}-${encoded}" type="number" step="any" min="0.001" value="${esc(p.qty)}"></div><div><label>Unit</label><input id="iu-${location}-${encoded}" value="${esc(p.unit)}" placeholder="oz, lb, ea."></div></div><label>Package type</label><input id="il-${location}-${encoded}" value="${esc(p.label)}" placeholder="bag, carton, each"><label>Estimated price per package ($)</label><input id="ip-${location}-${encoded}" type="number" min="0" step="0.01" value="${esc(meta.price??'')}"><label>Grocery department</label><select id="id-${location}-${encoded}">${DEPARTMENTS.map(d=>`<option ${departmentFor(k)===d?'selected':''}>${esc(d)}</option>`).join('')}</select><details><summary>View recipes using this ingredient (${ingredientUses(k).length})</summary>${ingredientUses(k).map(({name,i})=>`<div class="inspector-entry"><b>${esc(name)}</b> · ${esc(i.qty)} ${esc(i.unit)}<button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encodeURIComponent(name)}'))">Edit recipe</button></div>`).join('')||'No recipes yet'}</details><div class="actions"><button class="btn" onclick="saveInlineIngredient('${encoded}','${location}')">Save ingredient</button><button class="btn secondary" onclick="toggleInlineIngredient('${encoded}','${location}')">Cancel</button></div></div>`}
+function saveInlineIngredient(encoded,location){const k=decodeURIComponent(encoded),val=field=>document.getElementById(`${field}-${location}-${encoded}`).value,qty=num(val('iq')),unit=normUnit(val('iu')),label=val('il').trim(),price=val('ip');if(!(qty>0)||!unit||!label)return alert('Enter a valid package amount, unit and type.');if(price!==''&&(!Number.isFinite(Number(price))||Number(price)<0))return alert('Enter a valid price.');state.packagePrefs??={};state.itemMeta??={};state.packagePrefs[k]={qty,unit,label};state.itemMeta[k]={...(state.itemMeta[k]||{}),department:val('id'),...(price!==''?{price:Number(price)}:{price:null})};save();if(location==='catalog')renderIngredients();else renderShopping();toast('✓ '+k+' saved')}
+function clearSelections(){if(!Object.keys(state.selected||{}).length)return toast('No manually selected recipes to clear');if(!confirm('Remove all manually selected recipes from shopping? Planned meals will stay.'))return;state.selected={};save();toast('Shopping selections cleared')}
+function copyPlan(){const p=clone(state.plan);localStorage.setItem('recipe-plan-template-v8',JSON.stringify(p));toast('Plan copied. Use Restore copied plan to reuse it.');if(!document.getElementById('restorePlanBtn')){const b=document.createElement('button');b.id='restorePlanBtn';b.className='btn secondary';b.textContent='Restore copied plan';b.onclick=()=>{const s=localStorage.getItem('recipe-plan-template-v8');if(s&&confirm('Replace current plan with your copied plan?')){state.plan=JSON.parse(s);save()}};document.querySelector('#plan .actions').appendChild(b)}}
+function fillPlan(){const favorites=state.favorites.filter(n=>state.data.recipes[n]),pool=(favorites.length?favorites:Object.keys(state.data.recipes)).filter(Boolean);if(!pool.length)return;const used=new Set(Object.values(state.plan).map(v=>v.recipe));let added=0;DAYS.forEach(day=>{const key=day+'|Dinner';if(!state.plan[key]){const next=pool.find(n=>!used.has(n));if(next){state.plan[key]={recipe:next,servings:state.data.recipes[next].baseServings||4};used.add(next);added++}}});if(added){save();toast(added+' dinner suggestions added')}else toast('No empty dinners or unique suggestions')}
+function renderSpending(){state.spending??={trips:[],budget:0};const trips=state.spending.trips,total=trips.reduce((s,t)=>s+Number(t.total),0),month=new Date().toISOString().slice(0,7),monthly=trips.filter(t=>t.date?.startsWith(month)).reduce((s,t)=>s+Number(t.total),0),budget=Number(state.spending.budget)||0;document.getElementById('spendingDashboard').innerHTML=`<div class="card"><div class="muted small">This month</div><h1>$${monthly.toFixed(2)}</h1><label>Monthly budget ($)</label><div class="row"><input id="spendBudget" type="number" min="0" step="1" value="${budget}"><button class="btn" onclick="saveBudget()">Save</button></div>${budget?`<div class="budget-progress"><div style="width:${Math.min(100,monthly/budget*100)}%"></div></div><p>${monthly>budget?'Over budget by $'+(monthly-budget).toFixed(2):'$'+(budget-monthly).toFixed(2)+' remaining'}</p>`:''}<div class="small muted">All recorded trips: $${total.toFixed(2)}</div></div>`;document.getElementById('tripHistory').innerHTML='<h2>Purchase history</h2>'+trips.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="card"><div class="row between"><div><b>${esc(t.store)}</b><div class="small muted">${esc(t.date)} · ${esc(t.notes||'')}</div></div><b>$${Number(t.total).toFixed(2)}</b></div><button class="btn secondary" onclick="deleteTrip('${esc(t.id)}')">Delete</button></div>`).join('');const date=document.getElementById('tripDate');if(date&&!date.value)date.value=new Date().toISOString().slice(0,10)}
+function saveBudget(){const n=Number(document.getElementById('spendBudget').value);if(!Number.isFinite(n)||n<0)return alert('Enter a valid budget');state.spending??={trips:[]};state.spending.budget=n;save();renderSpending();toast('Budget saved')}
+function addTrip(){const store=document.getElementById('tripStore').value.trim(),date=document.getElementById('tripDate').value,total=Number(document.getElementById('tripTotal').value),notes=document.getElementById('tripNotes').value.trim();if(!store||!date||!Number.isFinite(total)||total<=0)return alert('Enter a store, date and positive total.');state.spending??={trips:[],budget:0};state.spending.trips.push({id:String(Date.now()),store,date,total,notes});save();['tripStore','tripTotal','tripNotes'].forEach(id=>document.getElementById(id).value='');renderSpending();toast('Grocery trip saved')}
+function deleteTrip(id){if(!confirm('Delete this grocery trip?'))return;state.spending.trips=state.spending.trips.filter(t=>t.id!==id);save();renderSpending()}
+async function discoverCategory(cat){document.getElementById('onlineSearch').value=cat;document.getElementById('onlineMode').value='category';await searchOnline()}
+async function surpriseMeal(){const box=document.getElementById('onlineResults');box.innerHTML='<div class="card">Finding a recipe…</div>';try{const r=await fetch('https://www.themealdb.com/api/json/v1/1/random.php');if(!r.ok)throw Error('Service unavailable');const data=await r.json(),m=data.meals?.[0];if(!m)throw Error('No recipe returned');onlineMeals[m.idMeal]=m;box.innerHTML=`<div class="card"><h3>${esc(m.strMeal)}</h3><div>${esc(m.strCategory||'')}</div><button class="btn" onclick="previewOnline('${m.idMeal}')">Preview recipe</button></div>`}catch(e){box.textContent='Could not fetch a recipe: '+e.message}}
 function toggleCheck(id){state.checks[id]=!state.checks[id];save()}
 function clearChecks(){state.checks={};save();toast('Shopping list unchecked')}
 
@@ -385,15 +410,15 @@ async function searchOnline(){
  if(!q){box.innerHTML='<div class="card">Enter a recipe or ingredient to search.</div>';return}
  box.innerHTML='<div class="card">Searching…</div>';
  try{
-  const response=await fetch('https://www.themealdb.com/api/json/v1/1/search.php?s='+encodeURIComponent(q),{cache:'no-store'});
+  const mode=document.getElementById('onlineMode')?.value||'name';const path=mode==='name'?'search.php?s=':mode==='ingredient'?'filter.php?i=':mode==='category'?'filter.php?c=':'filter.php?a=';const response=await fetch('https://www.themealdb.com/api/json/v1/1/'+path+encodeURIComponent(q),{cache:'no-store'});
   if(!response.ok)throw new Error('Search service returned '+response.status);
   const data=await response.json(); const meals=data.meals||[];
   onlineMeals=Object.fromEntries(meals.map(m=>[m.idMeal,m]));
   box.innerHTML=meals.length?meals.map(m=>`<div class="card"><div class="row between"><div class="grow"><h3>${esc(m.strMeal)}</h3><div class="muted small">${esc(m.strCategory||'Recipe')}</div></div><button class="btn" onclick="previewOnline('${m.idMeal}')">Preview</button></div></div>`).join(''):'<div class="card">No matches. Try a simpler search, such as chicken.</div>';
  }catch(err){box.innerHTML='<div class="card">Online search could not connect. Check your internet connection and try again. '+esc(err.message)+'</div>'}
 }
-function previewOnline(id){
- const m=onlineMeals[id];if(!m)return;
+async function previewOnline(id){
+ let m=onlineMeals[id];if(!m)return;if(!m.strInstructions){try{const r=await fetch('https://www.themealdb.com/api/json/v1/1/lookup.php?i='+encodeURIComponent(id));const d=await r.json();m=d.meals?.[0]||m;onlineMeals[id]=m}catch(e){toast('Could not load full recipe');return}}
  const items=[];
  for(let i=1;i<=20;i++){const name=(m['strIngredient'+i]||'').trim();if(name)items.push({name,measure:(m['strMeasure'+i]||'').trim()})}
  openModal(`<div class="row between"><h2>${esc(m.strMeal)}</h2><button class="iconbtn" onclick="closeModal()">✕</button></div><h3>Ingredients</h3><p>${items.map(x=>esc(x.measure+' '+x.name)).join('<br>')}</p><h3>Directions</h3><p style="white-space:pre-line">${esc(m.strInstructions||'No instructions supplied')}</p><div class="actions"><button class="btn" onclick="importOnline('${id}')">Add to my recipes</button>${m.strSource?`<a class="btn secondary" href="${esc(m.strSource)}" target="_blank" rel="noopener">Source</a>`:''}</div>`)
@@ -415,7 +440,7 @@ function importOnline(id){
  save();closeModal();toast('Recipe imported — review quantities and package sizes');showScreen('recipes');
 }
 
-function renderAll(){renderHome();renderRecipes();renderPlanner();renderShopping()}
+function renderAll(){renderHome();renderRecipes();renderPlanner();renderShopping();if(document.getElementById('ingredients').classList.contains('active'))renderIngredients();if(document.getElementById('spending').classList.contains('active'))renderSpending()}
 renderAll();
 
 // Family sync: one shared document per family, with Supabase RLS membership enforcement.
