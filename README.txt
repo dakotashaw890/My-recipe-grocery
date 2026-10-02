@@ -1,1 +1,0 @@
-Version 4: shared family sync. FIRST run the included SUPABASE_SETUP.sql in Supabase SQL Editor. Deploy all web files to GitHub Pages. Create separate accounts, create family on first phone, join family on second using ID. Export existing backup before first sync.
