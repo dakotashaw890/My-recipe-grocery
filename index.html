@@ -245,10 +245,18 @@ function loadState(){
   }catch(e){const data=clone(ORIGINAL);Object.assign(data.recipes,clone(STARTER_RECIPES));return {data,favorites:[],plan:{},checks:{},selected:{}}}
 }
 function save(){
- // Commit data first. Older standalone builds do not include the optional cloud-sync function.
+ // Storage failure must be distinguishable from rendering/sync errors.
  localStorage.setItem(KEY,JSON.stringify(state));
- renderAll();
- if(typeof queueCloudSave==='function')queueCloudSave();
+ try{refreshSavedViews()}catch(error){console.error('Saved, but view refresh failed',error)}
+ if(typeof queueCloudSave==='function'){
+  try{queueCloudSave()}catch(error){console.error('Saved locally; cloud sync could not start',error)}
+ }
+}
+function refreshSavedViews(){
+ // This standalone build has no renderAll(); refresh only supported screens.
+ const active=document.querySelector('.screen.active')?.id;
+ const renderers={home:renderHome,recipes:renderRecipes,plan:renderPlanner,shopping:renderShopping,ingredients:renderIngredients,spending:renderSpending,pantry:renderPantry};
+ if(active&&typeof renderers[active]==='function')renderers[active]();
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 function num(v){let n=parseFloat(v);return Number.isFinite(n)?n:null}
@@ -666,21 +674,24 @@ function confirmScannedPantry(){
   state.pantry??={};state.pantry[k]={name:oldPantry?.name||name,qty:Number(oldPantry?.qty||0)+qty};
   if(code)barcodeLinks()[code]={name:oldPantry?.name||name,scannedSize:window.lastBarcodeSize||null};
   // Do not touch state.itemMeta: barcode lookup must not overwrite pictures or other saved details.
-  save();
+  // Commit first: only a failed storage write should roll back the pantry change.
+  localStorage.setItem(KEY,JSON.stringify(state));
  }catch(error){
   if(isNew){if(oldPackage)state.packagePrefs[k]=oldPackage;else delete state.packagePrefs[k]}
   if(oldPantry)state.pantry[k]=oldPantry;else delete state.pantry[k];
   if(code){if(oldLink)barcodeLinks()[code]=oldLink;else delete barcodeLinks()[code]}
   scannedPantrySaving=false;if(button){button.disabled=false;button.textContent='Add to pantry'}
-  console.error('Pantry save failed',error);alert('Could not save to pantry. Nothing was added. Check available device storage and try again.');return;
+  console.error('Pantry storage write failed',error);alert('Could not save to pantry. Your browser rejected the storage write. Export a backup if possible and check available site storage.');return;
  }
  scannedPantrySaving=false;
- // Re-rendering may replace the screen; show a persistent confirmation in the barcode result.
- closeModal();showScreen('pantry');renderPantry();renderShopping();
+ // Saving has already succeeded. UI or optional cloud-sync errors cannot undo it.
+ try{if(typeof queueCloudSave==='function')queueCloudSave()}catch(error){console.error('Pantry saved locally; cloud sync failed',error)}
+ try{closeModal();showScreen('pantry')}catch(error){console.error('Pantry saved; screen refresh failed',error)}
+ try{renderShopping()}catch(error){console.error('Pantry saved; shopping refresh failed',error)}
  const result=document.getElementById('barcodeResult');
  if(result)result.innerHTML=`<div class="card" style="border-color:#238453"><b>✓ ${esc(name)} added to pantry</b><p>${fmt(qty)} package(s) added successfully.</p><div class="actions">${addPhoto?`<button class="btn" onclick="editIngredientPhoto('${encodeURIComponent(k)}')">📷 Add picture</button>`:''}${again?'<button class="btn secondary" onclick="resetScanForNext()">Scan next item</button>':''}</div></div>`;
- toast('✓ '+name+' added to pantry');
- if(again&&!addPhoto)resetScanForNext();
+ try{toast('✓ '+name+' added to pantry')}catch(error){console.warn('Success toast unavailable',error)}
+ if(again&&!addPhoto){try{resetScanForNext()}catch(error){console.warn('Saved; reopen scanner for next item',error)}}
 }
 function resetScanForNext(){
  const input=document.getElementById('barcodeInput');if(input)input.value='';

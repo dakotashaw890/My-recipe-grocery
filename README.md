@@ -63,3 +63,5 @@ Scanner upgrade: preserves ingredient pictures and preferences, remembers barcod
 - New ingredients without pictures can opt to add a camera/gallery picture immediately after saving. Existing pictures remain protected.
 - Ingredient photo uploads are resized/compressed and roll back their in-memory change on failed storage.
 - NOTE: This supplied standalone build contains no implemented cloud-sync callback. This patch does not create Supabase Storage or guarantee cross-device photo sync. Test on the actual Android devices.
+
+Pantry save reliability: removes undefined renderAll call, separates storage commit from UI refresh and optional sync, and prevents false failed-save alerts after successful writes.
