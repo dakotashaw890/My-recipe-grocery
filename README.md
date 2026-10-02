@@ -52,3 +52,5 @@
 - Removed the redundant shopping quantity explanation card.
 
 Restores embedded package photos and camera/gallery picker from photo-enabled source, retaining shopping layout, Collapse and message removal.
+
+Barcode scanning: select Add new ingredient to enter its name, package quantity, unit and type, then add it directly to pantry. Existing ingredients remain selectable.
