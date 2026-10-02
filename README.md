@@ -56,3 +56,10 @@ Restores embedded package photos and camera/gallery picker from photo-enabled so
 Barcode scanning: select Add new ingredient to enter its name, package quantity, unit and type, then add it directly to pantry. Existing ingredients remain selectable.
 
 Scanner upgrade: preserves ingredient pictures and preferences, remembers barcode matches, online product lookup with manual fallback, quick-add 1/2/3, optional continuous scanning, torch where supported, duplicate scan protection. Barcode mappings are included in app state backups and existing sync.
+
+## Scanner and picture fixes
+- Fixes a missing optional cloud-sync callback that caused saves to throw after local storage succeeded, leaving the scanner open and causing every photo upload to report a misleading storage error.
+- Scanner saves now show confirmation, prevent duplicate submissions, refresh pantry and support continuous scanning.
+- New ingredients without pictures can opt to add a camera/gallery picture immediately after saving. Existing pictures remain protected.
+- Ingredient photo uploads are resized/compressed and roll back their in-memory change on failed storage.
+- NOTE: This supplied standalone build contains no implemented cloud-sync callback. This patch does not create Supabase Storage or guarantee cross-device photo sync. Test on the actual Android devices.
