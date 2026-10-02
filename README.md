@@ -50,3 +50,5 @@
 - Added Collapse control to shopping editor; photo restoration and three previous fixes retained.
 
 - Removed the redundant shopping quantity explanation card.
+
+Restores embedded package photos and camera/gallery picker from photo-enabled source, retaining shopping layout, Collapse and message removal.
