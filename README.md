@@ -54,3 +54,5 @@
 Restores embedded package photos and camera/gallery picker from photo-enabled source, retaining shopping layout, Collapse and message removal.
 
 Barcode scanning: select Add new ingredient to enter its name, package quantity, unit and type, then add it directly to pantry. Existing ingredients remain selectable.
+
+Scanner upgrade: preserves ingredient pictures and preferences, remembers barcode matches, online product lookup with manual fallback, quick-add 1/2/3, optional continuous scanning, torch where supported, duplicate scan protection. Barcode mappings are included in app state backups and existing sync.
