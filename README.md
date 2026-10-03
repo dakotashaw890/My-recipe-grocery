@@ -65,3 +65,12 @@ Scanner upgrade: preserves ingredient pictures and preferences, remembers barcod
 - NOTE: This supplied standalone build contains no implemented cloud-sync callback. This patch does not create Supabase Storage or guarantee cross-device photo sync. Test on the actual Android devices.
 
 Pantry save reliability: removes undefined renderAll call, separates storage commit from UI refresh and optional sync, and prevents false failed-save alerts after successful writes.
+
+
+Conversion + meal-planner update:
+- Recipe quantities convert through compatible unit families before pantry subtraction and package rounding.
+- Added remembered ingredient-specific recipe-to-package conversions with manual correction controls.
+- Unresolved conversions are flagged instead of silently guessed.
+- Suggest Empty Meals now fills Breakfast, Lunch, and Dinner, respecting recipe meal categories.
+- Added Breakfast, Lunch, Dinner, and Snack recipe categories. Snack is excluded from automatic planning.
+- Existing recipes without saved categories receive a conservative inferred category until edited.
