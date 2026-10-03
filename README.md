@@ -74,3 +74,12 @@ Conversion + meal-planner update:
 - Suggest Empty Meals now fills Breakfast, Lunch, and Dinner, respecting recipe meal categories.
 - Added Breakfast, Lunch, Dinner, and Snack recipe categories. Snack is excluded from automatic planning.
 - Existing recipes without saved categories receive a conservative inferred category until edited.
+
+Ingredient management update:
+- Ingredient names can now be renamed from the ingredient editor.
+- Renames propagate through recipes, pantry, package preferences, photos/metadata, barcode associations, and saved conversions.
+- Names containing apostrophes and other special characters are handled through encoded IDs rather than raw names.
+- Renaming to an existing ingredient offers a merge instead of creating another duplicate.
+- Added Delete Ingredient. Ingredients used by recipes are protected; unused ingredients can be removed with related saved data cleaned up.
+
+- One-time cleanup removes the malformed ingredient “she'll noodle” / “she'll noodles” from saved pantry/package/photo/barcode/conversion data and recipe ingredient references.
