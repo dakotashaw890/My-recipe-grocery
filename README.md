@@ -1,4 +1,27 @@
-# My Recipe & Grocery — Shopping and Cooking Preview
+# My Recipe & Grocery
+
+## Install this update (v14 — data safety)
+1. Upload `index.html`, `sw.js`, `manifest.json` and the whole `img` folder to your GitHub Pages repository. Keep your existing `icon-192.png` and `icon-512.png`.
+2. Wait for GitHub Pages to publish, then close and reopen the app on each phone.
+3. Check that favorites, the meal plan and pantry look right, then export a fresh backup from Settings.
+
+## What changed in v14
+- Fixed a crash in the "she'll noodle" cleanup that made the app fall back to default data and could overwrite saved data on the next change.
+- Saved data that cannot be read is now kept on the device under a backup key and you are told, instead of being silently replaced.
+- Upgrades now run as numbered, individually guarded migrations (`schemaVersion`), so one failing step can't wipe data.
+- Recipe and ingredient names with apostrophes now work in every button (view, edit, favorite, cook, pantry, ingredient editor).
+- Recipe instructions typed on separate lines are saved as separate steps; older multi-line steps display as separate steps.
+- Removed the unfinished family sync panel and the unused Supabase script. Reset no longer crashes.
+- Grocery trip dates and monthly totals use your local date.
+- Home dashboard planned-meal count matches the planner.
+- Clearing the meal plan also clears checked-off shopping items.
+- New ingredients added by barcode use the product photo when one is available and you didn't choose your own.
+- Ingredient package pictures moved from inside `index.html` into the `img` folder (index.html is about half the size).
+- The service worker is now registered, so the app and pictures work offline.
+- Accessibility labels on the settings, close and favorite buttons; ingredient editor layout fix.
+- Removed retired audit code that was no longer reachable from the app.
+
+## Release history
 
 ## Install
 1. Export a backup from Settings before replacing anything.
