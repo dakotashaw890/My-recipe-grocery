@@ -3,8 +3,8 @@
   "short_name": "My Recipe",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#073b2b",
-  "theme_color": "#073b2b",
+  "background_color": "#FBF6EC",
+  "theme_color": "#C8412F",
   "orientation": "portrait",
   "icons": [
     {

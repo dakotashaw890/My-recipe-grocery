@@ -1,10 +1,17 @@
 # My Recipe & Grocery
 
-## Install this update (v15 — family sync)
-1. Before anything else, download a backup file on each phone (⚙️ Settings → Download backup file).
-2. Upload everything in this folder to your GitHub Pages repository: `index.html`, `sw.js`, `manifest.json`, `sync-config.js`, and the `css`, `js` and `img` folders. Keep your existing `icon-192.png` and `icon-512.png`. `README.md`, `SYNC-SETUP.md` and `supabase-setup.sql` are for reference and can be uploaded too.
-3. Follow `SYNC-SETUP.md` to connect Supabase. The app works normally without sync until you do.
-4. Close and reopen the app on each phone.
+## Install this update (v16 — warm kitchen)
+Replace or add these files in your GitHub repository (all at the top level, no folders):
+`index.html`, `app.css`, `kitchen.js` (new), `sw.js`, `manifest.json`.
+Everything else stays as it is. Then follow `IMPORT-SETUP.md` once to turn on importing from links.
+
+## What changed in v16
+- **New look:** a warm kitchen design with a gingham tablecloth header, cookbook-style headings, tomato red for actions and olive for "you have it". A dark version follows your phone's dark mode.
+- **Import recipes:** paste a link from a recipe website, or paste recipe text from anywhere. Ingredients are split into amount, unit and name, matched to ingredients you already use, and opened in the editor for review.
+- **What can I make?** Recipes show "✓ Ready to cook" or "Need 2: …" based on your pantry. There's a 🍳 Can make now filter, and the Home screen shows how many recipes are ready.
+- **Staples:** in any ingredient's editor, set "keep at least N on hand". When the pantry drops below that, it goes on the shopping list automatically with a ⭐ Staple tag.
+- **Finish trip:** after shopping, tap ✓ Finish trip. Enter what you paid, and the app saves the trip, remembers each price, adds the items to the pantry and unchecks them.
+- **Price history and recipe cost:** each ingredient shows its last price paid, average, low/high and a small trend chart. Recipes show about how much they cost per serving.
 
 ## What changed in v15
 - **Family sync (Supabase):** shared recipes, meal plan, pantry, shopping list and checks, package sizes, prices, grocery trips and ingredient photos across phones. Each person has their own sign-in. Works offline and catches up later; a safety prompt stops one phone from wiping the shared data.

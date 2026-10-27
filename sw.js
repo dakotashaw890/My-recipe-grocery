@@ -1,5 +1,5 @@
-const CACHE='recipe-grocery-v15c-flat';
-const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./sync-config.js?v=15','./storage.js?v=15','./sync.js?v=15','./extras.js?v=15','./app.css?v=15'];
+const CACHE='recipe-grocery-v16-kitchen';
+const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./sync-config.js?v=16','./storage.js?v=16','./sync.js?v=16','./extras.js?v=16','./kitchen.js?v=16','./app.css?v=16'];
 const IMAGES=[];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(async c=>{
   await c.addAll(CORE);
