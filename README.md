@@ -1,25 +1,20 @@
 # My Recipe & Grocery
 
-## Install this update (v14 — data safety)
-1. Upload `index.html`, `sw.js`, `manifest.json` and the whole `img` folder to your GitHub Pages repository. Keep your existing `icon-192.png` and `icon-512.png`.
-2. Wait for GitHub Pages to publish, then close and reopen the app on each phone.
-3. Check that favorites, the meal plan and pantry look right, then export a fresh backup from Settings.
+## Install this update (v15 — family sync)
+1. Before anything else, download a backup file on each phone (⚙️ Settings → Download backup file).
+2. Upload everything in this folder to your GitHub Pages repository: `index.html`, `sw.js`, `manifest.json`, `sync-config.js`, and the `css`, `js` and `img` folders. Keep your existing `icon-192.png` and `icon-512.png`. `README.md`, `SYNC-SETUP.md` and `supabase-setup.sql` are for reference and can be uploaded too.
+3. Follow `SYNC-SETUP.md` to connect Supabase. The app works normally without sync until you do.
+4. Close and reopen the app on each phone.
 
-## What changed in v14
-- Fixed a crash in the "she'll noodle" cleanup that made the app fall back to default data and could overwrite saved data on the next change.
-- Saved data that cannot be read is now kept on the device under a backup key and you are told, instead of being silently replaced.
-- Upgrades now run as numbered, individually guarded migrations (`schemaVersion`), so one failing step can't wipe data.
-- Recipe and ingredient names with apostrophes now work in every button (view, edit, favorite, cook, pantry, ingredient editor).
-- Recipe instructions typed on separate lines are saved as separate steps; older multi-line steps display as separate steps.
-- Removed the unfinished family sync panel and the unused Supabase script. Reset no longer crashes.
-- Grocery trip dates and monthly totals use your local date.
-- Home dashboard planned-meal count matches the planner.
-- Clearing the meal plan also clears checked-off shopping items.
-- New ingredients added by barcode use the product photo when one is available and you didn't choose your own.
-- Ingredient package pictures moved from inside `index.html` into the `img` folder (index.html is about half the size).
-- The service worker is now registered, so the app and pictures work offline.
-- Accessibility labels on the settings, close and favorite buttons; ingredient editor layout fix.
-- Removed retired audit code that was no longer reachable from the app.
+## What changed in v15
+- **Family sync (Supabase):** shared recipes, meal plan, pantry, shopping list and checks, package sizes, prices, grocery trips and ingredient photos across phones. Each person has their own sign-in. Works offline and catches up later; a safety prompt stops one phone from wiping the shared data.
+- **Automatic backups:** each phone saves a copy of all data (photos included) about once a day and before big changes (joining a family, importing, resetting, restoring). The last 10 are listed in Settings with Restore and Download buttons.
+- **Backup reminder** on the Home screen if no backup file has been downloaded for 3 weeks. Backup files now include ingredient photos.
+- **Ingredient photos moved to IndexedDB:** they no longer count toward the ~5 MB browser storage limit. Existing photos are moved automatically.
+- **📤 Share list** on the Shopping screen sends the remaining items, grouped by department, to any app (text, email, notes).
+- **👩‍🍳 Cook mode** on each recipe: large step-by-step text, scaled ingredients, and the screen stays on while cooking.
+- **Stylesheet rebuilt** into `css/app.css`: one rule per selector, 53 overridden declarations and 7 unused rules removed. Every screen was checked at three screen widths to render exactly as before.
+- Code split into `js/storage.js` (photos and backups), `js/sync.js` (family sync) and `js/extras.js` (share list, cook mode).
 
 ## Release history
 
