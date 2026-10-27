@@ -107,18 +107,23 @@ async function importFromLink() {
   const btns = document.querySelectorAll('#sheet button'); btns.forEach(b => b.disabled = true);
   importMessage('Reading the recipe…');
   try {
-    const r = await fetch(SYNC_URL + '/functions/v1/recipe-import', {
+    const fn = String(SYNC_CFG.importFunction || 'recipe-import').trim();
+    const r = await fetch(SYNC_URL + '/functions/v1/' + encodeURIComponent(fn), {
       method: 'POST',
       headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ url })
     });
     const j = await readJSON(r);
-    if (r.status === 404 && !j?.error) throw new Error('The import helper isn\'t set up in Supabase yet. See IMPORT-SETUP.md, or use Paste recipe text.');
+    if (r.status === 404 && !j?.error) throw new Error('The import helper wasn\'t found in Supabase. Check that its name matches importFunction in sync-config.js (see IMPORT-SETUP.md), or use Paste recipe text.');
     if (!r.ok) throw new Error(j?.error || j?.message || 'Import failed (' + r.status + ')');
     openImportedRecipe({ name: j.name, servings: j.servings, ingredients: j.ingredients, steps: j.steps, photoUrl: j.image, sourceUrl: j.sourceUrl || url });
   } catch (e) {
     btns.forEach(b => b.disabled = false);
-    importMessage(e instanceof TypeError ? 'Couldn\'t reach Supabase. Check your internet connection.' : e.message, true);
+    // A blocked request (helper missing, misnamed, or "Verify JWT" on) looks like a network error to the browser.
+    importMessage(e instanceof TypeError
+      ? (navigator.onLine === false ? 'You\'re offline. Connect to the internet and try again.'
+        : 'The import helper didn\'t answer. In Supabase → Edge Functions, check the function name matches importFunction in sync-config.js and that "Verify JWT" is turned off (see IMPORT-SETUP.md). Paste recipe text works meanwhile.')
+      : e.message, true);
   }
 }
 function importFromText() {
