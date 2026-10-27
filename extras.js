@@ -80,4 +80,79 @@ document.addEventListener('keydown', e => {
 function renderSettingsExtras() {
   if (typeof renderFamilyCard === 'function') renderFamilyCard();
   if (typeof renderBackupList === 'function') renderBackupList();
+  if (typeof renderPictureCard === 'function') renderPictureCard();
 }
+
+// ---------- Swipe between the main screens ----------
+// The screen follows your finger; let go past ~30% of the width (or flick) to move to the next screen.
+// Vertical scrolling stays native (main has touch-action: pan-y), and the outer 24px are left to
+// Android's back gesture.
+(() => {
+  const ORDER = ['home', 'recipes', 'plan', 'shopping', 'more'];
+  const UNDER_MORE = ['ingredients', 'spending', 'pantry', 'online', 'settings'];
+  const EDGE = 24, LOCK = 10;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let s = null, suppressClick = false;
+  const position = id => ORDER.indexOf(UNDER_MORE.includes(id) ? 'more' : id);
+  const ignore = t => t.closest('input, textarea, select, [contenteditable], nav, header, .edit-inline, .shop-expand[open], .trip-row');
+  const reset = el => { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; el.style.willChange = '' };
+
+  document.addEventListener('touchstart', e => {
+    s = null;
+    if (e.touches.length !== 1 || document.getElementById('modal')?.classList.contains('show') || document.body.classList.contains('cooking')) return;
+    const t = e.touches[0];
+    if (t.clientX < EDGE || t.clientX > innerWidth - EDGE || ignore(e.target)) return;
+    const screen = document.querySelector('.screen.active');
+    if (!screen || position(screen.id) < 0) return;
+    s = { x: t.clientX, y: t.clientY, time: performance.now(), screen, mode: null, dx: 0 };
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!s) return;
+    const t = e.touches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
+    if (!s.mode) {
+      if (Math.abs(dx) < LOCK && Math.abs(dy) < LOCK) return;
+      s.mode = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : 'v';
+      if (s.mode === 'v') { s = null; return }
+      s.screen.style.transition = 'none'; s.screen.style.willChange = 'transform, opacity';
+    }
+    const idx = position(s.screen.id), pastEnd = (dx > 0 && idx === 0) || (dx < 0 && idx === ORDER.length - 1);
+    s.dx = pastEnd ? dx * 0.25 : dx;
+    s.screen.style.transform = `translateX(${s.dx}px)`;
+    s.screen.style.opacity = String(1 - Math.min(Math.abs(s.dx) / innerWidth, 1) * 0.4);
+  }, { passive: true });
+
+  function release() {
+    if (!s || s.mode !== 'h') { s = null; return }
+    const { screen, dx } = s, speed = dx / Math.max(1, performance.now() - s.time);
+    s = null;
+    suppressClick = true; setTimeout(() => { suppressClick = false }, 350);
+    const dir = dx < 0 ? 1 : -1, next = position(screen.id) + dir;
+    const go = next >= 0 && next < ORDER.length && (Math.abs(dx) > innerWidth * 0.28 || (Math.abs(speed) > 0.45 && Math.abs(dx) > 40));
+    if (!go) {
+      screen.style.transition = 'transform .2s cubic-bezier(.2,.8,.2,1), opacity .2s';
+      screen.style.transform = 'translateX(0)'; screen.style.opacity = '1';
+      setTimeout(() => reset(screen), 220);
+      return;
+    }
+    if (reduceMotion.matches) { reset(screen); showScreen(ORDER[next]); return }
+    screen.style.transition = 'transform .14s ease-in, opacity .14s ease-in';
+    screen.style.transform = `translateX(${-dir * innerWidth * 0.6}px)`; screen.style.opacity = '0';
+    setTimeout(() => {
+      reset(screen);
+      showScreen(ORDER[next]);
+      const incoming = document.querySelector('.screen.active');
+      if (!incoming) return;
+      incoming.style.transition = 'none';
+      incoming.style.transform = `translateX(${dir * 28}%)`; incoming.style.opacity = '0.3';
+      incoming.getBoundingClientRect();   // start from the offset position
+      incoming.style.transition = 'transform .24s cubic-bezier(.2,.8,.2,1), opacity .2s';
+      incoming.style.transform = 'translateX(0)'; incoming.style.opacity = '1';
+      setTimeout(() => reset(incoming), 260);
+    }, 140);
+  }
+  document.addEventListener('touchend', release, { passive: true });
+  document.addEventListener('touchcancel', release, { passive: true });
+  // A sideways drag that started on a button shouldn't also press it.
+  document.addEventListener('click', e => { if (suppressClick) { e.preventDefault(); e.stopPropagation(); suppressClick = false } }, true);
+})();

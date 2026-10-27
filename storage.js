@@ -115,7 +115,7 @@ async function restoreSnapshot(id) {
 }
 async function downloadSnapshot(id) {
   const snap = (await listSnapshots()).find(s => s.id === id);
-  if (snap) downloadBackupFile({ ...snap.state, photos: snap.photos }, 'recipe-grocery-backup-' + snap.at.slice(0, 10) + '.json');
+  if (snap) downloadBackupFile({ ...snap.state, photos: snap.photos }, 'gingham-backup-' + snap.at.slice(0, 10) + '.json');
 }
 
 // ---------- Backup files ----------

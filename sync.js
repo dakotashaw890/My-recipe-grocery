@@ -351,7 +351,7 @@ function familyUseShared() {
   });
 }
 async function shareJoinCode() {
-  const text = `Join our kitchen in My Recipe & Grocery: Settings → Family sync → Join with code ${syncInfo.joinCode}`;
+  const text = `Join our kitchen in Gingham: Settings → Family sync → Join with code ${syncInfo.joinCode}`;
   try { if (navigator.share) return await navigator.share({ title: 'Family join code', text }) } catch (e) { if (e.name === 'AbortError') return }
   try { await navigator.clipboard.writeText(syncInfo.joinCode); toast('Join code copied') } catch (_) { prompt('Join code', syncInfo.joinCode) }
 }
