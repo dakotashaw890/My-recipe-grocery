@@ -33,42 +33,49 @@ function loadMealdbNames() {
 const PHOTO_ALIASES = {
   'ground beef': ['Minced Beef', 'Beef'], 'ground turkey': ['Turkey Mince', 'Minced Turkey'], 'stew beef': ['Stewing Beef', 'Beef'], 'beef chuck roast': ['Beef Brisket', 'Beef'],
   'boneless skinless chicken breasts': ['Chicken Breasts', 'Chicken Breast', 'Chicken'], 'pork butt': ['Pork Shoulder', 'Pork'], 'smoked sausage': ['Smoked Sausage', 'Sausages'],
-  'breakfast sausage': ['Sausages'], 'hot dogs': ['Sausages'], 'deli ham': ['Ham'], 'white fish': ['White Fish', 'Cod'],
+  'breakfast sausage': ['Sausages'], 'deli ham': ['Ham'], 'white fish': ['White Fish', 'Cod'],
   'heavy cream': ['Double Cream', 'Heavy Cream'], 'cilantro': ['Coriander', 'Cilantro'], 'corn': ['Sweetcorn', 'Corn'], 'cornstarch': ['Cornflour', 'Cornstarch'],
   'bell peppers': ['Red Pepper', 'Green Pepper'], 'green chilis': ['Green Chilli', 'Chilli'], 'bbq sauce': ['Barbeque Sauce', 'BBQ Sauce'],
   'beef broth': ['Beef Stock'], 'chicken broth': ['Chicken Stock'], 'bouillon cubes': ['Chicken Stock Cube', 'Stock Cube'], 'tomato bouillon': ['Stock Cube'], 'tomato boulon': ['Stock Cube'],
   'flour tortillas': ['Flour Tortilla', 'Tortillas'], 'corn tortillas': ['Corn Tortillas', 'Tortillas'], 'tomato paste': ['Tomato Puree'], 'ketchup': ['Tomato Ketchup', 'Ketchup'],
-  'diced tomatoes': ['Chopped Tomatoes'], 'tomato sauce': ['Passata', 'Tomato Sauce'], 'marinara sauce': ['Passata'], 'pizza sauce': ['Passata'],
-  'syrup': ['Maple Syrup'], 'sandwich bread': ['Bread'], 'french bread': ['Baguette', 'Bread'], 'buns': ['Bread Rolls', 'Burger Buns'], 'hamburger buns': ['Burger Buns', 'Bread Rolls'],
+  'diced tomatoes': ['Chopped Tomatoes'], 'tomato sauce': ['Passata', 'Tomato Sauce'],   'syrup': ['Maple Syrup'], 'sandwich bread': ['Bread'], 'french bread': ['Baguette', 'Bread'], 'buns': ['Bread Rolls', 'Burger Buns'], 'hamburger buns': ['Burger Buns', 'Bread Rolls'],
   'slider buns': ['Bread Rolls'], 'sub rolls': ['Bread Rolls'], 'english muffins': ['English Muffins', 'Muffins'], 'penne': ['Penne Rigate', 'Penne'], 'penne pasta': ['Penne Rigate', 'Penne'],
   'macaroni pasta': ['Macaroni'], 'fettuccine pasta': ['Fettuccine'], 'ziti pasta': ['Rigatoni', 'Pasta'], 'cheese tortellini': ['Tortellini'], 'egg noodles': ['Egg Noodles', 'Noodles'],
-  'white rice': ['Rice', 'White Rice'], 'yellow onions': ['Onion', 'Onions'], 'russet potatoes': ['Potatoes'], 'mashed potatoes': ['Potatoes'], 'instant mashed potatoes': ['Potatoes'],
+  'white rice': ['Rice', 'White Rice'], 'yellow onions': ['Onion', 'Onions'], 'russet potatoes': ['Potatoes'], 'mashed potatoes': ['Potatoes'], 
   'minced garlic': ['Garlic'], 'garlic cloves': ['Garlic Clove', 'Garlic'], 'shredded lettuce': ['Lettuce'], 'coleslaw mix': ['Cabbage'],
   'plain greek yogurt': ['Greek Yogurt'], 'ricotta cheese': ['Ricotta'], 'mozzarella cheese': ['Mozzarella', 'Mozzarella Balls'], 'shredded mozzarella cheese': ['Mozzarella'],
   'parmesan cheese': ['Parmesan', 'Parmesan Cheese'], 'shredded cheddar cheese': ['Cheddar Cheese'], 'shredded cheese': ['Cheddar Cheese'], 'shredded mexican cheese': ['Cheddar Cheese'],
   'american cheese slices': ['Cheese Slices', 'Cheese'], 'swiss cheese slices': ['Gruyère', 'Cheese'], 'swiss cheese': ['Gruyère', 'Cheese'], 'spreadable butter': ['Butter'],
-  'pico de gallo': ['Salsa'], 'pico': ['Salsa'], 'taco seasoning': ['Cumin'], 'goya seasoning': ['Paprika'], 'gaya seasoning': ['Paprika'],
-  'frozen mixed vegetables': ['Mixed Vegetables', 'Peas'], 'northern white beans': ['Cannellini Beans', 'Haricot Beans'], 'refried beans': ['Pinto Beans', 'Kidney Beans'],
-  'refrigerated biscuits': ['Biscuits'], 'tortilla chips': ['Tortilla Chips'], 'tostada shells': ['Tortillas'],
-};
+  'pico de gallo': ['Salsa'], 'pico': ['Salsa'],   'northern white beans': ['Cannellini Beans', 'Haricot Beans'],   'refrigerated biscuits': ['Biscuits'], 'tortilla chips': ['Tortilla Chips'], };
 const DESCRIPTORS = /^(frozen|shredded|sliced|fresh|canned|diced|minced|ground|boneless|skinless|plain|white|yellow|red|russet|instant|refrigerated|deli|smoked|spreadable|large|small|chopped|grated|crushed|dried|unsalted|salted|extra virgin)\s+/;
+const nameVariants = k => [k, k.replace(/ies$/, 'y'), k.replace(/oes$/, 'o'), k.replace(/es$/, ''), k.replace(/s$/, ''), k + 's'];
+// Approximate candidates (translations and simplified names), tried after the exact name.
 function photoCandidates(key) {
   const out = [...(PHOTO_ALIASES[key] || [])];
-  const variants = k => [k, k.replace(/ies$/, 'y'), k.replace(/oes$/, 'o'), k.replace(/es$/, ''), k.replace(/s$/, ''), k + 's'];
+  const variants = nameVariants;
   let k = key;
   for (let i = 0; i < 4; i++) { out.push(...variants(k)); const shorter = k.replace(DESCRIPTORS, ''); if (shorter === k) break; k = shorter }
   out.push(...variants(k.replace(/\s*(pasta|slices|cheese)$/, '')));
   return out;
 }
-function mealdbPhotoName(key) {
+// {name, exact}: exact = TheMealDB has this very ingredient (allowing plural/singular)
+function mealdbMatch(key) {
   if (!mealdbNames) return null;
-  for (const c of photoCandidates(key)) { const hit = mealdbNames.get(String(c).toLowerCase().trim()); if (hit) return hit }
+  for (const c of nameVariants(key)) { const hit = mealdbNames.get(c); if (hit) return { name: hit, exact: true } }
+  for (const c of photoCandidates(key)) { const hit = mealdbNames.get(String(c).toLowerCase().trim()); if (hit) return { name: hit, exact: false } }
   return null;
 }
+function mealdbPhotoName(key) { return mealdbMatch(key)?.name || null }
+function illustrationFor(key) { return PACKAGE_PICTURES[PACKAGE_PICTURE_ALIASES[key] || key] || null }
+const mealdbImage = (name, small = true) => `${MEALDB}/images/ingredients/${encodeURIComponent(name)}${small ? '-Small' : ''}.png`;
+// Order of preference: an exact photo, then the app's illustration, then a photo of something similar.
 function ingredientPhotoURL(key, small = true) {
-  const n = mealdbPhotoName(key);
-  return n ? `${MEALDB}/images/ingredients/${encodeURIComponent(n)}${small ? '-Small' : ''}.png` : null;
+  const m = mealdbMatch(key);
+  if (!m || (!m.exact && illustrationFor(key))) return null;
+  return mealdbImage(m.name, small);
 }
+const DEPARTMENT_ICONS = { 'Produce': '🥬', 'Meat & Seafood': '🥩', 'Dairy & Refrigerated': '🧀', 'Bakery': '🍞', 'Pantry & Canned': '🥫', 'Frozen': '🧊', 'Household': '🧻' };
+function departmentIcon(key) { try { return DEPARTMENT_ICONS[departmentFor(key)] || '🛒' } catch (_) { return '🛒' } }
 // <img onerror>: small photo -> full photo -> app illustration -> cart emoji
 function pictureFailed(img) {
   const step = Number(img.dataset.step || 0) + 1; img.dataset.step = step;
@@ -76,7 +83,7 @@ function pictureFailed(img) {
   if (step === 1 && img.dataset.full) { img.src = img.dataset.full; return }
   const ill = PACKAGE_PICTURES[PACKAGE_PICTURE_ALIASES[key] || key];
   if (step <= 2 && ill && img.getAttribute('src') !== ill) { img.dataset.step = 2; img.src = ill; img.classList.remove('photo'); return }
-  img.replaceWith(document.createTextNode('🛒'));
+  img.replaceWith(document.createTextNode(departmentIcon(key)));
 }
 
 // ---------- Recipe photos ----------
@@ -164,15 +171,117 @@ function nextRecipePhoto(saved) {
 function closeRecipePhoto() { const name = photoFlow?.queue ? null : photoFlow?.name; photoFlow = null; closeModal(); if (name) openRecipe(name) }
 function startRecipePhotoFlow() { const list = recipesWithoutPhotos(); if (!list.length) return toast('Every recipe has a photo'); openRecipePhoto(list.shift(), list) }
 
+// ---------- Choosing a picture for an ingredient ----------
+const OFF_SEARCH = 'https://us.openfoodfacts.org/cgi/search.pl';
+function hasRealPicture(key) {
+  const m = state.itemMeta?.[key];
+  if (m?.photoId && window.photoCache?.[m.photoId]) return true;
+  if (/^(https:\/\/|data:image\/)/i.test(m?.imageUrl || '')) return true;
+  if (illustrationFor(key)) return true;
+  return pictureStyle() === 'photos' && !!mealdbMatch(key);
+}
+function ingredientsInUse() {
+  const keys = new Set();
+  for (const r of Object.values(state.data.recipes || {})) for (const i of r.ingredients || []) if (i?.name) keys.add(ingredientKey(i.name));
+  for (const k of [...Object.keys(state.pantry || {}), ...Object.keys(state.packagePrefs || {})]) keys.add(ingredientKey(k));
+  keys.delete('');
+  return [...keys];
+}
+function ingredientsWithoutPictures() { return ingredientsInUse().filter(k => !hasRealPicture(k)).sort() }
+const singular = w => w.replace(/ies$/, 'y').replace(/oes$/, 'o').replace(/(ch|sh|x|ss)es$/, '$1').replace(/s$/, '');
+function mealdbSuggestions(key) {
+  if (!mealdbNames) return [];
+  const want = new Set(key.split(/\s+/).map(singular).filter(w => w.length > 2));
+  if (!want.size) return [];
+  const scored = [];
+  for (const name of new Set(mealdbNames.values())) {
+    const words = name.toLowerCase().split(/\s+/).map(singular), shared = words.filter(w => want.has(w)).length;
+    if (shared) scored.push([shared / Math.max(words.length, want.size), name]);
+  }
+  return scored.sort((a, b) => b[0] - a[0] || a[1].length - b[1].length).slice(0, 6)
+    .map(([score, name]) => ({ thumb: mealdbImage(name), full: mealdbImage(name, false), label: name, close: score >= 0.99 }));
+}
+async function productSuggestions(key) {
+  const q = `${OFF_SEARCH}?search_terms=${encodeURIComponent(key)}&search_simple=1&action=process&json=1&page_size=15&fields=product_name,brands,image_front_small_url,image_front_url`;
+  const d = await fetch(q).then(r => r.json());
+  return (d.products || []).filter(p => p.image_front_small_url).slice(0, 6).map(p => ({
+    thumb: p.image_front_small_url, full: p.image_front_url || p.image_front_small_url,
+    label: [String(p.brands || '').split(',')[0].trim(), p.product_name].filter(Boolean).join(' · ') || 'Product photo'
+  }));
+}
+let pictureFlow = null;         // {queue:[keys], current, total, saved}
+let pictureChoices = [];
+function renderIngredientPictureExtras(key) {
+  const note = document.getElementById('photoFlowNote'), grid = document.getElementById('photoSuggest'), bar = document.getElementById('photoFlowBar');
+  if (!grid) return;
+  const inFlow = pictureFlow?.current === key;
+  if (note) note.textContent = inFlow ? `${pictureFlow.total - pictureFlow.queue.length} of ${pictureFlow.total} without a picture` : '';
+  if (bar) bar.innerHTML = inFlow ? '<button class="btn secondary" onclick="skipIngredientPicture()">Skip</button><button class="btn ghost" onclick="stopIngredientPictures()">Stop</button>' : '';
+  const named = mealdbSuggestions(key), close = named.filter(s => s.close), loose = named.filter(s => !s.close).slice(0, 3);
+  pictureChoices = [...close, ...loose];
+  const draw = (extra) => {
+    if (photoTarget !== key) return;
+    grid.innerHTML = pictureChoices.length ? pictureChoices.map((s, i) => `<button class="photo-choice" onclick="useIngredientPicture(${i})" aria-label="Use ${esc(s.label)}"><img src="${esc(s.thumb)}" alt="" loading="lazy" onerror="this.closest('button').remove()"><span>${esc(s.label)}</span></button>`).join('') + (extra || '')
+      : (extra || '<div class="small muted">No suggestions found. Take or choose a photo instead.</div>');
+  };
+  draw('<div class="small muted">Looking for product photos…</div>');
+  productSuggestions(key).then(list => { pictureChoices = [...close, ...list, ...loose]; draw(pictureChoices.length ? '<div class="tiny muted">Product photos: Open Food Facts (CC BY-SA)</div>' : '') })
+    .catch(() => draw('<div class="tiny muted">Product photos need an internet connection.</div>'));
+}
+function useIngredientPicture(i) {
+  const s = pictureChoices[i], key = photoTarget;
+  if (!s || !key) return;
+  state.itemMeta ??= {};
+  const prev = state.itemMeta[key] || {}, next = { ...prev, imageUrl: s.full };
+  delete next.photoId; state.itemMeta[key] = next;
+  save();
+  if (prev.photoId) removePhoto(prev.photoId);
+  closeIngredientPhoto(); toast('Picture saved');
+  ingredientPictureSaved(key);
+}
+function ingredientPictureSaved(key) { if (pictureFlow && pictureFlow.current === key) { pictureFlow.saved++; nextIngredientPicture() } }
+function startIngredientPictures(keys) {
+  const list = (keys || ingredientsWithoutPictures()).filter(k => !hasRealPicture(k));
+  if (!list.length) return toast('Every ingredient has a picture');
+  closeModal();
+  pictureFlow = { queue: list, total: list.length, saved: 0, current: null };
+  nextIngredientPicture();
+}
+function nextIngredientPicture() {
+  const k = pictureFlow?.queue.shift();
+  if (!k) { const n = pictureFlow?.saved || 0; pictureFlow = null; closeIngredientPhoto(); toast(n ? `Added ${n} picture${n === 1 ? '' : 's'}` : 'All done'); refreshSavedViews(); renderPictureCard(); return }
+  pictureFlow.current = k;
+  editIngredientPhoto(encId(k));
+}
+function skipIngredientPicture() { nextIngredientPicture() }
+function stopIngredientPictures() { const n = pictureFlow?.saved || 0; pictureFlow = null; closeIngredientPhoto(); if (n) toast(`Added ${n} picture${n === 1 ? '' : 's'}`); renderPictureCard() }
+
+// After saving a recipe: offer pictures for its ingredients that have none.
+function promptMissingPictures(names) {
+  const keys = [...new Set((names || []).map(ingredientKey))].filter(k => k && !hasRealPicture(k));
+  if (keys.length) actionToast(`${keys.length} ingredient${keys.length === 1 ? ' has' : 's have'} no picture`, 'Add pictures', () => startIngredientPictures(keys));
+}
+function actionToast(text, label, fn) {
+  document.getElementById('actionToast')?.remove();
+  const el = document.createElement('div'); el.id = 'actionToast'; el.className = 'action-toast'; el.setAttribute('role', 'status');
+  el.innerHTML = `<span>${esc(text)}</span><button class="btn">${esc(label)}</button><button class="iconbtn" aria-label="Dismiss">✕</button>`;
+  el.querySelector('.btn').onclick = () => { el.remove(); fn() };
+  el.querySelector('.iconbtn').onclick = () => el.remove();
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 9000);
+}
+
 // ---------- Settings card ----------
 function renderPictureCard() {
   const box = document.getElementById('pictureCard'); if (!box) return;
-  const style = pictureStyle(), missing = recipesWithoutPhotos().length;
+  const style = pictureStyle(), missing = recipesWithoutPhotos().length, missingIng = ingredientsWithoutPictures().length;
   box.innerHTML = `<h3>Pictures</h3>
     <label>Ingredient pictures on this phone</label>
     <div class="segmented" role="group" aria-label="Ingredient pictures"><button class="${style === 'photos' ? 'on' : ''}" aria-pressed="${style === 'photos'}" onclick="setPictureStyle('photos')">Photos</button><button class="${style !== 'photos' ? 'on' : ''}" aria-pressed="${style !== 'photos'}" onclick="setPictureStyle('illustrations')">Illustrations</button></div>
     <p class="tiny muted">Photos come from TheMealDB when you're online; ingredients without a match keep their illustration. Your own photos always show first.</p>
-    <div class="actions"><button class="btn secondary" onclick="startRecipePhotoFlow()" ${missing ? '' : 'disabled'}>📷 Add photos to recipes${missing ? ` (${missing} without one)` : ''}</button></div>`;
+    <div class="actions"><button class="btn secondary" onclick="startIngredientPictures()" ${missingIng ? '' : 'disabled'}>🥕 Add pictures to ingredients${missingIng ? ` (${missingIng} without one)` : ''}</button>
+    <button class="btn secondary" onclick="startRecipePhotoFlow()" ${missing ? '' : 'disabled'}>📷 Add photos to recipes${missing ? ` (${missing} without one)` : ''}</button></div>
+    <p class="tiny muted">Product photos come from Open Food Facts (CC BY-SA).</p>`;
 }
 
 loadMealdbNames();

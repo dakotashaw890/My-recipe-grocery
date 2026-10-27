@@ -1,5 +1,5 @@
-const CACHE='gingham-v17b';
-const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./sync-config.js?v=17','./storage.js?v=17b','./sync.js?v=17b','./extras.js?v=17','./kitchen.js?v=17','./pictures.js?v=17','./app.css?v=17'];
+const CACHE='gingham-v18';
+const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./sync-config.js?v=17','./storage.js?v=17b','./sync.js?v=17b','./extras.js?v=17','./kitchen.js?v=17','./pictures.js?v=18','./app.css?v=18'];
 const IMAGES=[];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(async c=>{
   await c.addAll(CORE);
