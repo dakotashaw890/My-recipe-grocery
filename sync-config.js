@@ -4,5 +4,5 @@
 window.RG_SYNC_CONFIG = {
   url: "https://pgqhbapseuzuyvvekcyu.supabase.co",
   anonKey: "sb_publishable_KET1imLLSnuRBWTunHRR4g_lL6dkdv-",
-  importFunction: "rapid-worker"   // name of the recipe import Edge Function in Supabase
+  importFunction: "recipe-imports"   // name of the recipe import Edge Function in Supabase
 };
