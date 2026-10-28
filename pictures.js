@@ -100,21 +100,21 @@ async function compressImage(file, max = 1000, quality = .72) {
   return canvas.toDataURL('image/jpeg', quality);
 }
 let photoFlow = null;   // {name, queue?:[names], done?:n}
-function recipesWithoutPhotos() { return Object.keys(state.data.recipes).filter(n => !recipePhotoSrc(state.data.recipes[n])).sort() }
+function recipesWithoutPhotos() { return Object.keys(state.data.recipes).filter(n => !recipePhotoSrc(state.data.recipes[n])).sort((a, b) => recipeName(a).localeCompare(recipeName(b))) }
 
 function openRecipePhoto(name, queue) {
   photoFlow = { name, queue: queue || null, done: photoFlow?.queue && queue ? photoFlow.done : 0 };
   const r = state.data.recipes[name]; if (!r) return;
   const cur = recipePhotoSrc(r), q = photoFlow.queue;
   closeModal();
-  openModal(`<div class="row between"><h2>${q ? 'Photo for ' : ''}${esc(name)}</h2><button class="iconbtn" aria-label="Close" onclick="closeRecipePhoto()">✕</button></div>
+  openModal(`<div class="row between"><h2>${q ? 'Photo for ' : ''}${esc(r.name)}</h2><button class="iconbtn" aria-label="Close" onclick="closeRecipePhoto()">✕</button></div>
     ${q ? `<p class="small muted">${q.length} more recipe${q.length === 1 ? '' : 's'} without a photo after this one.</p>` : ''}
-    ${cur ? `<img class="recipe-photo-large" src="${esc(cur)}" alt="Current photo of ${esc(name)}">` : ''}
-    <div class="actions"><button class="btn" onclick="pickRecipePhoto(true)">📷 Take photo</button><button class="btn secondary" onclick="pickRecipePhoto(false)">🖼 Choose from phone</button>${cur ? '<button class="btn ghost" onclick="removeRecipePhoto()">Remove photo</button>' : ''}</div>
+    ${cur ? recipePhotoHTML(r, 'recipe-photo-large') : ''}
+    <div class="actions"><button class="btn" onclick="pickRecipePhoto(true)">📷 Take photo</button><button class="btn secondary" onclick="pickRecipePhoto(false)">🖼 Choose from phone</button>${cur ? `<button class="btn secondary" onclick="openRecipeCrop(decodeURIComponent('${encId(name)}'))">✂️ Crop &amp; zoom</button><button class="btn ghost" onclick="removeRecipePhoto()">Remove photo</button>` : ''}</div>
     <h3>Or pick a photo of a similar dish</h3><div id="photoResults" class="photo-grid"><div class="small muted">Searching…</div></div>
     ${q ? `<div class="actions"><button class="btn secondary" onclick="nextRecipePhoto()">Skip</button><button class="btn ghost" onclick="closeRecipePhoto()">Stop</button></div>` : ''}
     <input id="recipeCamera" type="file" accept="image/*" capture="environment" hidden onchange="recipePhotoChosen(this)"><input id="recipeLibrary" type="file" accept="image/*" hidden onchange="recipePhotoChosen(this)">`);
-  searchDishPhotos(name).then(list => {
+  searchDishPhotos(r.name).then(list => {
     const box = document.getElementById('photoResults'); if (!box || photoFlow?.name !== name) return;
     box.innerHTML = list.length ? list.map((m, i) => `<button class="photo-choice" onclick="useDishPhoto(${i})" aria-label="Use photo of ${esc(m.name)}"><img src="${esc(m.thumb)}/preview" alt="" loading="lazy" onerror="this.src='${esc(m.thumb)}'"><span>${esc(m.name)}</span></button>`).join('')
       : '<div class="small muted">No similar dishes found online. Take or choose a photo instead.</div>';
@@ -144,7 +144,7 @@ async function recipePhotoChosen(input) {
     let id = null;
     try { id = await storePhoto(data) } catch (_) {}
     if (!id) return alert('Couldn\'t save the photo on this phone. Try freeing some storage.');
-    r.photoId = id; delete r.photoUrl; save();
+    r.photoId = id; delete r.photoUrl; delete r.photoCrop; save();
     if (old && old !== id) removePhoto(old);
     toast('Recipe photo saved'); nextRecipePhoto(true);
   } catch (e) { console.error(e); alert('Couldn\'t use that picture. Try a different one.') }
@@ -152,16 +152,17 @@ async function recipePhotoChosen(input) {
 function useDishPhoto(i) {
   const m = window.dishResults?.[i]; if (!m || !photoFlow) return;
   const r = state.data.recipes[photoFlow.name], old = r.photoId;
-  r.photoUrl = m.thumb; delete r.photoId; save();
+  r.photoUrl = m.thumb; delete r.photoId; delete r.photoCrop; save();
   if (old) removePhoto(old);
   toast('Photo added'); nextRecipePhoto(true);
 }
 function removeRecipePhoto() {
   const r = state.data.recipes[photoFlow?.name]; if (!r) return;
-  const old = r.photoId; delete r.photoId; delete r.photoUrl; save(); if (old) removePhoto(old);
+  const old = r.photoId; delete r.photoId; delete r.photoUrl; delete r.photoCrop; save(); if (old) removePhoto(old);
   openRecipePhoto(photoFlow.name);
 }
 function nextRecipePhoto(saved) {
+  if (saved && photoFlow && !photoFlow.queue) { const id = photoFlow.name; photoFlow = null; openRecipeCrop(id); return }
   if (photoFlow?.queue?.length) { const next = photoFlow.queue.shift(); photoFlow.done += saved ? 1 : 0; openRecipePhoto(next, photoFlow.queue); return }
   const name = photoFlow?.name, wasQueue = !!photoFlow?.queue, n = (photoFlow?.done || 0) + (saved && wasQueue ? 1 : 0);
   photoFlow = null; closeModal();
@@ -285,3 +286,66 @@ function renderPictureCard() {
 }
 
 loadMealdbNames();
+
+// ---------- Recipe photo crop and zoom (Cropper.js, bundled) ----------
+// The original photo is never changed. Only the crop is saved, as fractions of the image
+// ({x, y, w, h} from 0 to 1), so it can be adjusted again later at any time.
+const RECIPE_PHOTO_ASPECT = 2;   // width ÷ height of recipe cards and the recipe header
+function recipePhotoHTML(r, cls = 'recipe-photo') {
+  const src = recipePhotoSrc(r);
+  if (!src) return '';
+  const c = r.photoCrop;
+  const valid = c && [c.x, c.y, c.w, c.h].every(n => Number.isFinite(n)) && c.w > 0 && c.h > 0;
+  const style = valid ? `width:${(100 / c.w).toFixed(3)}%;left:${(-c.x / c.w * 100).toFixed(3)}%;top:${(-c.y / c.h * 100).toFixed(3)}%` : '';
+  return `<div class="${cls}${valid ? ' cropped' : ''}"><img src="${esc(src)}" alt="${esc(r.name || '')}" loading="lazy" ${style ? `style="${style}"` : ''} onerror="this.parentElement.remove()"></div>`;
+}
+let cropperReady = null;
+function loadCropper() {
+  cropperReady ??= new Promise((resolve, reject) => {
+    if (window.Cropper) return resolve();
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'cropper.min.css?v=1.6.2'; document.head.appendChild(css);
+    const js = document.createElement('script'); js.src = 'cropper.min.js?v=1.6.2'; js.onload = () => resolve(); js.onerror = () => { cropperReady = null; reject(new Error('Cropper failed to load')) };
+    document.head.appendChild(js);
+  });
+  return cropperReady;
+}
+let activeCropper = null;
+async function openRecipeCrop(id) {
+  const r = state.data.recipes[id], src = recipePhotoSrc(r);
+  if (!r || !src) return;
+  try { await loadCropper() } catch (_) { return alert('The crop tool couldn\'t load. Check your connection and try again.') }
+  closeModal();
+  openModal(`<div class="row between"><h2>Crop photo</h2><button class="iconbtn" aria-label="Close" onclick="closeRecipeCrop(false)">✕</button></div>
+    <p class="small muted">Drag to move, pinch or use the buttons to zoom. The frame matches how the photo appears on the recipe card.</p>
+    <div class="crop-wrap"><img id="cropImg" src="${esc(src)}" alt="${esc(r.name)}"></div>
+    <div class="actions crop-tools"><button class="btn secondary" aria-label="Zoom out" onclick="activeCropper?.zoom(-0.15)">−</button><button class="btn secondary" aria-label="Zoom in" onclick="activeCropper?.zoom(0.15)">＋</button><button class="btn secondary" onclick="activeCropper?.reset()">Reset</button></div>
+    <div class="actions"><button class="btn" onclick="saveRecipeCrop('${encId(id)}')">Save crop</button><button class="btn secondary" onclick="closeRecipeCrop(false)">Cancel</button></div>`);
+  window.cropRecipeId = id;
+  const img = document.getElementById('cropImg'), saved = r.photoCrop;
+  activeCropper = new Cropper(img, {
+    aspectRatio: RECIPE_PHOTO_ASPECT, viewMode: 1, dragMode: 'move', autoCropArea: 1,
+    checkCrossOrigin: false, checkOrientation: false, rotatable: false, scalable: false,
+    guides: false, background: false, toggleDragModeOnDblclick: false, cropBoxMovable: true, cropBoxResizable: true,
+    ready() {
+      if (!saved) return;
+      const d = this.cropper.getImageData();
+      this.cropper.setData({ x: saved.x * d.naturalWidth, y: saved.y * d.naturalHeight, width: saved.w * d.naturalWidth, height: saved.h * d.naturalHeight });
+    }
+  });
+}
+function saveRecipeCrop(encoded) {
+  const id = decodeURIComponent(encoded), r = state.data.recipes[id];
+  if (!r || !activeCropper) return;
+  const d = activeCropper.getData(), img = activeCropper.getImageData();
+  const clamp = v => Math.min(1, Math.max(0, v));
+  const w = clamp(d.width / img.naturalWidth), h = clamp(d.height / img.naturalHeight);
+  r.photoCrop = { x: clamp(d.x / img.naturalWidth), y: clamp(d.y / img.naturalHeight), w, h };
+  save(); closeRecipeCrop(true); toast('Crop saved');
+}
+function closeRecipeCrop(saved) {
+  const id = window.cropRecipeId;
+  try { activeCropper?.destroy() } catch (_) {}
+  activeCropper = null; window.cropRecipeId = null;
+  closeModal();
+  if (id && state.data.recipes[id]) openRecipe(id);
+}

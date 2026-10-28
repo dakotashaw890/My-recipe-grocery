@@ -141,7 +141,8 @@ async function pushChanges() {
   const local = localEntries(state, photoCache), hashes = syncInfo.hashes ||= {}, rows = [];
   for (const [key, value] of local) { const h = entryHash(key, value); if (hashes[key] !== h) rows.push({ key, value, deleted: false, h }) }
   const removed = Object.keys(hashes).filter(k => !local.has(k));
-  if (removed.length >= 25 && removed.length > Object.keys(hashes).length * 0.2) {
+  const idUpgrade = Number(localStorage.getItem(KEY + '-recipeIdUpgrade') || 0) > 0 && removed.every(k => /^(recipe|fav|selected)\//.test(k));
+  if (!idUpgrade && removed.length >= 25 && removed.length > Object.keys(hashes).length * 0.2) {
     // Guard against one phone wiping the family's data by accident.
     if (!confirm(`This phone is about to remove ${removed.length} items from your family's shared data (recipes, plan, pantry...).\n\nOK = remove them for everyone\nCancel = pause sync so you can check first`)) {
       syncInfo.paused = true; persistSync();
@@ -162,6 +163,7 @@ async function pushChanges() {
     batch.push(r); size += bytes;
   }
   await send();
+  try { localStorage.removeItem(KEY + '-recipeIdUpgrade') } catch (_) {}
   return rows.length;
 }
 
@@ -204,7 +206,7 @@ async function pullChanges(overlap = PULL_OVERLAP_MS) {
   for (const [id, url] of Object.entries(newPhotos)) { try { await storePhoto(url, id) } catch (_) { photoCache[id] = url } }
   syncInfo.cursor = newestTime(rows, syncInfo.cursor);
   persistSync();
-  if (changed) { localStorage.setItem(KEY, JSON.stringify(state)); showRemoteChanges() }
+  if (changed) { try { ensureRecipeIds(state) } catch (_) {} localStorage.setItem(KEY, JSON.stringify(state)); showRemoteChanges() }
   return changed;
 }
 

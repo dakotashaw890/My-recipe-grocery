@@ -109,6 +109,7 @@ async function restoreSnapshot(id) {
   await createSnapshot('Before restoring a backup');
   for (const [pid, url] of Object.entries(snap.photos || {})) if (!photoCache[pid]) await storePhoto(url, pid);
   state = clone(snap.state);
+  ensureRecipeIds(state);
   save();
   showScreen('home');
   toast('Backup restored');

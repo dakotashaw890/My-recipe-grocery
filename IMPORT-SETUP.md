@@ -11,7 +11,7 @@ Importing a recipe from a website needs a small helper in your Supabase project.
 3. Click **Deploy a new function**, then choose **Via Editor**.
 4. An editor opens with some sample code. Click inside it, press **Ctrl+A** and then **Delete** to clear it.
 5. Open `recipe-import.ts` in **Notepad**, not Word. Press **Ctrl+A** then **Ctrl+C**, then paste it into the Supabase editor with **Ctrl+V**.
-6. At the bottom, find the function name box and type exactly: `recipe-import`
+6. At the bottom, find the function name box and type exactly: `recipe-imports`
 7. Click **Deploy function** and wait for the success message.
 8. Turn off the built-in JWT check. On the function's page, open **Details** (or **Settings**), find **Verify JWT** or **Enforce JWT verification**, switch it **off**, and save.
    This is safe: the helper does its own check and only answers people signed in to your family. Leaving it on can make every import fail with a sign-in error.
@@ -24,7 +24,7 @@ On your phone, go to **Recipes → 🔗 Import**, paste a recipe link, and tap *
 
 | What you see | What it means |
 | --- | --- |
-| "The import helper isn't set up in Supabase yet" | The function isn't deployed, or its name isn't exactly `recipe-import`. |
+| "The import helper isn't set up in Supabase yet" | The function isn't deployed, or its name isn't exactly `recipe-imports`. |
 | "Sign in under Family sync…" | Sign in on that phone, or turn off **Verify JWT** (step 8). |
 | "That site refused the request" | Some sites block imports. Use **Paste recipe text**. |
 | "No recipe found on that page" | The page doesn't include recipe data. Use **Paste recipe text**. |

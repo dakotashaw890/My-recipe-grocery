@@ -66,19 +66,21 @@ function matchKnownIngredient(name) {
 // Plain text pasted from anywhere: title, ingredient lines and steps.
 function parseRecipeText(text) {
   const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  let mode = null, name = '', servings = null;
+  let mode = null, name = '', servings = null, prepMinutes = null, cookMinutes = null;
   const ingredients = [], steps = [];
   for (const line of lines) {
     if (/^(ingredients?)\s*:?$/i.test(line)) { mode = 'ing'; continue }
     if (/^(directions?|instructions?|method|steps?|preparation)\s*:?$/i.test(line)) { mode = 'steps'; continue }
     const serv = line.match(/^(serves|servings|yield|makes)\s*:?\s*(\d+)/i);
     if (serv) { servings = Number(serv[2]); continue }
+    const tm = line.match(/^(prep|preparation|cook|cooking|bake|baking)(?:\s*time)?\s*:?\s*(.+)$/i);
+    if (tm && parseDuration(tm[2]) != null && !mode) { if (/^prep/i.test(tm[1])) prepMinutes = parseDuration(tm[2]); else cookMinutes = parseDuration(tm[2]); continue }
     const looksLikeIngredient = /^[-•*▢☐□]?\s*(\d|[¼½¾⅓⅔⅛]|a |an |one )/i.test(line) && line.length < 90;
     if (!name && !mode && !looksLikeIngredient && line.length < 80) { name = line; continue }
     if (mode === 'steps' || (mode !== 'ing' && !looksLikeIngredient)) steps.push(line.replace(/^\s*(step\s*)?\d+[.):]\s*/i, ''));
     else ingredients.push(line);
   }
-  return { name, servings, ingredients, steps };
+  return { name, servings, ingredients, steps, prepMinutes, cookMinutes };
 }
 
 // =====================================================================
@@ -116,7 +118,7 @@ async function importFromLink() {
     const j = await readJSON(r);
     if (r.status === 404 && !j?.error) throw new Error('The import helper wasn\'t found in Supabase. Check that its name matches importFunction in sync-config.js (see IMPORT-SETUP.md), or use Paste recipe text.');
     if (!r.ok) throw new Error(j?.error || j?.message || 'Import failed (' + r.status + ')');
-    openImportedRecipe({ name: j.name, servings: j.servings, ingredients: j.ingredients, steps: j.steps, photoUrl: j.image, sourceUrl: j.sourceUrl || url });
+    openImportedRecipe({ name: j.name, servings: j.servings, ingredients: j.ingredients, steps: j.steps, photoUrl: j.image, sourceUrl: j.sourceUrl || url, prepMinutes: parseDuration(j.prepTime), cookMinutes: parseDuration(j.cookTime) });
   } catch (e) {
     btns.forEach(b => b.disabled = false);
     // A blocked request (helper missing, misnamed, or "Verify JWT" on) looks like a network error to the browser.
@@ -129,16 +131,16 @@ async function importFromLink() {
 function importFromText() {
   const p = parseRecipeText(document.getElementById('importText')?.value);
   if (!p.ingredients.length) return importMessage('No ingredient lines found. Put each ingredient on its own line, starting with an amount (like "2 cups milk").', true);
-  openImportedRecipe({ name: p.name, servings: p.servings, ingredients: p.ingredients, steps: p.steps });
+  openImportedRecipe({ name: p.name, servings: p.servings, ingredients: p.ingredients, steps: p.steps, prepMinutes: p.prepMinutes, cookMinutes: p.cookMinutes });
 }
 function openImportedRecipe(src) {
   let name = (src.name || 'Imported recipe').trim(), n = 2;
-  const base = name; while (state.data.recipes[name]) name = base + ' ' + n++;
+  const base = name; while (recipeIdByName(name)) name = base + ' ' + n++;
   const ingredients = src.ingredients.map(line => {
     const p = parseIngredientLine(line), known = matchKnownIngredient(p.name);
     return { name: known || p.name, qty: p.qty ?? '', unit: p.unit, container: p.sizeNote, existingSelected: !!known, importedText: p.text };
   });
-  openRecipeEditor(null, { name, baseServings: src.servings || 4, directions: src.steps || [], ingredients, photoUrl: src.photoUrl || '', sourceUrl: src.sourceUrl || '', sourceType: src.sourceUrl ? 'Imported from website' : 'Imported from text' });
+  openRecipeEditor(null, { name, baseServings: src.servings || 4, prepMinutes: src.prepMinutes ?? null, cookMinutes: src.cookMinutes ?? null, directions: src.steps || [], ingredients, photoUrl: src.photoUrl || '', sourceUrl: src.sourceUrl || '', sourceType: src.sourceUrl ? 'Imported from website' : 'Imported from text' });
 }
 
 // =====================================================================
@@ -172,13 +174,13 @@ function readinessPill(name) {
 }
 function readyRecipeNames(maxLacking = 2) {
   return Object.keys(state.data.recipes).map(n => [n, recipeReadiness(n)]).filter(([, x]) => x && x.lacking.length <= maxLacking)
-    .sort((a, b) => a[1].lacking.length - b[1].lacking.length || a[0].localeCompare(b[0])).map(([n]) => n);
+    .sort((a, b) => a[1].lacking.length - b[1].lacking.length || recipeName(a[0]).localeCompare(recipeName(b[0]))).map(([n]) => n);
 }
 function readyHomeCardHTML() {
   const names = readyRecipeNames(0);
   const almost = readyRecipeNames(1).length - names.length;
   if (!names.length && !almost) return '';
-  return `<div class="card ready-card"><div class="row between"><div><b>${names.length ? `🍳 ${names.length} recipe${names.length === 1 ? '' : 's'} ready to cook` : '🍳 Almost ready to cook'}</b><div class="small muted">${names.length ? esc(names.slice(0, 3).join(' · ')) + (names.length > 3 ? ' …' : '') : ''}${almost ? (names.length ? ' · ' : '') + almost + ' more need just 1 item' : ''}</div></div><button class="btn secondary" onclick="showScreen('recipes');setRecipeFilter('ready')">See them</button></div></div>`;
+  return `<div class="card ready-card"><div class="row between"><div><b>${names.length ? `🍳 ${names.length} recipe${names.length === 1 ? '' : 's'} ready to cook` : '🍳 Almost ready to cook'}</b><div class="small muted">${names.length ? esc(names.slice(0, 3).map(recipeName).join(' · ')) + (names.length > 3 ? ' …' : '') : ''}${almost ? (names.length ? ' · ' : '') + almost + ' more need just 1 item' : ''}</div></div><button class="btn secondary" onclick="showScreen('recipes');setRecipeFilter('ready')">See them</button></div></div>`;
 }
 
 // =====================================================================
@@ -313,4 +315,42 @@ function recipeCostHTML(name, servings) {
   const c = recipeCost(name, servings);
   if (!c) return '';
   return `<div class="cost-line"><b>≈ $${c.perServing.toFixed(2)} per serving</b> <span class="small muted">· $${c.total.toFixed(2)} for this batch${c.priced < c.counted ? ` · ${c.priced} of ${c.counted} ingredients priced` : ''}</span></div>`;
+}
+
+// =====================================================================
+// Prep and cook time (total is always calculated, never typed)
+// =====================================================================
+function formatMinutes(m) {
+  m = Math.round(Number(m) || 0);
+  if (m <= 0) return '';
+  const h = Math.floor(m / 60), r = m % 60;
+  return h ? `${h} hr${r ? ` ${r} min` : ''}` : `${r} min`;
+}
+function recipeTimes(r) {
+  const prep = Number(r?.prepMinutes) || 0, cook = Number(r?.cookMinutes) || 0;
+  return { prep, cook, total: prep + cook };
+}
+// "PT1H15M" (recipe sites) or "1 hour 15 minutes" / "45 min" / "1:15" (pasted text) -> minutes
+function parseDuration(v) {
+  if (v == null || v === '') return null;
+  const s = String(v).trim();
+  const iso = s.match(/^P(?:(\d+)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:\d+(?:\.\d+)?S)?)?$/i);
+  if (iso && (iso[1] || iso[2] || iso[3])) return Math.round((Number(iso[1] || 0) * 1440) + Number(iso[2] || 0) * 60 + Number(iso[3] || 0));
+  const clock = s.match(/^(\d+):(\d{2})$/);
+  if (clock) return Number(clock[1]) * 60 + Number(clock[2]);
+  let total = 0, found = false;
+  for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b/gi)) { found = true; total += /^h/i.test(m[2]) ? Number(m[1]) * 60 : Number(m[1]) }
+  if (found) return Math.round(total);
+  return /^\d+$/.test(s) ? Number(s) : null;
+}
+function timeSummaryHTML(r) {
+  const t = recipeTimes(r);
+  if (!t.total) return '';
+  const parts = [t.prep ? `Prep ${formatMinutes(t.prep)}` : '', t.cook ? `Cook ${formatMinutes(t.cook)}` : ''].filter(Boolean);
+  return `<div class="time-line">⏱ <b>${formatMinutes(t.total)} total</b>${parts.length > 1 ? ` <span class="small muted">· ${parts.join(' · ')}</span>` : ''}</div>`;
+}
+function updateTotalTime() {
+  const prep = Number(document.getElementById('editPrep')?.value) || 0, cook = Number(document.getElementById('editCook')?.value) || 0;
+  const el = document.getElementById('editTotal');
+  if (el) el.textContent = prep + cook > 0 ? `Total time: ${formatMinutes(prep + cook)}` : 'Total time is calculated from prep + cook.';
 }

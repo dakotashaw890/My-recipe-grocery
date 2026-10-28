@@ -1541,3 +1541,24 @@ main { touch-action: pan-y pinch-zoom; }
 .action-toast .btn { padding: 8px 12px; }
 .action-toast .iconbtn { color: var(--paper); font-size: 18px; }
 .photo-grid > .tiny { grid-column: 1 / -1; }
+/* the ingredient you just edited glows briefly when the editor closes */
+.just-edited { box-shadow: 0 0 0 3px var(--butter) !important; transition: box-shadow .4s; }
+.time-line { margin: 8px 0 2px; }
+/* recipe photos: one fixed 2:1 frame for cards and the recipe header, so a saved crop looks the same everywhere */
+.recipe-photo, .recipe-photo-large { position: relative; overflow: hidden; width: 100%; height: auto; aspect-ratio: 2 / 1; border-radius: 14px; background: var(--soft); margin: 0 0 10px; display: block; max-height: none; object-fit: initial; }
+.recipe-photo-large { border-radius: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.recipe-photo > img, .recipe-photo-large > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.recipe-photo.cropped > img, .recipe-photo-large.cropped > img { inset: auto; height: auto; object-fit: fill; max-width: none; }
+.crop-wrap { width: 100%; height: min(60vh, 420px); background: #1a1512; border-radius: 14px; overflow: hidden; }
+.crop-wrap img { display: block; max-width: 100%; }
+.crop-tools .btn { min-width: 52px; font-size: 18px; }
+
+/* v19: containers and conversions */
+.conv-line { margin: 6px 0 2px; line-height: 1.5; }
+.conv-line .btn.ghost, .conv-btn { padding: 4px 10px; min-height: 0; font-size: .85rem; }
+.linkish { background: none; border: 0; padding: 0 2px; color: var(--tomato); text-decoration: underline; font: inherit; cursor: pointer; }
+.converted { color: var(--muted, #7a6f62); font-size: .9em; white-space: nowrap; }
+.conv-box { margin: 10px 0; padding: 10px; border-radius: 12px; background: var(--soft); }
+.conv-overlay { z-index: 10030; }
+.conv-overlay .row input { flex: 1; }
+.conv-overlay .row select { width: auto; }

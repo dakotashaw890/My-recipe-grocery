@@ -49,8 +49,8 @@ function renderCookMode() {
   if (!el || !c) return;
   const r = state.data.recipes[c.name], total = c.steps.length;
   const ingredients = r.ingredients.map(i => `<li><span>${esc(i.name)}</span><b>${displayQty(i, c.scale)} ${esc(i.unit || '')}</b></li>`).join('');
-  el.setAttribute('aria-label', 'Cooking ' + c.name);
-  el.innerHTML = `<div class="cook-top"><div><div class="cook-title">${esc(c.name)}</div><div class="cook-sub">${fmt(c.servings)} servings${wakeLock ? ' · screen stays on' : ''}</div></div><button class="cook-close" aria-label="Close cook mode" onclick="closeCookMode()">✕</button></div>
+  el.setAttribute('aria-label', 'Cooking ' + recipeName(c.name));
+  el.innerHTML = `<div class="cook-top"><div><div class="cook-title">${esc(recipeName(c.name))}</div><div class="cook-sub">${fmt(c.servings)} servings${wakeLock ? ' · screen stays on' : ''}</div></div><button class="cook-close" aria-label="Close cook mode" onclick="closeCookMode()">✕</button></div>
     <div class="cook-tabs"><button class="${c.showIngredients ? '' : 'on'}" onclick="cookView.showIngredients=false;renderCookMode()" ${total ? '' : 'disabled'}>Steps</button><button class="${c.showIngredients ? 'on' : ''}" onclick="cookView.showIngredients=true;renderCookMode()">Ingredients</button></div>
     ${c.showIngredients ? `<ul class="cook-ingredients">${ingredients}</ul>${total ? '' : '<p class="cook-sub">This recipe has no written steps yet. Add them with Edit recipe.</p>'}`
       : `<div class="cook-count">Step ${c.step + 1} of ${total}</div><div class="cook-step" aria-live="polite">${esc(c.steps[c.step])}</div>`}
@@ -156,3 +156,54 @@ function renderSettingsExtras() {
   // A sideways drag that started on a button shouldn't also press it.
   document.addEventListener('click', e => { if (suppressClick) { e.preventDefault(); e.stopPropagation(); suppressClick = false } }, true);
 })();
+
+// ---------- Android back button ----------
+// Back closes whatever is on top (picture picker, conversion question, cook mode, a dialog), then
+// returns to the previous screen. Only from Home with nothing open does it leave the app.
+const screenStack = [];
+let navigatingBack = false;
+function noteScreen(id) {
+  if (navigatingBack || !id) return;
+  if (screenStack[screenStack.length - 1] !== id) { screenStack.push(id); if (screenStack.length > 40) screenStack.shift() }
+}
+function closeTopLayer() {
+  const photo = document.getElementById('ingredientPhotoPanel');
+  if (photo && photo.style.display === 'flex') { if (typeof pictureFlow !== 'undefined' && pictureFlow) stopIngredientPictures(); else closeIngredientPhoto(); return true }
+  const conv = document.getElementById('convPrompt');
+  if (conv && !conv.hidden) { closeConversionPrompt(); return true }
+  if (document.body.classList.contains('cooking')) { closeCookMode(); return true }
+  const toastBar = document.getElementById('actionToast');
+  if (document.getElementById('modal')?.classList.contains('show')) { closeModal(); return true }
+  if (toastBar) { toastBar.remove(); return true }
+  return false;
+}
+function goBack() {
+  if (closeTopLayer()) return true;
+  const current = document.querySelector('.screen.active')?.id;
+  if (screenStack[screenStack.length - 1] === current) screenStack.pop();
+  const previous = screenStack[screenStack.length - 1] || (current !== 'home' ? 'home' : null);
+  if (!previous) return false;
+  navigatingBack = true;
+  try { showScreen(previous) } finally { navigatingBack = false }
+  if (!screenStack.length) screenStack.push(previous);
+  return true;
+}
+(() => {
+  noteScreen(document.querySelector('.screen.active')?.id || 'home');
+  try { history.replaceState({ gingham: 'start' }, ''); history.pushState({ gingham: 'app' }, '') } catch (_) {}
+  window.addEventListener('popstate', () => {
+    if (goBack()) { try { history.pushState({ gingham: 'app' }, '') } catch (_) {} }
+    else history.back();   // nothing left to go back to: let Android close the app
+  });
+})();
+
+// ---------- After editing an ingredient, bring it back into view ----------
+function revealIngredient(location, encoded) {
+  requestAnimationFrame(() => setTimeout(() => {
+    const box = document.getElementById(`inline-${location}-${encoded}`);
+    const row = box?.closest('.shop-row') || box?.closest('.card') || box?.parentElement;
+    if (!row) return;
+    row.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    row.classList.add('just-edited'); setTimeout(() => row.classList.remove('just-edited'), 1600);
+  }, 30));
+}

@@ -8,7 +8,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-const MAX_BYTES = 4_000_000;
+const MAX_BYTES = 2_500_000;   // recipe data sits near the top of the page; big pages are cut here
 
 function reply(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -91,7 +91,7 @@ export function extractRecipe(html: string, pageUrl: string) {
   if (!name) name = cleanText((html.match(/<meta[^>]+property=["']og:title["'][^>]*content=["']([^"']+)/i) || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '');
   if (!ingredients.length) return null;
   try { if (image) image = new URL(image, pageUrl).href } catch (_) { image = '' }
-  return { name: name.slice(0, 120), servings: yieldValue, ingredients: ingredients.slice(0, 80), steps: steps.slice(0, 60), image: /^https:\/\//.test(image) ? image : '', sourceUrl: pageUrl };
+  return { name: name.slice(0, 120), servings: yieldValue, ingredients: ingredients.slice(0, 80), steps: steps.slice(0, 60), image: /^https:\/\//.test(image) ? image : '', sourceUrl: pageUrl, prepTime: recipe ? String(recipe.prepTime || '') : '', cookTime: recipe ? String(recipe.cookTime || '') : '' };
 }
 
 // ---------- safety checks ----------
@@ -107,8 +107,29 @@ export function allowedUrl(raw: string): URL | null {
 }
 
 // ---------- the web endpoint ----------
+async function readCapped(res: Response): Promise<string> {
+  // Read at most MAX_BYTES, then join the pieces once (cheap on Supabase's CPU limit).
+  const reader = res.body?.getReader();
+  if (!reader) return '';
+  const chunks: Uint8Array[] = []; let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value); size += value.length;
+    if (size >= MAX_BYTES) { reader.cancel().catch(() => {}); break }
+  }
+  const all = new Uint8Array(size); let at = 0;
+  for (const c of chunks) { all.set(c.subarray(0, Math.min(c.length, size - at)), at); at += c.length; if (at >= size) break }
+  return new TextDecoder().decode(all);
+}
+
 if (typeof Deno !== 'undefined' && Deno.serve) Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  try { return await handle(req) }
+  catch (e) { console.error('recipe import failed', e); return reply(500, { error: 'The import helper hit a problem with that page. Try again, or use Paste recipe text.' }) }
+});
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return reply(405, { error: 'Use POST' });
 
   // Only people signed in to this Supabase project (your family) may use the helper.
@@ -131,11 +152,9 @@ if (typeof Deno !== 'undefined' && Deno.serve) Deno.serve(async (req: Request) =
   } catch (_) { return reply(502, { error: 'That site didn\'t respond. Try again, or use Paste recipe text.' }) }
   if (!res.ok) return reply(502, { error: `That site refused the request (${res.status}). Some sites block imports; use Paste recipe text instead.` });
   if (!allowedUrl(res.url)) return reply(400, { error: 'That link redirects somewhere that can\'t be imported.' });
-  const reader = res.body?.getReader(); let size = 0; const chunks: Uint8Array[] = [];
-  if (reader) for (;;) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > MAX_BYTES) { reader.cancel(); break } chunks.push(value) }
-  const html = new TextDecoder().decode(chunks.reduce((a, c) => { const n = new Uint8Array(a.length + c.length); n.set(a); n.set(c, a.length); return n }, new Uint8Array()));
+  const html = await readCapped(res);
 
   const recipe = extractRecipe(html, res.url);
   if (!recipe) return reply(422, { error: 'No recipe found on that page. Use Paste recipe text instead.' });
   return reply(200, recipe);
-});
+}
