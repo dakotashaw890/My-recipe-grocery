@@ -90,6 +90,7 @@ const SYNC_MAPS = [
   ['meta/', s => s.itemMeta, s => (s.itemMeta ??= {})],
   ['conv/', s => s.ingredientConversions, s => (s.ingredientConversions ??= {})],
   ['barcode/', s => s.barcodeLinks, s => (s.barcodeLinks ??= {})],
+  ['group/', s => s.recipeGroups, s => (s.recipeGroups ??= {})],
 ];
 function hashText(str) {   // cyrb53
   let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
@@ -114,12 +115,13 @@ function localEntries(s, photos) {
 function splitKey(key) { const i = key.indexOf('/'); return [key.slice(0, i + 1), key.slice(i + 1)] }
 function setEntry(s, photos, key, value) {
   const [prefix, k] = splitKey(key), map = SYNC_MAPS.find(m => m[0] === prefix);
-  if (map) { map[2](s)[k] = value; return }
-  if (prefix === 'fav/') { s.favorites ??= []; if (!s.favorites.includes(k)) s.favorites.push(k); return }
-  if (prefix === 'deleted-ingredient/') { s.deletedIngredients ??= []; if (!s.deletedIngredients.includes(k)) s.deletedIngredients.push(k); return }
-  if (prefix === 'trip/') { s.spending ??= { trips: [], budget: 0 }; s.spending.trips ??= []; const i = s.spending.trips.findIndex(t => String(t.id) === k); i >= 0 ? s.spending.trips[i] = value : s.spending.trips.push(value); return }
-  if (key === 'setting/budget') { s.spending ??= { trips: [], budget: 0 }; s.spending.budget = value; return }
-  if (prefix === 'photo/') { photos[k] = value; return }
+  if (map) { map[2](s)[k] = value; return true }
+  if (prefix === 'fav/') { s.favorites ??= []; if (!s.favorites.includes(k)) s.favorites.push(k); return true }
+  if (prefix === 'deleted-ingredient/') { s.deletedIngredients ??= []; if (!s.deletedIngredients.includes(k)) s.deletedIngredients.push(k); return true }
+  if (prefix === 'trip/') { s.spending ??= { trips: [], budget: 0 }; s.spending.trips ??= []; const i = s.spending.trips.findIndex(t => String(t.id) === k); i >= 0 ? s.spending.trips[i] = value : s.spending.trips.push(value); return true }
+  if (key === 'setting/budget') { s.spending ??= { trips: [], budget: 0 }; s.spending.budget = value; return true }
+  if (prefix === 'photo/') { photos[k] = value; return true }
+  return false;   // a kind of data from a newer version of the app: leave it alone
 }
 function removeEntry(s, photos, key) {
   const [prefix, k] = splitKey(key), map = SYNC_MAPS.find(m => m[0] === prefix);
@@ -200,7 +202,7 @@ async function pullChanges(overlap = PULL_OVERLAP_MS) {
     const h = entryHash(key, row.value);
     if (has && localHash === h) { hashes[key] = h; continue }
     if (key.startsWith('photo/')) newPhotos[key.slice(6)] = row.value;
-    else setEntry(state, photoCache, key, row.value);
+    else if (!setEntry(state, photoCache, key, row.value)) continue;   // not understood here: don't record it, so it's never sent back as deleted
     hashes[key] = h; changed++;
   }
   for (const [id, url] of Object.entries(newPhotos)) { try { await storePhoto(url, id) } catch (_) { photoCache[id] = url } }

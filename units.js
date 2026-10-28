@@ -139,11 +139,33 @@ function packageText(p) {
 function containerText(name) { return packageText(getPackage(name)) }
 
 // ---------- Asking for a missing factor (shown on top of whatever is open) ----------
+// Which saved factor a working conversion relies on (so it can be changed later). null = fixed math (cups → fl oz).
+function conversionFactorUsed(from, to, name) {
+  const key = ingredientKey(name), f = unitName(from), t = unitName(to);
+  if (f === t) return null;
+  if (rememberedConversion(key, f, t) || rememberedConversion(key, t, f)) return 'pairRate';
+  const a = toBasic(1, f, key); if (!a || a.kind === 'container') return null;
+  let tk = unitKind(t) === 'count' ? countKind(t) : unitKind(t);
+  if (tk === 'container') { const pkg = getPackage(key); if (!pkg || unitKind(pkg.unit) === 'container') return null; tk = toBasic(1, pkg.unit, key, 1)?.kind }
+  if (!tk || a.kind === tk) return null;
+  if (isCount(a.kind) && isCount(tk)) return 'pairRate';
+  if (isCount(a.kind) || isCount(tk)) return 'gramsPerEach';
+  return 'gramsPerCup';
+}
+function currentFactor(key, need, from, to) {
+  if (need === 'gramsPerCup') return gramsPerCup(key)?.value ?? null;
+  if (need === 'gramsPerEach') return gramsEach(key)?.value ?? null;
+  if (need === 'pairRate') { const r = rememberedConversion(key, unitName(from), unitName(to)); return r ? Math.round(r.qty * 10000) / 10000 : null }
+  return null;
+}
 let convAsk = null;
-function askConversion(name, from, to, done, skip) {
-  const key = ingredientKey(name), need = conversionNeed(1, from, to, name);
+// opts.edit: change a conversion that already works (pre-filled with the value in use)
+function askConversion(name, from, to, done, skip, opts = {}) {
+  const key = ingredientKey(name), need = opts.edit ? conversionFactorUsed(from, to, name) : conversionNeed(1, from, to, name);
+  if (opts.edit && !need) { toast('This one is standard math, so there is nothing to set.'); return }
   if (!need || need === 'unknownUnit') { if (need === 'unknownUnit') alert(`“${from}” isn't a unit the app knows. Use g, oz, lb, cups, tbsp, tsp, ml, each, or a container like can or bag.`); try { (need ? skip : done)?.() } catch (_) {} return }
-  convAsk = { key, name, from, to, need, done, skip };
+  convAsk = { key, name, from, to, need, done, skip, edit: !!opts.edit };
+  const cur = opts.edit ? currentFactor(key, need, from, to) : null, val = cur != null ? ` value="${cur}"` : '';
   let el = document.getElementById('convPrompt');
   if (!el) { el = document.createElement('div'); el.id = 'convPrompt'; el.className = 'photo-overlay conv-overlay'; document.body.appendChild(el) }
   const pkg = getPackage(key), label = pkg?.label || unitName(to);
@@ -151,22 +173,28 @@ function askConversion(name, from, to, done, skip) {
   let body;
   if (need === 'gramsPerCup') {
     const t = TYPICAL_GRAMS_PER_CUP[key];
-    body = `<h3>How much does 1 cup of ${esc(name)} weigh?</h3><p class="small muted">Needed to turn cups into ${esc(unitName(to) === 'cup' ? unitName(from) : unitName(to))}. A kitchen scale gives the best answer; the package's nutrition label often lists grams per cup too.</p>
-      <div class="row"><input id="convValue" type="number" min="0" step="any" inputmode="decimal" placeholder="${t || 'e.g. 120'}"><select id="convUnit">${unitOpts(['g', 'oz'], 'g')}</select></div>`;
+    body = `<h3>How much does 1 cup of ${esc(name)} weigh?</h3><p class="small muted">${opts.edit ? 'Used to turn cups into' : 'Needed to turn cups into'} ${esc(unitName(to) === 'cup' ? unitName(from) : unitName(to))}. A kitchen scale gives the best answer; the package's nutrition label often lists grams per cup too.</p>
+      <div class="row"><input id="convValue" type="number" min="0" step="any" inputmode="decimal" placeholder="${t || 'e.g. 120'}"${val}><select id="convUnit">${unitOpts(['g', 'oz'], 'g')}</select></div>`;
   } else if (need === 'gramsPerEach') {
     const t = TYPICAL_GRAMS_EACH[key], one = ['ea.', 'each'].includes(unitName(from)) ? '' : unitName(from);
-    body = `<h3>How much does one ${esc(one ? one + ' of ' + name : name)} weigh?</h3><p class="small muted">Needed to turn a count into a weight or volume.</p>
-      <div class="row"><input id="convValue" type="number" min="0" step="any" inputmode="decimal" placeholder="${t || 'e.g. 150'}"><select id="convUnit">${unitOpts(['g', 'oz'], 'g')}</select></div>`;
+    body = `<h3>How much does one ${esc(one ? one + ' of ' + name : name)} weigh?</h3><p class="small muted">${opts.edit ? 'Used' : 'Needed'} to turn a count into a weight or volume.</p>
+      <div class="row"><input id="convValue" type="number" min="0" step="any" inputmode="decimal" placeholder="${t || 'e.g. 150'}"${val}><select id="convUnit">${unitOpts(['g', 'oz'], 'g')}</select></div>`;
   } else if (need === 'pairRate') {
     body = `<h3>How many ${esc(unitName(to))} is 1 ${esc(unitName(from))} of ${esc(name)}?</h3><p class="small muted">For example, 1 head of garlic is about 10 cloves.</p>
-      <div class="row"><input id="convValue" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 10"><span>${esc(unitName(to))}</span></div>`;
+      <div class="row"><input id="convValue" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 10"${val}><span>${esc(unitName(to))}</span></div>`;
   } else {
     body = `<h3>How much is in one ${esc(label)} of ${esc(name)}?</h3><p class="small muted">The size printed on the package, like 15 oz or 32 fl oz. It's saved as this ingredient's container.</p>
       <div class="row"><input id="convValue" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 15"><select id="convUnit">${unitOpts(['oz', 'lb', 'g', 'kg', 'fl oz', 'cup', 'ml', 'l', 'ea.'], 'oz')}</select></div>`;
   }
-  el.innerHTML = `<div class="photo-dialog" role="dialog" aria-modal="true" aria-label="Conversion">${body}<div class="actions"><button class="btn" onclick="saveConversionPrompt()">Save</button><button class="btn secondary" onclick="closeConversionPrompt(true)">Not now</button></div></div>`;
+  el.innerHTML = `<div class="photo-dialog" role="dialog" aria-modal="true" aria-label="Conversion">${body}<div class="actions"><button class="btn" onclick="saveConversionPrompt()">Save</button><button class="btn secondary" onclick="closeConversionPrompt(true)">${opts.edit ? 'Cancel' : 'Not now'}</button>${opts.edit && need !== 'pairRate' && state.itemMeta?.[key]?.[need] != null ? `<button class="btn ghost" onclick="resetConversionFactor()">Use typical</button>` : ''}</div></div>`;
   el.hidden = false; el.style.display = 'flex';
   setTimeout(() => document.getElementById('convValue')?.focus(), 50);
+}
+function resetConversionFactor() {
+  const a = convAsk; if (!a) return;
+  if (state.itemMeta?.[a.key]) delete state.itemMeta[a.key][a.need];
+  const done = a.done; closeConversionPrompt(); save(); toast('Back to the typical value for ' + a.name);
+  try { done?.() } catch (_) {}
 }
 function closeConversionPrompt(skipped) {
   const el = document.getElementById('convPrompt'); if (el) { el.hidden = true; el.style.display = 'none' }
@@ -213,7 +241,7 @@ function editRowConversionHTML(idx) {
   let amount = '';
   if (q !== null && q > 0 && unit) {
     const c = convertAmount(q, unit, pkg.unit, name);
-    if (c && unitName(unit) !== unitName(pkg.unit)) amount = ` · <b>${esc(fmt(q))} ${esc(unit)} ${c.estimate ? '≈' : '='} ${esc(fmt(roundAmount(c.qty)))} ${esc(pkg.unit)}</b>`;
+    if (c && unitName(unit) !== unitName(pkg.unit)) amount = ` · <b>${esc(fmt(q))} ${esc(unit)} ${c.estimate ? '≈' : '='} ${esc(fmt(roundAmount(c.qty)))} ${esc(pkg.unit)}</b>${!i.newPackage && conversionFactorUsed(unit, pkg.unit, name) ? ` <button type="button" class="linkish" onclick="editConversionForRow(${idx})">edit</button>` : ''}`;
     else if (!c) {
       const need = conversionNeed(q, unit, pkg.unit, name);
       amount = need === 'unknownUnit' ? ` · <span class="warning">Unknown unit “${esc(unit)}”</span>` : ` · <button type="button" class="btn ghost" onclick="askConversionForRow(${idx})">Set ${unitName(unit)} → ${esc(unitName(pkg.unit))} conversion</button>`;
@@ -221,6 +249,24 @@ function editRowConversionHTML(idx) {
   }
   return `<div class="conv-line"><span class="muted">Container:</span> ${esc(ctext)}${editBtn}${amount}</div>`;
 }
+function editConversionForRow(idx) {
+  const i = window.editingIngredients[idx], pkg = getPackage(i.name);
+  if (pkg) askConversion(i.name, i.recipeUnit || i.unit, pkg.unit, () => refreshEditRowConversion(idx), null, { edit: true });
+}
+// recipe page: tap the converted amount to change the conversion
+function editConversionInRecipe(id, index) {
+  const i = state.data.recipes[id]?.ingredients?.[index], pkg = i && getPackage(i.name);
+  if (pkg) askConversion(i.name, i.unit, pkg.unit, () => { refreshRecipeConversions(id); renderDetailIngredients(id) }, null, { edit: true });
+}
+function saveContainerForRow(idx) {
+  const i = window.editingIngredients[idx], p = i.newPackage, name = String(i.name || '').trim();
+  if (!name) return toast('Enter the ingredient name first');
+  if (!(Number(p.qty) > 0) || !String(p.unit || '').trim() || !String(p.label || '').trim()) return alert('Enter the container size, unit and type.');
+  state.packagePrefs ??= {}; state.packagePrefs[ingredientKey(name)] = { qty: Number(p.qty), unit: normUnit(p.unit), label: String(p.label).trim() };
+  for (const x of window.editingIngredients) if (ingredientKey(x.name) === ingredientKey(name)) { x.newPackage = null; x.container = String(p.label).trim() }
+  save(); renderEditIngredients(); toast('Container saved for ' + name);
+}
+function cancelContainerForRow(idx) { window.editingIngredients[idx].newPackage = null; renderEditIngredients() }
 function refreshEditRowConversion(idx) { const el = document.getElementById('convrow-' + idx); if (el) el.innerHTML = editRowConversionHTML(idx) }
 function askConversionForRow(idx) {
   const i = window.editingIngredients[idx], pkg = getPackage(i.name);

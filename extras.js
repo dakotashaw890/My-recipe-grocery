@@ -175,6 +175,8 @@ function closeTopLayer() {
   const toastBar = document.getElementById('actionToast');
   if (document.getElementById('modal')?.classList.contains('show')) { closeModal(); return true }
   if (toastBar) { toastBar.remove(); return true }
+  // inside a recipe group: back returns to the group tiles
+  if (typeof recipeView !== 'undefined' && recipeView !== null && document.getElementById('recipes')?.classList.contains('active')) { closeRecipeView(); return true }
   return false;
 }
 function goBack() {
