@@ -109,6 +109,7 @@ function localEntries(s, photos) {
   for (const n of s.deletedIngredients || []) put('deleted-ingredient/' + n, true);
   for (const t of s.spending?.trips || []) if (t?.id != null) put('trip/' + t.id, t);
   if (s.spending?.budget != null) put('setting/budget', s.spending.budget);
+  if (s.planPrefs && Object.keys(s.planPrefs).length) put('setting/planPrefs', s.planPrefs);
   for (const [id, url] of Object.entries(photos || {})) put('photo/' + id, url);
   return out;
 }
@@ -120,6 +121,7 @@ function setEntry(s, photos, key, value) {
   if (prefix === 'deleted-ingredient/') { s.deletedIngredients ??= []; if (!s.deletedIngredients.includes(k)) s.deletedIngredients.push(k); return true }
   if (prefix === 'trip/') { s.spending ??= { trips: [], budget: 0 }; s.spending.trips ??= []; const i = s.spending.trips.findIndex(t => String(t.id) === k); i >= 0 ? s.spending.trips[i] = value : s.spending.trips.push(value); return true }
   if (key === 'setting/budget') { s.spending ??= { trips: [], budget: 0 }; s.spending.budget = value; return true }
+  if (key === 'setting/planPrefs') { s.planPrefs = value || {}; return true }
   if (prefix === 'photo/') { photos[k] = value; return true }
   return false;   // a kind of data from a newer version of the app: leave it alone
 }
@@ -130,6 +132,7 @@ function removeEntry(s, photos, key) {
   if (prefix === 'deleted-ingredient/') { s.deletedIngredients = (s.deletedIngredients || []).filter(x => x !== k); return }
   if (prefix === 'trip/') { if (s.spending?.trips) s.spending.trips = s.spending.trips.filter(t => String(t.id) !== k); return }
   if (key === 'setting/budget') { if (s.spending) s.spending.budget = 0; return }
+  if (key === 'setting/planPrefs') { s.planPrefs = {}; return }
   if (prefix === 'photo/') { delete photos[k]; return }
 }
 function clearSharedData(s) {

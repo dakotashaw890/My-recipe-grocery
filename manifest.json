@@ -32,5 +32,14 @@
       "purpose": "maskable"
     }
   ],
-  "description": "Family recipes, meal planning, pantry and a shared shopping list."
+  "description": "Family recipes, meal planning, pantry and a shared shopping list.",
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  }
 }

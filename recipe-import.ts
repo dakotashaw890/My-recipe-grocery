@@ -1,7 +1,9 @@
-// My Recipe & Grocery: recipe import helper (Supabase Edge Function "recipe-import").
+// Gingham: recipe import helper (Supabase Edge Function "recipe-import").
 // Paste this whole file into Supabase → Edge Functions → Deploy a new function → Via Editor.
 // It fetches a recipe web page and returns the recipe that most recipe sites publish
-// inside the page (schema.org "Recipe" data). Only signed-in family members can use it.
+// inside the page (schema.org "Recipe" data). For TikTok, Instagram, YouTube, Pinterest and
+// Facebook posts it returns the post's caption, which the app reads the recipe from.
+// Only signed-in family members can use it.
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +96,97 @@ export function extractRecipe(html: string, pageUrl: string) {
   return { name: name.slice(0, 120), servings: yieldValue, ingredients: ingredients.slice(0, 80), steps: steps.slice(0, 60), image: /^https:\/\//.test(image) ? image : '', sourceUrl: pageUrl, prepTime: recipe ? String(recipe.prepTime || '') : '', cookTime: recipe ? String(recipe.cookTime || '') : '' };
 }
 
+// ---------- social posts and pages without recipe data: return the caption text ----------
+// The app reads the ingredients out of the text itself (same as "Paste recipe text").
+function metaContent(html: string, key: string): string {
+  const re1 = new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]*content=["']([^"']*)["']`, 'i');
+  const re2 = new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${key}["']`, 'i');
+  return cleanText((html.match(re1) || html.match(re2) || [])[1] || '');
+}
+function jsonString(raw: string): string { try { return JSON.parse('"' + raw + '"') } catch (_) { return raw.replace(/\\n/g, '\n') } }
+export function looksLikeRecipeText(t: string): boolean {
+  const lines = t.split(/\n|(?=\s\d+\s*(?:cups?|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lbs?|pounds?|g|grams)\b)/i);
+  const amounts = lines.filter(l => /^\s*[-•▪️*]?\s*(\d|[¼½¾⅓⅔])/.test(l)).length;
+  const units = (t.match(/\b\d+(?:[./]\d+)?\s*(cups?|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lbs?|pounds?|grams?|cloves?|cans?)\b/gi) || []).length;
+  return /ingredients?\s*[:\n]/i.test(t) || amounts >= 3 || units >= 3;
+}
+function textResult(name: string, text: string, image: string, sourceUrl: string) {
+  return { kind: 'text', name: cleanText(name).slice(0, 120), text: text.slice(0, 8000), image: /^https:\/\//.test(image) ? image : '', sourceUrl };
+}
+const UA_HEADERS = { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/json', 'Accept-Language': 'en-US,en;q=0.9' };
+async function getText(url: string, extra: Record<string, string> = {}): Promise<{ ok: boolean, url: string, text: string }> {
+  if (!allowedUrl(url)) return { ok: false, url, text: '' };
+  try {
+    const r = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(10000), headers: { ...UA_HEADERS, ...extra } });
+    if (!allowedUrl(r.url)) return { ok: false, url: r.url, text: '' };
+    return { ok: r.ok, url: r.url, text: r.ok ? await readCapped(r) : '' };
+  } catch (_) { return { ok: false, url, text: '' } }
+}
+// A caption often links to the full recipe on a blog: prefer that page's recipe data when it has some.
+async function recipeFromLinks(text: string) {
+  const links = [...new Set((text.match(/https?:\/\/[^\s"'<>)]+/g) || []).map(l => l.replace(/[.,!?]+$/, '')))]
+    .filter(l => !/(tiktok|instagram|facebook|fb\.watch|youtube|youtu\.be|pinterest|pin\.it|amzn|amazon|linktr\.ee|ltk\.app|shopmy|liketoknow)\./i.test(l)).slice(0, 2);
+  for (const l of links) { const page = await getText(l); if (page.ok) { const r = extractRecipe(page.text, page.url); if (r) return r } }
+  return null;
+}
+function hostOf(u: URL) { return u.hostname.toLowerCase().replace(/^(www|m|mobile|vm|vt)\./, '') }
+
+export async function socialRecipe(u: URL): Promise<any | null> {
+  const host = hostOf(u);
+  // TikTok: the public oEmbed endpoint returns the caption as "title"
+  if (host.endsWith('tiktok.com')) {
+    let link = u.href;
+    if (!/\/video\/|\/photo\//.test(u.pathname)) { const r = await getText(link); if (r.url) link = r.url }
+    const o = await getText('https://www.tiktok.com/oembed?url=' + encodeURIComponent(link));
+    let caption = '', image = '', author = '';
+    try { const j = JSON.parse(o.text); caption = j.title || ''; image = j.thumbnail_url || ''; author = j.author_name || '' } catch (_) {}
+    if (!caption) { const page = await getText(link); const m = page.text.match(/"desc":"((?:[^"\\]|\\.)*)"/); if (m) caption = jsonString(m[1]); image ||= metaContent(page.text, 'og:image') }
+    if (!caption) return null;
+    return (await recipeFromLinks(caption)) || textResult(caption.split('\n')[0].slice(0, 80) || (author ? author + "'s recipe" : 'TikTok recipe'), caption, image, link);
+  }
+  // Instagram: the public "captioned embed" page shows the whole caption without signing in
+  if (host.endsWith('instagram.com')) {
+    const code = u.pathname.match(/\/(?:p|reels?|tv)\/([A-Za-z0-9_-]+)/)?.[1];
+    if (!code) return null;
+    const embed = await getText(`https://www.instagram.com/p/${code}/embed/captioned/`);
+    let caption = '', image = '';
+    const cap = embed.text.match(/class="Caption"[^>]*>([\s\S]*?)<div class="CaptionComments"/i);
+    if (cap) caption = cleanText(cap[1].replace(/<a[^>]*class="CaptionUsername"[^>]*>[\s\S]*?<\/a>/i, ''));
+    image = (embed.text.match(/class="EmbeddedMediaImage"[^>]*src="([^"]+)"/i) || [])[1] || '';
+    if (!caption) { const page = await getText(`https://www.instagram.com/p/${code}/`); const d = metaContent(page.text, 'og:description'); const q = d.match(/:\s*["“]([\s\S]*)["”]\s*\.?$/); caption = q ? q[1] : d; image ||= metaContent(page.text, 'og:image') }
+    if (!caption) return null;
+    return (await recipeFromLinks(caption)) || textResult(caption.split('\n')[0].slice(0, 80) || 'Instagram recipe', caption, cleanText(image), `https://www.instagram.com/p/${code}/`);
+  }
+  // YouTube (videos and Shorts): the full description is in the page data
+  if (host.endsWith('youtube.com') || host === 'youtu.be') {
+    const id = host === 'youtu.be' ? u.pathname.slice(1) : (u.searchParams.get('v') || u.pathname.match(/\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{6,})/)?.[1]);
+    if (!id) return null;
+    const page = await getText('https://www.youtube.com/watch?v=' + encodeURIComponent(id), { Cookie: 'CONSENT=YES+1' });
+    const m = page.text.match(/"shortDescription":"((?:[^"\\]|\\.)*)"/);
+    const desc = m ? jsonString(m[1]) : metaContent(page.text, 'og:description');
+    const title = metaContent(page.text, 'og:title') || 'YouTube recipe';
+    if (!desc) return null;
+    return (await recipeFromLinks(desc)) || textResult(title, title + '\n' + desc, metaContent(page.text, 'og:image'), 'https://www.youtube.com/watch?v=' + id);
+  }
+  // Pinterest: a pin usually points at the recipe's own website
+  if (host.endsWith('pinterest.com') || host === 'pin.it' || /pinterest\./.test(host)) {
+    const page = await getText(u.href);
+    const own = extractRecipe(page.text, page.url); if (own) return own;
+    const links = [...page.text.matchAll(/"(?:link|url|tracked_link)":"(https?:[^"]+)"/g)].map(x => jsonString(x[1])).filter(l => !/pinterest\.|pinimg\.|pin\.it/i.test(l));
+    for (const l of [...new Set(links)].slice(0, 3)) { const p = await getText(l); if (p.ok) { const r = extractRecipe(p.text, p.url); if (r) return r } }
+    const d = metaContent(page.text, 'og:description') || metaContent(page.text, 'description');
+    return d && looksLikeRecipeText(d) ? textResult(metaContent(page.text, 'og:title'), d, metaContent(page.text, 'og:image'), page.url) : null;
+  }
+  // Facebook: only public posts, and only what Facebook shows without signing in
+  if (host.endsWith('facebook.com') || host === 'fb.watch') {
+    const page = await getText(u.href);
+    const d = metaContent(page.text, 'og:description');
+    if (!d) return null;
+    return (await recipeFromLinks(d)) || textResult(metaContent(page.text, 'og:title') || 'Facebook recipe', d, metaContent(page.text, 'og:image'), page.url);
+  }
+  return undefined;   // not a social site
+}
+
 // ---------- safety checks ----------
 export function allowedUrl(raw: string): URL | null {
   let u: URL;
@@ -143,6 +236,11 @@ async function handle(req: Request): Promise<Response> {
   const url = allowedUrl(body.url);
   if (!url) return reply(400, { error: 'That doesn\'t look like a web address. Copy the full link starting with https://' });
 
+  // Social posts: read the caption (TikTok, Instagram, YouTube, Pinterest, Facebook)
+  const social = await socialRecipe(url).catch(() => null);
+  if (social) return reply(200, social);
+  if (social === null) return reply(422, { error: 'Couldn\'t read that post. It may be private, or the site didn\'t share its text. Open the post, copy the caption, and use Paste recipe text.' });
+
   let res: Response;
   try {
     res = await fetch(url.href, {
@@ -155,6 +253,11 @@ async function handle(req: Request): Promise<Response> {
   const html = await readCapped(res);
 
   const recipe = extractRecipe(html, res.url);
-  if (!recipe) return reply(422, { error: 'No recipe found on that page. Use Paste recipe text instead.' });
+  if (!recipe) {
+    // no recipe data: the page's description may still hold the recipe (blogs, forums, other apps' share pages)
+    const desc = metaContent(html, 'og:description') || metaContent(html, 'description');
+    if (desc && looksLikeRecipeText(desc)) return reply(200, textResult(metaContent(html, 'og:title') || '', desc, metaContent(html, 'og:image'), res.url));
+    return reply(422, { error: 'No recipe found on that page. Use Paste recipe text instead.' });
+  }
   return reply(200, recipe);
 }

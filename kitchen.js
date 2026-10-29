@@ -44,30 +44,111 @@ function parseIngredientLine(line) {
   s = s.replace(SIZE_WORDS, '');
   for (const [re, u] of UNIT_WORDS) { const m = s.match(re); if (m && qty !== null) { unit = u; s = s.slice(m[0].length).trim(); break } }
   s = s.replace(/^of\s+/i, '').replace(SIZE_WORDS, '');
-  // drop notes: "(about 2 cups)", ", chopped", "; divided", "to taste"
-  let name = s.replace(/\([^)]*\)/g, ' ').split(/,|;|\s+-\s+/)[0].replace(/\b(to taste|as needed|for serving|for garnish|optional)\b.*$/i, '').replace(/\s+/g, ' ').trim();
+  // drop notes: "(about 2 cups)", ", chopped", "; divided", "to taste" — but keep "boneless, skinless chicken"
+  let name = joinDescriptiveCommas(s.replace(/\([^)]*\)/g, ' ')).split(/,|;|\s+-\s+/)[0].replace(/\b(to taste|as needed|for serving|for garnish|optional)\b.*$/i, '').replace(/\s+/g, ' ').trim();
   if (!name) name = original;
+  // "freshly ground black pepper" -> "black pepper" (note: "freshly ground")
+  const tidy = tidyIngredientName(name); name = tidy.name;
   if (qty !== null && !unit) unit = 'ea.';
   if (/^cloves?\s+(of\s+)?garlic$/i.test(name) || /^garlic cloves?$/i.test(name)) { name = 'garlic cloves'; unit = 'ea.' }
-  return { qty, unit, name: name.charAt(0).toUpperCase() + name.slice(1), sizeNote, text: original };
+  return { qty, unit, name: name.charAt(0).toUpperCase() + name.slice(1), sizeNote, note: tidy.note, text: original };
+}
+
+// ---------- Cleaner ingredient names ----------
+// Words that describe how an ingredient is prepared or which version to buy, not what it is.
+const PREP_WORDS = new Set(['finely', 'coarsely', 'roughly', 'thinly', 'freshly', 'chopped', 'minced', 'diced', 'sliced', 'cut', 'cubed', 'crushed', 'grated', 'peeled', 'seeded', 'deveined', 'trimmed', 'rinsed', 'drained', 'softened', 'melted', 'packed', 'sifted', 'beaten', 'halved', 'quartered', 'julienned', 'zested', 'juiced', 'torn', 'cored', 'pitted', 'thawed', 'divided', 'room', 'temperature', 'very', 'lightly', 'firmly', 'loosely', 'well', 'and']);
+const BUY_WORDS = new Set(['large', 'medium', 'small', 'extra', 'jumbo', 'organic', 'low', 'reduced', 'less', 'sodium', 'salt', 'fat', 'free', 'nonfat', 'lowfat', 'long', 'short', 'grain', 'virgin', 'lean', 'raw', 'uncooked', 'natural', 'pure', 'premium', 'good', 'quality', 'best']);
+// "salt" only counts as a descriptor in "low salt"/"reduced salt"; "ground" only after "freshly"; "fat" in "low fat"
+function descriptorAt(words, i) {
+  const w = words[i], prev = words[i - 1];
+  if (w === 'ground') return prev === 'freshly' || prev === 'finely' || prev === 'coarsely';
+  if (w === 'salt' || w === 'sodium' || w === 'fat') return ['low', 'reduced', 'less', 'no'].includes(prev) || (w === 'fat' && words[i + 1] === 'free');
+  if (w === 'free') return ['fat', 'sodium', 'sugar', 'gluten'].includes(prev) && words.length > i + 1;
+  if (w === 'grain') return ['long', 'short', 'medium', 'whole'].includes(prev) && words.length > i + 1;
+  if (w === 'long' || w === 'short') return words[i + 1] === 'grain';
+  if (w === 'low' || w === 'reduced' || w === 'less') return ['sodium', 'salt', 'fat'].includes(words[i + 1]);
+  if (w === 'extra') return ['virgin', 'large', 'lean', 'sharp', 'firm'].includes(words[i + 1]);
+  if (w === 'and') return descriptorAt(words, i - 1) && i + 1 < words.length && (PREP_WORDS.has(words[i + 1]) || BUY_WORDS.has(words[i + 1]));
+  if (w === 'room' || w === 'temperature') return words.includes('room') && words.includes('temperature');
+  return PREP_WORDS.has(w) || (BUY_WORDS.has(w) && !['salt', 'sodium', 'fat', 'free', 'grain', 'long', 'short'].includes(w));
+}
+function nameWords(name) { return String(name || '').toLowerCase().replace(/[-–]/g, ' ').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean) }
+function tidyIngredientName(name) {
+  const words = nameWords(name), keep = [], dropped = [];
+  words.forEach((w, i) => (descriptorAt(words, i) ? dropped : keep).push(w));
+  // never strip everything ("Large" alone, "Free range eggs" stays readable)
+  if (!keep.length || keep.length === words.length) return { name, note: '' };
+  return { name: keep.join(' '), note: dropped.join(' ') };
+}
+// "2 boneless, skinless chicken breasts": a comma between descriptive words isn't the start of a note
+function joinDescriptiveCommas(s) {
+  return s.replace(/\b(boneless|skinless|bone-in|skin-on|unsalted|salted|sweetened|unsweetened|seedless|shelled|peeled|cooked|uncooked|smoked|dried|fresh|frozen|canned|plain|low-sodium|reduced-fat|lean|ripe|hot|mild|sharp|sweet)\s*,\s*(?=[a-z])/gi, '$1 ');
+}
+// does `known` describe the same thing as `imported`, give or take descriptive words?
+function sameThingWithDescriptors(imported, known) {
+  const sing = w => w.replace(/(ies)$/, 'y').replace(/(oes|ches|shes|sses|xes)$/, m => m.slice(0, -2)).replace(/([^s])s$/, '$1');
+  const iw = nameWords(imported), kw = nameWords(known).map(sing);
+  if (!kw.length) return false;
+  const iset = iw.map(sing), extra = [];
+  const pool = [...iset];
+  for (const w of kw) { const at = pool.indexOf(w); if (at < 0) return false; pool[at] = null }
+  iset.forEach((w, i) => { if (pool[i] !== null) extra.push(i) });
+  // every extra word in the imported name must be a descriptor ("freshly ground", "low sodium", "fresh")
+  return extra.every(i => descriptorAt(iw, i) || iw[i] === 'fresh' || iw[i] === 'whole');
 }
 
 // Match an imported name to an ingredient the family already uses ("Onions" -> "Yellow onions" is left alone).
-function matchKnownIngredient(name) {
+function matchKnownIngredient(name, raw) {
   const known = allIngredients(), n = normalizeIngredientName(name);
   const variants = [n, n.replace(/ies$/, 'y'), n.replace(/es$/, ''), n.replace(/s$/, ''), n + 's', n + 'es'];
-  const k = known.find(x => variants.includes(normalizeIngredientName(x)));
+  let k = known.find(x => variants.includes(normalizeIngredientName(x)));
+  if (!k && raw) {
+    // "freshly ground black pepper" -> your "black pepper"; the longest name that fits wins ("fresh parsley" over "parsley")
+    const fits = known.filter(x => sameThingWithDescriptors(raw, x)).sort((a, b) => nameWords(b).length - nameWords(a).length);
+    k = fits[0];
+  }
   if (!k) return null;
   // use the spelling the family's recipes already use ("Ground beef", not "ground beef")
   for (const r of Object.values(state.data.recipes)) for (const i of r.ingredients || []) if (ingredientKey(i.name) === ingredientKey(k)) return i.name;
   return state.pantry?.[ingredientKey(k)]?.name || k.charAt(0).toUpperCase() + k.slice(1);
 }
 
+// Captions from TikTok/Instagram/YouTube and photo text come out messy: emoji bullets, hashtags,
+// "Ingredients: 2 chicken breasts, 3 tbsp butter, salt" on one line, "1️⃣ Mix…". Put it into plain lines.
+const SECTION_RE = /(ingredients?( list)?|what you(?:'|’)?ll need|you(?:'|’)?ll need|you will need|instructions?|directions?|method|steps?|how to make(?: it)?|preparation)\s*[:：]/gi;
+function normalizeRecipeText(text) {
+  let t = String(text || '').replace(/\r/g, '');
+  const keycaps = { '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '🔟': '10' };
+  t = t.replace(/([0-9])\uFE0F?\u20E3/g, (m, d) => '\n' + keycaps[d] + '. ').replace(/🔟/g, '\n10. ');
+  t = t.replace(/(^|\s)#[\p{L}\p{N}_]+/gu, ' ')                       // hashtags
+       .replace(/https?:\/\/\S+/g, ' ')                                 // links
+       .replace(/(^|\n)\s*(?:[\p{Extended_Pictographic}\u2022\u25AA-\u25AB\u25CF\u25E6\u2023\u2043\u2219\u27A1\u2714\u2705\-–*]\uFE0F?\s*)+/gu, '$1- ')   // emoji/bullet at line start
+       .replace(/[\p{Extended_Pictographic}]\uFE0F?/gu, ' ')            // other emoji
+       .replace(/\uFE0F/g, '');
+  // section words written inline get their own line
+  t = t.replace(SECTION_RE, m => '\n' + m.replace(/[:：]$/, '').trim() + '\n');
+  const out = []; let mode = null;
+  for (let line of t.split('\n')) {
+    line = line.replace(/[ \t]+/g, ' ').trim();
+    if (!line) continue;
+    if (/^(ingredients?( list)?|what you.?ll need|you.?ll need|you will need)$/i.test(line)) { mode = 'ing'; out.push('Ingredients'); continue }
+    if (/^(instructions?|directions?|method|steps?|how to make( it)?|preparation)$/i.test(line)) { mode = 'steps'; out.push('Directions'); continue }
+    if (mode === 'ing' && !/^\d+[.)]\s/.test(line)) {
+      // "2 chicken breasts, 3 tbsp butter, 1 tsp salt" -> one per line (only split where a new amount starts)
+      out.push(...line.split(/\s*(?:[,;|•]|\s-\s)\s*(?=(?:\d|[¼½¾⅓⅔⅛]|a |an |one |pinch|salt|pepper|fresh|chopped))/i).map(x => x.replace(/^-\s*/, '').trim()).filter(Boolean));
+      continue;
+    }
+    if (mode === 'steps') { out.push(...line.split(/\s+(?=\d{1,2}[.)]\s)/).map(x => x.trim()).filter(Boolean)); continue }
+    out.push(line.replace(/^-\s*/, ''));
+  }
+  return out.join('\n');
+}
+
 // Plain text pasted from anywhere: title, ingredient lines and steps.
 function parseRecipeText(text) {
   const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   let mode = null, name = '', servings = null, prepMinutes = null, cookMinutes = null;
-  const ingredients = [], steps = [];
+  const ingredients = [], steps = [], hasHeader = lines.some(l => /^(ingredients?)\s*:?$/i.test(l));
   for (const line of lines) {
     if (/^(ingredients?)\s*:?$/i.test(line)) { mode = 'ing'; continue }
     if (/^(directions?|instructions?|method|steps?|preparation)\s*:?$/i.test(line)) { mode = 'steps'; continue }
@@ -76,7 +157,9 @@ function parseRecipeText(text) {
     const tm = line.match(/^(prep|preparation|cook|cooking|bake|baking)(?:\s*time)?\s*:?\s*(.+)$/i);
     if (tm && parseDuration(tm[2]) != null && !mode) { if (/^prep/i.test(tm[1])) prepMinutes = parseDuration(tm[2]); else cookMinutes = parseDuration(tm[2]); continue }
     const looksLikeIngredient = /^[-•*▢☐□]?\s*(\d|[¼½¾⅓⅔⅛]|a |an |one )/i.test(line) && line.length < 90;
-    if (!name && !mode && !looksLikeIngredient && line.length < 80) { name = line; continue }
+    if (mode === 'ing' && /:$/.test(line) && line.length < 50) continue;   // "For the sauce:"
+    if (hasHeader && !mode) { if (!name && line.length < 100) name = line.replace(/^-\s*/, ''); continue }   // title, then intro text before "Ingredients"
+    if (!name && !mode && !looksLikeIngredient && line.length < 80) { name = line.replace(/^-\s*/, ''); continue }
     if (mode === 'steps' || (mode !== 'ing' && !looksLikeIngredient)) steps.push(line.replace(/^\s*(step\s*)?\d+[.):]\s*/i, ''));
     else ingredients.push(line);
   }
@@ -86,18 +169,27 @@ function parseRecipeText(text) {
 // =====================================================================
 // Import screen
 // =====================================================================
-function openRecipeImport() {
+// opts: {url, text, note, photoUrl, sourceUrl, sourceType} to pre-fill (shared from another app, photo text, a caption to tidy)
+function openRecipeImport(opts = {}) {
   closeModal();
+  window.importContext = opts.sourceUrl || opts.photoUrl || opts.sourceType ? { photoUrl: opts.photoUrl || '', sourceUrl: opts.sourceUrl || '', sourceType: opts.sourceType || '' } : null;
   const signedIn = typeof syncAuth !== 'undefined' && !!syncAuth && syncConfigured;
   openModal(`<div class="row between"><h2>Import a recipe</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
     <div class="card"><h3>From a website</h3>
       ${signedIn ? '' : '<p class="small warning">Sign in under ⚙️ Family sync to import from links. Pasting text works without signing in.</p>'}
-      <label for="importUrl">Recipe link</label><input id="importUrl" type="url" inputmode="url" placeholder="https://www.allrecipes.com/recipe/…" ${signedIn ? '' : 'disabled'}>
+      <label for="importUrl">Recipe or post link</label><input id="importUrl" type="url" inputmode="url" placeholder="https://www.allrecipes.com/recipe/…" value="${esc(opts.url || '')}" ${signedIn ? '' : 'disabled'}>
       <div class="actions"><button class="btn" onclick="importFromLink()" ${signedIn ? '' : 'disabled'}>Import from link</button></div>
-      <p class="tiny muted">Tip: in your browser, tap Share → Copy link on the recipe page, then paste it here.</p></div>
+      <p class="tiny muted">Works with recipe websites and TikTok, Instagram, YouTube, Pinterest and Facebook posts. Quickest: in any app tap <b>Share → Gingham</b>.</p></div>
+    <div class="card"><h3>From a photo</h3>
+      <p class="small muted">A cookbook page or recipe card. Printed recipes read best; handwriting is hit-and-miss, so check the text before reading it.</p>
+      <input id="ocrCamera" type="file" accept="image/*" capture="environment" hidden onchange="readRecipePhotos(this.files)">
+      <input id="ocrLibrary" type="file" accept="image/*" multiple hidden onchange="readRecipePhotos(this.files)">
+      <div class="actions"><button class="btn secondary" onclick="document.getElementById('ocrCamera').click()">📷 Take photo</button><button class="btn secondary" onclick="document.getElementById('ocrLibrary').click()">🖼️ Choose photos</button></div>
+      <div id="ocrStatus" class="small muted" role="status"></div></div>
     <div class="card"><h3>Paste recipe text</h3>
       <label for="importText">Copy the recipe from anywhere (a site, an email, a note) and paste it here</label>
-      <textarea id="importText" rows="8" placeholder="Grandma's Chili&#10;Serves 6&#10;Ingredients&#10;1 1/2 lb ground beef&#10;2 cans kidney beans&#10;Directions&#10;Brown the beef…"></textarea>
+      ${opts.note ? `<p class="small warning">${esc(opts.note)}</p>` : ''}
+      <textarea id="importText" rows="${opts.text ? 12 : 8}" placeholder="Grandma's Chili&#10;Serves 6&#10;Ingredients&#10;1 1/2 lb ground beef&#10;2 cans kidney beans&#10;Directions&#10;Brown the beef…">${esc(opts.text || '')}</textarea>
       <div class="actions"><button class="btn secondary" onclick="importFromText()">Read recipe text</button></div></div>
     <div id="importMsg" class="small" role="status"></div>`);
 }
@@ -118,6 +210,7 @@ async function importFromLink() {
     const j = await readJSON(r);
     if (r.status === 404 && !j?.error) throw new Error('The import helper wasn\'t found in Supabase. Check that its name matches importFunction in sync-config.js (see IMPORT-SETUP.md), or use Paste recipe text.');
     if (!r.ok) throw new Error(j?.error || j?.message || 'Import failed (' + r.status + ')');
+    if (j.kind === 'text') return importCaption(j, url);
     openImportedRecipe({ name: j.name, servings: j.servings, ingredients: j.ingredients, steps: j.steps, photoUrl: j.image, sourceUrl: j.sourceUrl || url, prepMinutes: parseDuration(j.prepTime), cookMinutes: parseDuration(j.cookTime) });
   } catch (e) {
     btns.forEach(b => b.disabled = false);
@@ -128,19 +221,32 @@ async function importFromLink() {
       : e.message, true);
   }
 }
+// A post's caption (TikTok, Instagram, YouTube…): read it like pasted text; if no ingredients turn up, let them tidy it.
+function importCaption(j, url) {
+  const text = normalizeRecipeText(j.text), p = parseRecipeText(text);
+  const site = (() => { try { return new URL(j.sourceUrl || url).hostname.replace(/^www\./, '') } catch (_) { return 'the post' } })();
+  if (p.ingredients.length >= 2) {
+    return openImportedRecipe({ name: p.name || j.name, servings: p.servings, ingredients: p.ingredients, steps: p.steps, prepMinutes: p.prepMinutes, cookMinutes: p.cookMinutes, photoUrl: j.image, sourceUrl: j.sourceUrl || url, sourceType: 'Imported from ' + site });
+  }
+  openRecipeImport({ text, note: `Here's the text from ${site}, but the ingredients weren't clear. Put each ingredient on its own line (starting with an amount), then tap Read recipe text.`, photoUrl: j.image, sourceUrl: j.sourceUrl || url });
+}
 function importFromText() {
-  const p = parseRecipeText(document.getElementById('importText')?.value);
+  const raw = document.getElementById('importText')?.value || '';
+  let p = parseRecipeText(raw);
+  if (p.ingredients.length < 2) { const n = parseRecipeText(normalizeRecipeText(raw)); if (n.ingredients.length > p.ingredients.length) p = n }
   if (!p.ingredients.length) return importMessage('No ingredient lines found. Put each ingredient on its own line, starting with an amount (like "2 cups milk").', true);
-  openImportedRecipe({ name: p.name, servings: p.servings, ingredients: p.ingredients, steps: p.steps, prepMinutes: p.prepMinutes, cookMinutes: p.cookMinutes });
+  const from = window.importContext || {};
+  openImportedRecipe({ name: p.name, servings: p.servings, ingredients: p.ingredients, steps: p.steps, prepMinutes: p.prepMinutes, cookMinutes: p.cookMinutes, photoUrl: from.photoUrl, sourceUrl: from.sourceUrl, sourceType: from.sourceType });
 }
 function openImportedRecipe(src) {
   let name = (src.name || 'Imported recipe').trim(), n = 2;
   const base = name; while (recipeIdByName(name)) name = base + ' ' + n++;
   const ingredients = src.ingredients.map(line => {
-    const p = parseIngredientLine(line), known = matchKnownIngredient(p.name);
-    return { name: known || p.name, qty: p.qty ?? '', unit: p.unit, container: p.sizeNote, existingSelected: !!known, importedText: p.text };
+    const p = parseIngredientLine(line), full = p.note ? p.note + ' ' + p.name : p.name, known = matchKnownIngredient(p.name, full);
+    return { name: known || p.name, qty: p.qty ?? '', unit: p.unit, container: p.sizeNote, note: p.note || '', existingSelected: !!known, importedText: p.text };
   });
-  openRecipeEditor(null, { name, baseServings: src.servings || 4, prepMinutes: src.prepMinutes ?? null, cookMinutes: src.cookMinutes ?? null, directions: src.steps || [], ingredients, photoUrl: src.photoUrl || '', sourceUrl: src.sourceUrl || '', sourceType: src.sourceUrl ? 'Imported from website' : 'Imported from text' });
+  window.importContext = null;
+  openRecipeEditor(null, { name, baseServings: src.servings || 4, prepMinutes: src.prepMinutes ?? null, cookMinutes: src.cookMinutes ?? null, directions: src.steps || [], ingredients, photoUrl: src.photoUrl || '', sourceUrl: src.sourceUrl || '', sourceType: src.sourceType || (src.sourceUrl ? 'Imported from website' : 'Imported from text') });
 }
 
 // =====================================================================
