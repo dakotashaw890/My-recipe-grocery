@@ -48,23 +48,27 @@ function renderCookMode() {
   const el = document.getElementById('cookMode'), c = cookView;
   if (!el || !c) return;
   const r = state.data.recipes[c.name], total = c.steps.length;
-  const ingredients = r.ingredients.map(i => `<li><span>${esc(i.name)}</span><b>${displayQty(i, c.scale)} ${esc(i.unit || '')}</b></li>`).join('');
+  const sys = typeof unitSystem === 'function' ? unitSystem() : 'us';
+  const ingredients = r.ingredients.map(i => `<li><span>${esc(i.name)}${i.note ? ` <small>${esc(i.note)}</small>` : ''}</span><b>${typeof cookAmountHTML === 'function' ? cookAmountHTML(i, c.scale) : displayQty(i, c.scale) + ' ' + esc(i.unit || '')}</b></li>`).join('');
+  const stepText = total ? (typeof convertTemps === 'function' ? convertTemps(c.steps[c.step], sys) : c.steps[c.step]) : '';
   el.setAttribute('aria-label', 'Cooking ' + recipeName(c.name));
-  el.innerHTML = `<div class="cook-top"><div><div class="cook-title">${esc(recipeName(c.name))}</div><div class="cook-sub">${fmt(c.servings)} servings${wakeLock ? ' · screen stays on' : ''}</div></div><button class="cook-close" aria-label="Close cook mode" onclick="closeCookMode()">✕</button></div>
+  el.innerHTML = `<div class="cook-top"><div><div class="cook-title">${esc(recipeName(c.name))}</div><div class="cook-sub">${fmt(c.servings)} servings${wakeLock ? ' · screen stays on' : ''}</div></div><div class="cook-top-actions">${typeof toggleUnitSystem === 'function' ? `<button class="cook-units" onclick="toggleUnitSystem()" aria-label="Show amounts in ${sys === 'us' ? 'metric' : 'US'} units">${sys === 'us' ? 'US' : 'Metric'} ⇄</button>` : ''}<button class="cook-close" aria-label="Close cook mode" onclick="closeCookMode()">✕</button></div></div>
+    <div id="cookTimers" class="cook-timers">${typeof timersHTML === 'function' ? timersHTML() : ''}</div>
     <div class="cook-tabs"><button class="${c.showIngredients ? '' : 'on'}" onclick="cookView.showIngredients=false;renderCookMode()" ${total ? '' : 'disabled'}>Steps</button><button class="${c.showIngredients ? 'on' : ''}" onclick="cookView.showIngredients=true;renderCookMode()">Ingredients</button></div>
     ${c.showIngredients ? `<ul class="cook-ingredients">${ingredients}</ul>${total ? '' : '<p class="cook-sub">This recipe has no written steps yet. Add them with Edit recipe.</p>'}`
-      : `<div class="cook-count">Step ${c.step + 1} of ${total}</div><div class="cook-step" aria-live="polite">${esc(c.steps[c.step])}</div>`}
-    ${c.showIngredients ? '' : `<div class="cook-nav"><button onclick="cookMove(-1)" ${c.step === 0 ? 'disabled' : ''}>‹ Back</button><button class="next" onclick="${c.step === total - 1 ? 'closeCookMode()' : 'cookMove(1)'}">${c.step === total - 1 ? 'Done ✓' : 'Next ›'}</button></div>`}`;
+      : `<div class="cook-count">Step ${c.step + 1} of ${total}</div><div class="cook-step" aria-live="polite">${esc(stepText)}</div>${typeof stepWithTimers === 'function' ? stepWithTimers(c.steps[c.step], c.step + 1) : ''}`}
+    ${c.showIngredients ? '' : `<div class="cook-nav"><button onclick="cookMove(-1)" ${c.step === 0 ? 'disabled' : ''}>‹ Back</button><button class="next" onclick="${c.step === total - 1 ? 'closeCookMode(true)' : 'cookMove(1)'}">${c.step === total - 1 ? 'Done ✓' : 'Next ›'}</button></div>`}`;
 }
 function cookMove(d) { cookView.step = Math.min(cookView.steps.length - 1, Math.max(0, cookView.step + d)); renderCookMode() }
-function closeCookMode() {
+function closeCookMode(finished) {
   const el = document.getElementById('cookMode');
   if (el) el.hidden = true;
   document.body.classList.remove('cooking');
   const name = cookView?.name; cookView = null;
   try { wakeLock?.release() } catch (_) {}
   wakeLock = null;
-  if (name && state.data.recipes[name]) openRecipe(name);
+  if (typeof renderTimers === 'function') renderTimers();
+  if (name && state.data.recipes[name]) { if (finished && typeof openRateRecipe === 'function') openRateRecipe(name, true); else openRecipe(name) }
 }
 async function keepScreenOn() {
   try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null }); renderCookMode() } }
@@ -81,6 +85,7 @@ function renderSettingsExtras() {
   if (typeof renderFamilyCard === 'function') renderFamilyCard();
   if (typeof renderBackupList === 'function') renderBackupList();
   if (typeof renderPictureCard === 'function') renderPictureCard();
+  if (typeof renderPeopleCard === 'function') renderPeopleCard();
 }
 
 // ---------- Swipe between the main screens ----------

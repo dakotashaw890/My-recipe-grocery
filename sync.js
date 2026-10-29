@@ -91,6 +91,9 @@ const SYNC_MAPS = [
   ['conv/', s => s.ingredientConversions, s => (s.ingredientConversions ??= {})],
   ['barcode/', s => s.barcodeLinks, s => (s.barcodeLinks ??= {})],
   ['group/', s => s.recipeGroups, s => (s.recipeGroups ??= {})],
+  ['person/', s => s.people, s => (s.people ??= {})],
+  ['rating/', s => s.ratings, s => (s.ratings ??= {})],
+  ['store/', s => s.stores, s => (s.stores ??= {})],
 ];
 function hashText(str) {   // cyrb53
   let h1 = 0xdeadbeef, h2 = 0x41c6ce57;

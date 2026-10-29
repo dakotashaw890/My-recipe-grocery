@@ -384,6 +384,8 @@ function saveFinishedTrip() {
   if (!(total > 0)) return alert('Enter at least one price or a receipt total.');
   state.spending ??= { trips: [], budget: 0 }; state.spending.trips ??= [];
   const items = [];
+  // learn the store's aisle order from the order things were checked off
+  if (typeof learnStoreOrder === 'function') { learnStoreOrder(store, window.tripRows.map(t => t.key)); try { if (!localStorage.getItem('gingham-shop-sort') && state.stores?.[storeKey(store)]) localStorage.setItem('gingham-shop-sort', storeKey(store)) } catch (_) {} }
   for (const t of window.tripRows) {
     const price = Number(t.price);
     if (price > 0) {

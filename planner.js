@@ -8,7 +8,8 @@ function planPrefs() {
   const p = state.planPrefs || {};
   return { weekdayMax: p.weekdayMax ?? null, weekendMax: p.weekendMax ?? null, weeklyBudget: p.weeklyBudget ?? null,
     favorGroups: (p.favorGroups || []).filter(id => state.recipeGroups?.[id]), avoidGroups: (p.avoidGroups || []).filter(id => state.recipeGroups?.[id]),
-    rules: (p.rules || []).filter(r => r && state.recipeGroups?.[r.group] && r.days?.length && MEALS.includes(r.meal)) };
+    rules: (p.rules || []).filter(r => r && state.recipeGroups?.[r.group] && r.days?.length && MEALS.includes(r.meal)),
+    skipWontEat: p.skipWontEat !== false };
 }
 function prefsSummary() {
   const p = planPrefs(), bits = [];
@@ -49,6 +50,9 @@ function renderPlanPrefs() {
     <div class="card"><h3>💰 Money</h3><label for="ppBudget">Weekly grocery budget for planned meals ($)</label>
       <input id="ppBudget" type="number" min="0" step="5" inputmode="decimal" placeholder="No limit" value="${esc(p.weeklyBudget ?? '')}">
       <p class="tiny muted">Uses the price estimates on your ingredients. Cheaper recipes are chosen when needed to stay under it.</p></div>
+    <div class="card"><h3>👪 Family</h3><p class="small muted">Recipes your family rated 👍 are picked more, 👎 less.</p>
+      <label class="check-line"><input id="ppWontEat" type="checkbox" ${p.skipWontEat ? 'checked' : ''}> Skip recipes with something a person won't eat</label>
+      ${typeof peopleList === 'function' && !peopleList().length ? `<p class="tiny muted">Add people and what they won't eat under ⚙️ Settings → Who eats at your table.</p>` : ''}</div>
     <div class="card"><h3>📁 Groups</h3>
       ${groups.length ? `<label>Pick more often</label><div class="chip-row">${groups.map(g => chip('favorGroups', g.id, groupName(g.id))).join('')}</div>
       <label>Never pick automatically</label><div class="chip-row">${groups.map(g => chip('avoidGroups', g.id, groupName(g.id))).join('')}</div>
@@ -72,6 +76,7 @@ function readPrefInputs() {
   prefsDraft.weekdayMax = v('ppWeekday') ? Number(v('ppWeekday')) : null;
   prefsDraft.weekendMax = v('ppWeekend') ? Number(v('ppWeekend')) : null;
   prefsDraft.weeklyBudget = v('ppBudget') !== '' && Number(v('ppBudget')) > 0 ? Number(v('ppBudget')) : null;
+  const we = document.getElementById('ppWontEat'); if (we) prefsDraft.skipWontEat = we.checked;
 }
 function togglePrefGroup(list, id) {
   readPrefInputs();
@@ -122,6 +127,7 @@ function smartFillPlan() {
     if (!pool.length) return;
     const step = (list, test, why) => { const next = list.filter(test); if (next.length) return next; if (why) notes.push(`${day} ${meal.toLowerCase()}: ${why}`); return list };
     if (rule) pool = step(pool, id => inGroup(id, rule.group), `nothing in ${groupName(rule.group)} fits, picked from all recipes`);
+    if (p.skipWontEat && typeof wontEatConflicts === 'function') pool = step(pool, id => !wontEatConflicts(id).length, 'every option has something someone won\'t eat');
     if (limit) pool = step(pool, id => { const t = recipeTimes(state.data.recipes[id]).total; return !t || t <= limit }, `nothing fits ${formatMinutes(limit)}, picked the closest`);
     pool = step(pool, id => !used.has(id), '');   // repeats only when there's no other choice
     const left = slots.length - n, target = p.weeklyBudget ? Math.max(0, p.weeklyBudget - spent) / left : null;
@@ -129,6 +135,7 @@ function smartFillPlan() {
       const r = state.data.recipes[id], t = recipeTimes(r).total, cost = recipeCostFor(id, r.baseServings);
       let s = Math.random() * 1.5;                                   // variety from week to week
       if (favorites.has(id)) s += 3;
+      if (typeof recipeRatings === 'function') { const rt = recipeRatings(id), n = Math.max(1, raters().length); s += rt.likes.length / n * 4 - rt.dislikes.length / n * 6 }
       if (recipeGroupIds(r).some(g => favor.has(g))) s += 2.5;
       if (limit && t && t > limit) s -= (t - limit) / 10;            // only when nothing fit: closest wins
       if (limit && !t) s -= 0.5;
