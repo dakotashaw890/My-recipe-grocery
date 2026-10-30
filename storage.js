@@ -53,6 +53,7 @@ async function storePhoto(dataUrl, id = newPhotoId()) {
 async function removePhoto(id) {
   if (!id) return;
   delete photoCache[id];
+  if (typeof pendingPhotos !== 'undefined' && pendingPhotos.delete(id)) savePending();   // never downloaded: forget it too
   try { await idbRun('photos', 'readwrite', os => os.delete(id)) } catch (e) { console.warn('Photo delete failed', e) }
 }
 async function replaceAllPhotos(photos) {

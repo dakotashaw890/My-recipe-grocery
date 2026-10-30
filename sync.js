@@ -103,7 +103,96 @@ function hashText(str) {   // cyrb53
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 // Photos never change once saved (a new picture gets a new id), so the id is their hash.
-function entryHash(key, value) { return key.startsWith('photo/') ? 'p' : hashText(JSON.stringify(value)) }
+// 'p2' = the photo itself is in Supabase Storage and the entry is just a marker; 'p' = the old way, photo inside the entry.
+function entryHash(key, value) { return key.startsWith('photo/') ? (isPhotoMark(value) ? 'p2' : 'p') : hashText(JSON.stringify(value)) }
+
+// ---------- Photos live in Supabase Storage (v23) ----------
+// The shared data only says "photo X exists"; the picture is a file at photos/<family id>/<photo id>.
+// Each phone keeps its own copy (IndexedDB), downloading new ones in the background.
+// Until the storage setup script has been run, photos keep travelling inside the shared data as before.
+const PHOTO_BUCKET = 'photos', PHOTO_MARK = Object.freeze({ stored: 1 });
+function isPhotoMark(v) { return !!v && typeof v === 'object' && v.stored === 1 }
+let photoStorage = 'unknown';   // 'ok' | 'missing' (setup not run) — checked again each time the app opens
+const PENDING_STORE = KEY + '-photoPending';
+const pendingPhotos = new Set(readStore(PENDING_STORE) || []);
+function savePending() { writeStore(PENDING_STORE, [...pendingPhotos]) }
+function photoPath(id) { return `${syncInfo.familyId}/${id}` }
+async function storageCall(method, path, { body, headers = {}, raw = false } = {}, retried) {
+  const r = await fetch(SYNC_URL + '/storage/v1/' + path, {
+    method, body, headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), ...headers }
+  });
+  if (r.status === 401 && !retried) { await refreshSession(); return storageCall(method, path, { body, headers, raw }, true) }
+  if (raw && r.ok) return r;
+  const j = await readJSON(r);
+  if (!r.ok) {
+    const msg = errorText(j, 'Photo storage error ' + r.status);
+    const e = new SyncError(msg, r.status); e.missingBucket = /bucket not found/i.test(msg) || /bucket not found/i.test(j?.error || ''); e.notFound = String(j?.statusCode) === '404' || r.status === 404;
+    throw e;
+  }
+  return j;
+}
+async function storedPhotoIds() {
+  const ids = new Set();
+  for (let offset = 0; ; offset += 1000) {
+    const list = await storageCall('POST', `object/list/${PHOTO_BUCKET}`, { body: JSON.stringify({ prefix: syncInfo.familyId + '/', limit: 1000, offset, sortBy: { column: 'name', order: 'asc' } }), headers: { 'Content-Type': 'application/json' } });
+    for (const o of list || []) if (o?.name) ids.add(o.name);
+    if (!list || list.length < 1000) return ids;
+  }
+}
+function dataUrlToBlob(url) {
+  const [head, b64] = String(url).split(','), type = (head.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+  const bin = atob(b64 || ''), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+function blobToDataUrl(blob) { return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob) }) }
+// Upload photos this phone has that the family's storage doesn't. Returns false when storage isn't set up yet.
+async function uploadPhotos(ids) {
+  if (!ids.length) return true;
+  let have;
+  try { have = await storedPhotoIds() }
+  catch (e) { if (e.missingBucket) { photoStorage = 'missing'; return false } throw e }
+  photoStorage = 'ok';
+  const todo = ids.filter(id => !have.has(id) && photoCache[id]);
+  let next = 0;
+  const worker = async () => {
+    while (next < todo.length) {
+      const id = todo[next++], blob = dataUrlToBlob(photoCache[id]);
+      await storageCall('POST', `object/${PHOTO_BUCKET}/${photoPath(id)}`, { body: blob, headers: { 'Content-Type': blob.type, 'x-upsert': 'true', 'cache-control': '31536000' } });
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  return true;
+}
+async function deleteStoredPhotos(ids) {
+  if (!ids.length || photoStorage === 'missing') return;
+  try { await storageCall('DELETE', `object/${PHOTO_BUCKET}`, { body: JSON.stringify({ prefixes: ids.map(photoPath) }), headers: { 'Content-Type': 'application/json' } }) } catch (e) { console.warn('Photo cleanup skipped', e.message) }
+}
+// Fetch photos the family has that this phone doesn't yet, a few at a time, without holding up sync.
+let downloading = null;
+function downloadPendingPhotos() {
+  if (downloading || !pendingPhotos.size || !syncActive()) return downloading;
+  downloading = (async () => {
+    let got = 0;
+    const ids = [...pendingPhotos]; let next = 0;
+    const worker = async () => {
+      while (next < ids.length) {
+        const id = ids[next++];
+        if (photoCache[id]) { pendingPhotos.delete(id); continue }
+        try {
+          const r = await storageCall('GET', `object/authenticated/${PHOTO_BUCKET}/${photoPath(id)}`, { raw: true });
+          await storePhoto(await blobToDataUrl(await r.blob()), id);
+          pendingPhotos.delete(id); got++;
+        } catch (e) { if (!e.notFound && !e.missingBucket) console.warn('Photo download will retry', e.message) }   // not uploaded yet: try again next sync
+      }
+    };
+    try { await Promise.all([worker(), worker(), worker()]) } finally {
+      savePending(); downloading = null;
+      if (got) showRemoteChanges();
+    }
+  })();
+  return downloading;
+}
 
 function localEntries(s, photos) {
   const out = new Map(), put = (k, v) => { if (v !== undefined) out.set(k, v) };
@@ -113,7 +202,9 @@ function localEntries(s, photos) {
   for (const t of s.spending?.trips || []) if (t?.id != null) put('trip/' + t.id, t);
   if (s.spending?.budget != null) put('setting/budget', s.spending.budget);
   if (s.planPrefs && Object.keys(s.planPrefs).length) put('setting/planPrefs', s.planPrefs);
-  for (const [id, url] of Object.entries(photos || {})) put('photo/' + id, url);
+  for (const [id, url] of Object.entries(photos || {})) put('photo/' + id, photoStorage === 'missing' ? url : PHOTO_MARK);
+  // photos the family has that are still downloading count as present, so they're never "removed"
+  if (photos === photoCache) for (const id of pendingPhotos) if (!photos[id]) put('photo/' + id, PHOTO_MARK);
   return out;
 }
 function splitKey(key) { const i = key.indexOf('/'); return [key.slice(0, i + 1), key.slice(i + 1)] }
@@ -125,7 +216,7 @@ function setEntry(s, photos, key, value) {
   if (prefix === 'trip/') { s.spending ??= { trips: [], budget: 0 }; s.spending.trips ??= []; const i = s.spending.trips.findIndex(t => String(t.id) === k); i >= 0 ? s.spending.trips[i] = value : s.spending.trips.push(value); return true }
   if (key === 'setting/budget') { s.spending ??= { trips: [], budget: 0 }; s.spending.budget = value; return true }
   if (key === 'setting/planPrefs') { s.planPrefs = value || {}; return true }
-  if (prefix === 'photo/') { photos[k] = value; return true }
+  if (prefix === 'photo/') { if (isPhotoMark(value)) { if (!photos[k]) { pendingPhotos.add(k); savePending() } } else photos[k] = value; return true }
   return false;   // a kind of data from a newer version of the app: leave it alone
 }
 function removeEntry(s, photos, key) {
@@ -136,7 +227,7 @@ function removeEntry(s, photos, key) {
   if (prefix === 'trip/') { if (s.spending?.trips) s.spending.trips = s.spending.trips.filter(t => String(t.id) !== k); return }
   if (key === 'setting/budget') { if (s.spending) s.spending.budget = 0; return }
   if (key === 'setting/planPrefs') { s.planPrefs = {}; return }
-  if (prefix === 'photo/') { delete photos[k]; return }
+  if (prefix === 'photo/') { delete photos[k]; if (pendingPhotos.delete(k)) savePending(); return }
 }
 function clearSharedData(s) {
   s.data ??= {}; s.data.recipes = {}; s.data.ingredients = {};
@@ -158,6 +249,13 @@ async function pushChanges() {
     }
   }
   for (const key of removed) rows.push({ key, value: null, deleted: true });
+  // photos: put the files in storage first, then send the small markers
+  const photoRows = rows.filter(r => !r.deleted && r.key.startsWith('photo/') && isPhotoMark(r.value));
+  if (photoRows.length && !(await uploadPhotos(photoRows.map(r => r.key.slice(6))))) {
+    // storage not set up yet: send photos the old way (once; the family already has any sent before)
+    for (const r of photoRows) { const url = photoCache[r.key.slice(6)]; if (url && hashes[r.key] !== 'p') { r.value = url; r.h = 'p' } else r.skip = true }
+  }
+  const photoGone = rows.filter(r => r.deleted && r.key.startsWith('photo/')).map(r => r.key.slice(6));
   let batch = [], size = 0;
   const send = async () => {
     if (!batch.length) return;
@@ -166,11 +264,13 @@ async function pushChanges() {
     persistSync(); batch = []; size = 0;
   };
   for (const r of rows) {
+    if (r.skip) continue;
     const bytes = r.key.length + (typeof r.value === 'string' ? r.value.length : JSON.stringify(r.value ?? null).length);
     if (batch.length && (batch.length >= 200 || size + bytes > 400000)) await send();
     batch.push(r); size += bytes;
   }
   await send();
+  await deleteStoredPhotos(photoGone);
   try { localStorage.removeItem(KEY + '-recipeIdUpgrade') } catch (_) {}
   return rows.length;
 }
@@ -207,7 +307,7 @@ async function pullChanges(overlap = PULL_OVERLAP_MS) {
     }
     const h = entryHash(key, row.value);
     if (has && localHash === h) { hashes[key] = h; continue }
-    if (key.startsWith('photo/')) newPhotos[key.slice(6)] = row.value;
+    if (key.startsWith('photo/') && !isPhotoMark(row.value)) newPhotos[key.slice(6)] = row.value;
     else if (!setEntry(state, photoCache, key, row.value)) continue;   // not understood here: don't record it, so it's never sent back as deleted
     hashes[key] = h; changed++;
   }
@@ -215,6 +315,7 @@ async function pullChanges(overlap = PULL_OVERLAP_MS) {
   syncInfo.cursor = newestTime(rows, syncInfo.cursor);
   persistSync();
   if (changed) { try { ensureRecipeIds(state) } catch (_) {} localStorage.setItem(KEY, JSON.stringify(state)); showRemoteChanges() }
+  downloadPendingPhotos();
   return changed;
 }
 
@@ -326,6 +427,7 @@ function familyJoin() {
     if (typeof createSnapshot === 'function') await createSnapshot('Before joining a family');
     const rows = await fetchRows(fam.id, null);
     const next = clone(state), photos = {}, hashes = {};
+    pendingPhotos.clear();
     clearSharedData(next);
     for (const row of rows) if (!row.deleted) { setEntry(next, photos, row.key, row.value); hashes[row.key] = entryHash(row.key, row.value) }
     if (typeof replaceAllPhotos === 'function') { try { await replaceAllPhotos(photos) } catch (_) { window.photoCache = photos } } else window.photoCache = photos;
@@ -333,15 +435,18 @@ function familyJoin() {
     syncInfo = { familyId: fam.id, familyName: fam.name, joinCode: fam.join_code, displayName, cursor: newestTime(rows, null), hashes, lastSyncAt: Date.now() };
     persistSync();
     localStorage.setItem(KEY, JSON.stringify(state));
+    savePending();
     refreshSavedViews();
     setSyncStatus('ok');
     toast('Joined ' + fam.name);
+    downloadPendingPhotos();
   });
 }
 async function familyStop() {
   if (!confirm('Stop syncing on this phone?\n\nThis phone keeps its current data but no longer sends or receives changes. The family\'s shared data is not affected.')) return;
   const token = syncAuth?.access_token;
   syncAuth = null; syncInfo = null; writeStore(AUTH_STORE, null); writeStore(SYNC_STORE, null);
+  pendingPhotos.clear(); savePending();
   if (token) authCall('logout', {}, token).catch(() => {});
   setSyncStatus('idle');
   renderFamilyCard();
@@ -390,6 +495,8 @@ async function renderFamilyCard() {
       ${syncStatus.message ? `<p class="small ${syncStatus.state === 'error' || syncStatus.state === 'paused' ? 'warning' : 'muted'}">${esc(syncStatus.message)}</p>` : ''}
       <p class="small muted">Last synced: ${esc(last)}</p>
       <div class="join-code"><span class="small muted">Join code for another phone</span><b>${esc(syncInfo.joinCode || '')}</b></div>
+      ${photoStorage === 'missing' ? `<p class="small warning">Photos are still shared the old way, inside your family's data. To move them to photo storage, run <b>photo-storage-setup.sql</b> in Supabase (see PHOTO-SETUP.md).</p>` : ''}
+      ${pendingPhotos.size ? `<p class="small muted">Downloading ${pendingPhotos.size} photo${pendingPhotos.size === 1 ? '' : 's'} from your family…</p>` : ''}
       <div id="familyMembers" class="small muted"></div>
       <div class="actions"><button class="btn secondary" onclick="runSync()">Sync now</button><button class="btn secondary" onclick="shareJoinCode()">Share join code</button>
       ${syncInfo.paused ? '<button class="btn" onclick="familyResume()">Resume sync</button><button class="btn secondary" onclick="familyUseShared()">Use family\'s copy</button>' : ''}
