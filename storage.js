@@ -106,7 +106,7 @@ async function restoreSnapshot(id) {
   if (!snap) return alert('That backup is no longer available.');
   const when = new Date(snap.at).toLocaleString();
   const shared = typeof syncActive === 'function' && syncActive();
-  if (!confirm(`Restore the backup from ${when}?` + (shared ? '\n\nThis also changes your family\'s shared data on every phone.' : '') + '\n\nA backup of the current data is saved first.')) return;
+  if (!await ask(`Restore the backup from ${when}?` + (shared ? '\n\nThis also changes your family\'s shared data on every phone.' : '') + '\n\nA backup of the current data is saved first.')) return;
   await createSnapshot('Before restoring a backup');
   for (const [pid, url] of Object.entries(snap.photos || {})) if (!photoCache[pid]) await storePhoto(url, pid);
   state = clone(snap.state);
@@ -163,3 +163,7 @@ window.photosReady = (async () => {
   try { refreshSavedViews() } catch (_) {}
   maybeAutoSnapshot();
 })();
+
+// Ask the browser to keep Gingham's data even when the phone runs low on space (Chrome grants this
+// automatically to apps added to the home screen; it never asks the person).
+try { navigator.storage?.persist?.().then(ok => { window.storagePersisted = ok }).catch(() => {}) } catch (_) {}

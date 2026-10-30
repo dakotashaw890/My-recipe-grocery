@@ -240,10 +240,13 @@ async function pushChanges() {
   const local = localEntries(state, photoCache), hashes = syncInfo.hashes ||= {}, rows = [];
   for (const [key, value] of local) { const h = entryHash(key, value); if (hashes[key] !== h) rows.push({ key, value, deleted: false, h }) }
   const removed = Object.keys(hashes).filter(k => !local.has(k));
-  const idUpgrade = Number(localStorage.getItem(KEY + '-recipeIdUpgrade') || 0) > 0 && removed.every(k => /^(recipe|fav|selected)\//.test(k));
+  // one-time upgrades rename many entries at once (recipe ids in v19, dated plans in v24): not an accident
+  let planMoved = new Set(); try { const j = JSON.parse(localStorage.getItem(KEY + '-planUpgrade') || '[]'); if (Array.isArray(j)) planMoved = new Set(j.map(k => 'plan/' + k)) } catch (_) {}
+  const recipeFlag = Number(localStorage.getItem(KEY + '-recipeIdUpgrade') || 0) > 0;
+  const idUpgrade = (recipeFlag || planMoved.size > 0) && removed.every(k => (recipeFlag && /^(recipe|fav|selected)\//.test(k)) || planMoved.has(k));
   if (!idUpgrade && removed.length >= 25 && removed.length > Object.keys(hashes).length * 0.2) {
     // Guard against one phone wiping the family's data by accident.
-    if (!confirm(`This phone is about to remove ${removed.length} items from your family's shared data (recipes, plan, pantry...).\n\nOK = remove them for everyone\nCancel = pause sync so you can check first`)) {
+    if (!await ask(`Remove ${removed.length} items for everyone?\n\nThis phone is about to remove ${removed.length} items from your family's shared data (recipes, plan, pantry…). If that's not what you meant, pause sync and check first.`, { ok: 'Remove for everyone', cancel: 'Pause sync', danger: true })) {
       syncInfo.paused = true; persistSync();
       throw new SyncError('Sync paused: this phone was about to remove ' + removed.length + ' shared items.', 0);
     }
@@ -271,7 +274,7 @@ async function pushChanges() {
   }
   await send();
   await deleteStoredPhotos(photoGone);
-  try { localStorage.removeItem(KEY + '-recipeIdUpgrade') } catch (_) {}
+  try { localStorage.removeItem(KEY + '-recipeIdUpgrade'); localStorage.removeItem(KEY + '-planUpgrade') } catch (_) {}
   return rows.length;
 }
 
@@ -314,7 +317,7 @@ async function pullChanges(overlap = PULL_OVERLAP_MS) {
   for (const [id, url] of Object.entries(newPhotos)) { try { await storePhoto(url, id) } catch (_) { photoCache[id] = url } }
   syncInfo.cursor = newestTime(rows, syncInfo.cursor);
   persistSync();
-  if (changed) { try { ensureRecipeIds(state) } catch (_) {} localStorage.setItem(KEY, JSON.stringify(state)); showRemoteChanges() }
+  if (changed) { try { ensureRecipeIds(state); if (typeof upgradePlanToDates === 'function') upgradePlanToDates(state) } catch (_) {} (writeState() || storageFullWarning()); showRemoteChanges() }
   downloadPendingPhotos();
   return changed;
 }
@@ -420,13 +423,14 @@ function familyJoin() {
   return withBusy(async () => {
     const code = familyField('familyCode'), displayName = familyField('familyDisplayName');
     if (!code) throw new SyncError('Enter the join code shown on the other phone.');
-    if (!confirm('Joining replaces the recipes, plan, pantry and lists on this phone with the family\'s shared copy.\n\nA backup of this phone\'s current data is saved first (Settings → Automatic backups).')) return;
+    if (!await ask('Joining replaces the recipes, plan, pantry and lists on this phone with the family\'s shared copy.\n\nA backup of this phone\'s current data is saved first (Settings → Automatic backups).')) return;
     const [fam] = await rpc('rg_join_family', { p_code: code, p_display_name: displayName });
     await window.photosReady;
     familyMessage('Downloading your family\'s data…');
     if (typeof createSnapshot === 'function') await createSnapshot('Before joining a family');
     const rows = await fetchRows(fam.id, null);
     const next = clone(state), photos = {}, hashes = {};
+    delete next.welcome;
     pendingPhotos.clear();
     clearSharedData(next);
     for (const row of rows) if (!row.deleted) { setEntry(next, photos, row.key, row.value); hashes[row.key] = entryHash(row.key, row.value) }
@@ -434,7 +438,7 @@ function familyJoin() {
     state = next;
     syncInfo = { familyId: fam.id, familyName: fam.name, joinCode: fam.join_code, displayName, cursor: newestTime(rows, null), hashes, lastSyncAt: Date.now() };
     persistSync();
-    localStorage.setItem(KEY, JSON.stringify(state));
+    (writeState() || storageFullWarning());
     savePending();
     refreshSavedViews();
     setSyncStatus('ok');
@@ -443,7 +447,7 @@ function familyJoin() {
   });
 }
 async function familyStop() {
-  if (!confirm('Stop syncing on this phone?\n\nThis phone keeps its current data but no longer sends or receives changes. The family\'s shared data is not affected.')) return;
+  if (!await ask('Stop syncing on this phone?\n\nThis phone keeps its current data but no longer sends or receives changes. The family\'s shared data is not affected.')) return;
   const token = syncAuth?.access_token;
   syncAuth = null; syncInfo = null; writeStore(AUTH_STORE, null); writeStore(SYNC_STORE, null);
   pendingPhotos.clear(); savePending();
@@ -452,8 +456,8 @@ async function familyStop() {
   renderFamilyCard();
 }
 function familyResume() { if (syncInfo) { syncInfo.paused = false; persistSync(); runSync() } }
-function familyUseShared() {
-  if (!confirm('Replace this phone\'s data with the family\'s shared copy?\n\nA backup of this phone\'s current data is saved first.')) return;
+async function familyUseShared() {
+  if (!await ask('Replace this phone\'s data with the family\'s shared copy?\n\nA backup of this phone\'s current data is saved first.')) return;
   return withBusy(async () => {
     if (typeof createSnapshot === 'function') await createSnapshot('Before downloading the family copy');
     const rows = await fetchRows(syncInfo.familyId, null), next = clone(state), photos = {}, hashes = {};
@@ -462,7 +466,7 @@ function familyUseShared() {
     try { await replaceAllPhotos(photos) } catch (_) { window.photoCache = photos }
     state = next;
     Object.assign(syncInfo, { hashes, cursor: newestTime(rows, null), paused: false, lastSyncAt: Date.now() });
-    persistSync(); localStorage.setItem(KEY, JSON.stringify(state)); refreshSavedViews(); setSyncStatus('ok');
+    persistSync(); (writeState() || storageFullWarning()); refreshSavedViews(); setSyncStatus('ok');
   });
 }
 async function shareJoinCode() {

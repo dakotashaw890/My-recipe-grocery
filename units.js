@@ -131,10 +131,34 @@ function convertedText(q, unit, name) {
   const c = convertAmount(q, unit, target, name);
   return c ? `${c.estimate ? '≈ ' : ''}${fmt(roundAmount(c.qty))} ${target}` : '';
 }
+// "5 lb bag", "16 oz box", "8-count package", "sold individually" (never "1 lb lb" or "1 ea. each")
 function packageText(p) {
   if (!p) return '';
-  const label = String(p.label || '').trim(), size = `${fmt(p.qty)} ${p.unit}`;
-  return label && unitName(label) !== unitName(p.unit) && !['each', 'ea.'].includes(unitName(label)) ? `${size} ${label}` : size;
+  const label = String(p.label || '').trim(), u = unitName(p.unit), l = unitName(label), q = Number(p.qty);
+  if (u === 'ea.') return !label || l === 'ea.' || l === 'each' ? (q === 1 ? 'sold individually' : `${fmt(q)}-count`) : `${fmt(q)}-count ${label}`;
+  return label && l !== u && l !== 'ea.' && l !== 'each' ? `${fmt(q)} ${p.unit} ${label}` : `${fmt(q)} ${p.unit}`;
+}
+// how many to buy: "2 bags", "3 boxes", "2 loaves", "2 lb", "7" (for items sold individually)
+function pluralWord(w, n) {
+  if (n === 1) return w;
+  const irregular = { loaf: 'loaves', 'half-gallon': 'half-gallons', knife: 'knives', leaf: 'leaves' };
+  if (irregular[w.toLowerCase()]) return irregular[w.toLowerCase()];
+  if (/(s|x|z|ch|sh)$/i.test(w)) return w + 'es';
+  if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + 'ies';
+  return w + 's';
+}
+function buyText(n, p) {
+  const label = String(p?.label || '').trim(), l = unitName(label);
+  if (!label || l === 'ea.' || l === 'each' || unitName(p.unit) === 'ea.' && l === unitName(p.unit)) return fmt(n);
+  if (MASS_G[l] || VOLUME_ML[l]) return `${fmt(n)} ${label}`;   // "2 lb", "3 oz"
+  return `${fmt(n)} ${pluralWord(label, n)}`;
+}
+// the small line under it: "16 oz each", "8 per package", nothing when it'd repeat the line above
+function perPackText(p) {
+  const u = unitName(p.unit), l = unitName(p.label || ''), q = Number(p.qty);
+  if (u === 'ea.') return q === 1 || !p.label || l === 'each' || l === 'ea.' ? '' : `${fmt(q)} per ${p.label}`;
+  if (l === u || !p.label) return q === 1 ? '' : `${fmt(q)} ${p.unit} each`;
+  return `${fmt(q)} ${p.unit} each`;
 }
 function containerText(name) { return packageText(getPackage(name)) }
 

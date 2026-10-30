@@ -117,10 +117,10 @@ function saveGroupEditor() {
   save(); toast(d.id ? 'Group saved' : 'Group created');
   closeGroupEditor(id);
 }
-function deleteGroup(encoded) {
+async function deleteGroup(encoded) {
   const gid = decodeURIComponent(encoded), g = state.recipeGroups?.[gid]; if (!g) return;
   const n = groupRecipeIds(gid).length;
-  if (!confirm(`Delete the group “${g.name}”?${n ? ` Its ${n} recipe${n === 1 ? '' : 's'} stay in your recipes.` : ''}`)) return;
+  if (!await ask(`Delete the group “${g.name}”?${n ? ` Its ${n} recipe${n === 1 ? '' : 's'} stay in your recipes.` : ''}`)) return;
   for (const id of groupRecipeIds(gid)) setRecipeInGroup(id, gid, false);
   delete state.recipeGroups[gid];
   if (recipeView === gid) recipeView = null;

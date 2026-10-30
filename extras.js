@@ -11,7 +11,8 @@ function shoppingListText() {
     const p = x.pkg, issues = x.issues || [];
     const safe = p && issues.every(t => !t.startsWith('Cannot') && !t.startsWith('Conversion needed') && !t.startsWith('Check recipe'));
     const packs = safe ? Math.ceil(x.qty / p.qty - 1e-9) : null;
-    const amount = packs !== null ? `${packs} ${p.label}${packs === 1 ? '' : 's'} (${fmt(p.qty)} ${p.unit} each)` : `${fmt(x.qty)} ${x.unit}`.trim();
+    const per = packs !== null ? perPackText(p) : '';
+    const amount = packs !== null ? `${buyText(packs, p)}${per ? ` (${per})` : ''}` : `${fmt(x.qty)} ${x.unit}`.trim();
     (groups[departmentFor(x.name)] ??= []).push(`• ${x.name} — ${amount}`);
   }
   const order = [...DEPARTMENTS, ...Object.keys(groups).filter(g => !DEPARTMENTS.includes(g))];
@@ -86,6 +87,7 @@ function renderSettingsExtras() {
   if (typeof renderBackupList === 'function') renderBackupList();
   if (typeof renderPictureCard === 'function') renderPictureCard();
   if (typeof renderPeopleCard === 'function') renderPeopleCard();
+  const v9 = document.getElementById('v9Block'); if (v9) v9.hidden = (state.auditVersion || 0) >= 9 || !Object.keys(state.data.recipes).length;
 }
 
 // ---------- Swipe between the main screens ----------
@@ -172,6 +174,7 @@ function noteScreen(id) {
   if (screenStack[screenStack.length - 1] !== id) { screenStack.push(id); if (screenStack.length > 40) screenStack.shift() }
 }
 function closeTopLayer() {
+  if (typeof appDialogOpen === 'function' && appDialogOpen()) { closeAppDialog(false); return true }
   const photo = document.getElementById('ingredientPhotoPanel');
   if (photo && photo.style.display === 'flex') { if (typeof pictureFlow !== 'undefined' && pictureFlow) stopIngredientPictures(); else closeIngredientPhoto(); return true }
   const conv = document.getElementById('convPrompt');

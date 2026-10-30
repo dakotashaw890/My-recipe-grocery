@@ -364,7 +364,7 @@ function finishTrip() {
     <div class="formrow"><div><label for="tripStoreF">Store</label><input id="tripStoreF" list="tripStores" value="${esc(stores[stores.length - 1] || '')}" placeholder="Walmart"><datalist id="tripStores">${stores.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
     <div><label for="tripDateF">Date</label><input id="tripDateF" type="date" value="${localDate()}"></div></div>
     <div id="tripItems">${window.tripRows.map((t, i) => `<div class="trip-row"><div class="ingredient-thumb small">${ingredientPicture(t.name)}</div><div class="grow"><b>${esc(t.name)}</b></div>
-      <label class="trip-field"><span>Qty</span><input type="number" min="0" step="1" value="${t.packs}" aria-label="How many ${esc(t.label)}s of ${esc(t.name)}" oninput="tripRows[${i}].packs=Number(this.value)||0;tripTotal()"></label>
+      <label class="trip-field"><span>Qty</span><input type="number" min="0" step="1" value="${t.packs}" aria-label="How many of ${esc(t.name)}" oninput="tripRows[${i}].packs=Number(this.value)||0;tripTotal()"></label>
       <label class="trip-field"><span>$ each</span><input type="number" min="0" step="0.01" inputmode="decimal" value="${t.price}" aria-label="Price per ${esc(t.label)} of ${esc(t.name)}" oninput="tripRows[${i}].price=this.value;tripTotal()"></label></div>`).join('')}</div>
     <div class="trip-total"><span>Items total</span><b id="tripItemsTotal"></b></div>
     <label for="tripReceipt">Receipt total (optional — include tax and items not on the list)</label><input id="tripReceipt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Uses the items total if blank">

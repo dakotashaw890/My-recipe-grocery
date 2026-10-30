@@ -56,9 +56,10 @@ function shopSortMode() { try { const v = localStorage.getItem('gingham-shop-sor
 function setShopSort(v) { try { localStorage.setItem('gingham-shop-sort', v) } catch (_) {} renderShopping() }
 function shopSortBarHTML() {
   const stores = storeList(), cur = shopSortMode();
+  if (!stores.length) return '';   // appears once a trip has taught it a store's layout
   return `<div class="shop-sort"><label for="shopSort">Sort</label><select id="shopSort" onchange="setShopSort(this.value)">
     <option value="">By department</option>${stores.map(s => `<option value="${esc(s.key)}" ${s.key === cur ? 'selected' : ''}>${esc(s.name)} aisle order</option>`).join('')}</select>
-    ${stores.length ? '' : '<span class="tiny muted">Aisle order is learned from the order you check things off. Finish a trip and pick the store.</span>'}</div>`;
+</div>`;
 }
 // order departments by where their items usually are in this store; unknowns keep the usual order after them
 function shopDeptOrder(defaultOrder, groups) {
@@ -73,3 +74,27 @@ function shopSort(list) {
   const items = state.stores[sk].items, p = x => items[ingredientKey(x.name)] ?? 9;
   return list.slice().sort((a, b) => p(a) - p(b) || a.name.localeCompare(b.name));
 }
+
+// ---------- ⋯ menu: everything that isn't needed in the aisle ----------
+function openShopMenu() {
+  const hide = document.getElementById('hideChecked')?.checked, nSel = Object.keys(state.selected || {}).length, nChecked = Object.values(state.checks || {}).filter(Boolean).length;
+  const item = (icon, label, sub, action) => `<button class="menu-item" onclick="${action}"><span class="menu-icon" aria-hidden="true">${icon}</span><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span></button>`;
+  openModal(`<div class="row between"><h2>Shopping options</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
+    <div class="menu-list">
+      ${item('💲', showPrices ? 'Hide prices' : 'Show prices', 'Estimated cost of the list', 'closeModal();togglePrices()')}
+      ${item(hide ? '👁️' : '🙈', hide ? 'Show checked items' : 'Hide checked items', 'Keep the list short while you shop', 'closeModal();toggleHideChecked()')}
+      ${item('☐', 'Uncheck all', nChecked ? `${nChecked} item${nChecked === 1 ? '' : 's'} checked` : 'Nothing checked', 'closeModal();clearChecks()')}
+      ${item('🧹', 'Clear recipes added by hand', nSel ? `${nSel} recipe${nSel === 1 ? '' : 's'} not from the meal plan` : 'None added', 'closeModal();clearSelections()')}
+      ${item('📷', 'Scan groceries into the pantry', '', "closeModal();showScreen('pantry')")}
+      ${item('🥕', 'Ingredients & package sizes', '', "closeModal();showScreen('ingredients')")}
+    </div>`);
+}
+function toggleHideChecked() {
+  const el = document.getElementById('hideChecked'); if (!el) return;
+  el.checked = !el.checked;
+  try { localStorage.setItem('gingham-hide-checked', el.checked ? '1' : '') } catch (_) {}
+  document.getElementById('shoppingList')?.classList.toggle('shopDone', el.checked);
+  toast(el.checked ? 'Checked items hidden' : 'Showing checked items');
+}
+// remember "hide checked" on this phone
+window.addEventListener('load', () => { try { const el = document.getElementById('hideChecked'); if (el && localStorage.getItem('gingham-hide-checked')) { el.checked = true; document.getElementById('shoppingList')?.classList.add('shopDone') } } catch (_) {} });

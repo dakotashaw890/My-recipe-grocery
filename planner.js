@@ -113,19 +113,22 @@ function smartFillPlan() {
   const p = planPrefs(), ids = Object.keys(state.data.recipes).filter(Boolean);
   const avoid = new Set(p.avoidGroups), favor = new Set(p.favorGroups), favorites = new Set(state.favorites);
   const inGroup = (id, g) => recipeGroupIds(state.data.recipes[id]).includes(g);
-  const used = new Set(Object.values(state.plan).map(v => v?.recipe).filter(Boolean));
-  // spending so far on meals already in the plan
+  // the week on screen; days already past are left alone
+  const dates = weekDates(), weekSet = new Set(dates), today = todayISO();
+  const inWeek = Object.entries(state.plan).filter(([k, v]) => weekSet.has(planDateOf(k)) && v?.recipe && state.data.recipes[v.recipe]);
+  const used = new Set(inWeek.map(([, v]) => v.recipe)), recent = recentlyPlanned(14);
+  // spending so far on meals already planned this week
   let spent = 0;
-  for (const v of Object.values(state.plan)) if (v?.recipe && state.data.recipes[v.recipe]) spent += recipeCostFor(v.recipe, v.servings) || 0;
+  for (const [, v] of inWeek) spent += recipeCostFor(v.recipe, v.servings) || 0;
   const slots = [];
-  for (const day of DAYS) for (const meal of MEALS) if (!planEntries(day, meal).length) slots.push({ day, meal });
+  for (const date of dates) if (date >= today) for (const meal of MEALS) if (!planEntries(date, meal).length) slots.push({ date, day: dayNameOf(date), meal });
   const notes = []; let added = 0;
   slots.forEach((slot, n) => {
-    const { day, meal } = slot, limit = WEEKEND.has(day) ? p.weekendMax : p.weekdayMax;
+    const { date, day, meal } = slot, limit = WEEKEND.has(day) ? p.weekendMax : p.weekdayMax;
     const rule = p.rules.find(r => r.meal === meal && r.days.includes(day));
     let pool = ids.filter(id => recipeFitsMeal(id, meal) && !recipeGroupIds(state.data.recipes[id]).some(g => avoid.has(g)));
     if (!pool.length) return;
-    const step = (list, test, why) => { const next = list.filter(test); if (next.length) return next; if (why) notes.push(`${day} ${meal.toLowerCase()}: ${why}`); return list };
+    const step = (list, test, why) => { const next = list.filter(test); if (next.length) return next; if (why) notes.push(`${dayTitle(date)} ${meal.toLowerCase()}: ${why}`); return list };
     if (rule) pool = step(pool, id => inGroup(id, rule.group), `nothing in ${groupName(rule.group)} fits, picked from all recipes`);
     if (p.skipWontEat && typeof wontEatConflicts === 'function') pool = step(pool, id => !wontEatConflicts(id).length, 'every option has something someone won\'t eat');
     if (limit) pool = step(pool, id => { const t = recipeTimes(state.data.recipes[id]).total; return !t || t <= limit }, `nothing fits ${formatMinutes(limit)}, picked the closest`);
@@ -139,14 +142,15 @@ function smartFillPlan() {
       if (recipeGroupIds(r).some(g => favor.has(g))) s += 2.5;
       if (limit && t && t > limit) s -= (t - limit) / 10;            // only when nothing fit: closest wins
       if (limit && !t) s -= 0.5;
+      if (recent.has(id)) s -= 1.5;                                  // had it in the last two weeks
       if (target != null) { if (cost == null) s -= 1; else if (cost > target) s -= Math.min(6, (cost - target) / Math.max(target, 1) * 4); else s += 0.5 }
       return { id, s, cost };
     }).sort((a, b) => b.s - a.s);
     const pick = scored[0];
-    state.plan[`${day}|${meal}|auto-${Date.now()}-${added}`] = { recipe: pick.id, servings: state.data.recipes[pick.id].baseServings || 4 };
+    state.plan[`${date}|${meal}|auto${Date.now().toString(36)}${added}`] = { recipe: pick.id, servings: state.data.recipes[pick.id].baseServings || 4 };
     used.add(pick.id); spent += pick.cost || 0; added++;
   });
-  if (!added) return toast('No empty breakfast, lunch, or dinner slots with matching recipes');
+  if (!added) return toast(slots.length ? 'No recipes match the empty meals' : 'Every meal from today on is already planned');
   save();
   const budgetLine = p.weeklyBudget ? ` · est. $${spent.toFixed(0)} of your $${Number(p.weeklyBudget).toFixed(0)} budget` : '';
   if (notes.length || (p.weeklyBudget && spent > p.weeklyBudget)) {
