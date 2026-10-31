@@ -94,18 +94,18 @@
 <script src="shop.js?v=25"></script>
 <script src="starter-recipes.js?v=25"></script>
 <script src="week.js?v=24"></script>
-<script src="core.js?v=29"></script>
+<script src="core.js?v=30"></script>
 <script src="catalog.js?v=29"></script>
 <script src="sync-config.js?v=17"></script>
 <script src="storage.js?v=27"></script>
 <script src="sync.js?v=25"></script>
 <script src="extras.js?v=27"></script>
-<script src="kitchen.js?v=29"></script>
+<script src="kitchen.js?v=30"></script>
 <script src="pictures.js?v=24"></script>
-<script src="imports.js?v=24"></script>
+<script src="imports.js?v=30"></script>
 <script src="prices.js?v=25"></script>
 <script src="nutrition.js?v=25"></script>
 <script src="community.js?v=25"></script>
 <script>// features that aren't needed for the first screen load just after it
-window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['substitutions.js?v=27','account.js?v=27','setup-check.js?v=27','import-apps.js?v=27']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras()},300));</script>
+window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['substitutions.js?v=27','account.js?v=27','setup-check.js?v=30','import-apps.js?v=27']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras()},300));</script>
 <script>window.addEventListener('load',()=>{setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},450)});setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},2500);</script><script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Offline support unavailable',e)));</script></body></html>

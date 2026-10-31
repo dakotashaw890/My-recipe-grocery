@@ -6,6 +6,7 @@ const SETUP_CHECKS = [
   { id: 'helper', title: 'Recipe link helper', run: checkHelper },
   { id: 'kroger', title: 'Kroger store prices', run: checkKroger },
   { id: 'nutrition', title: 'Nutrition facts', run: checkNutrition },
+  { id: 'handwriting', title: 'Handwritten recipe reader', run: checkHandwriting },
   { id: 'deletion', title: 'Account deletion', run: checkDeletion },
 ];
 let setupResults = null, setupRunning = false;
@@ -70,6 +71,12 @@ async function checkNutrition() {
   return helperProblem(e) || setupBad('Nutrition lookup answered with an error: ' + e.message, 'Check the recipe-imports function\'s Logs in Supabase.');
 }
 
+async function checkHandwriting() {
+  const { e } = await helperProbe({ action: 'read-card', images: [] });
+  if (e && /add a photo/i.test(e.message)) return setupOk('Handwritten recipe cards can be read.');
+  if (e?.setup && !/needs updating/.test(e.message)) return setupBad('Claude key missing.', 'In Supabase → Edge Functions → Secrets, add ANTHROPIC_API_KEY (from console.anthropic.com → API keys), then check again. Printed recipes are still read on the phone.');
+  return (e && helperProblem(e)) || setupBad('The reader answered with an error' + (e ? ': ' + e.message : '.'), 'Check the recipe-imports function\'s Logs in Supabase.');
+}
 async function checkDeletion() {
   if (typeof syncActive !== 'function' || !syncActive()) return needsFamily();
   try {

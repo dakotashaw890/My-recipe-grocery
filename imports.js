@@ -56,6 +56,13 @@ async function photoForReading(file) {
   bmp.close?.();
   return c;
 }
+// for Claude: colour, long edge ≤ 1568 px (plenty for handwriting, and keeps each card under a tenth of a cent)
+async function photoForCloud(file) {
+  const bmp = await createImageBitmap(file), scale = Math.min(1, 1568 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
+  return c.toDataURL('image/jpeg', .85);
+}
 let ocrBusy = false;
 async function readRecipePhotos(fileList) {
   const files = [...(fileList || [])].filter(f => /^image\//.test(f.type)).slice(0, 6);
@@ -63,6 +70,26 @@ async function readRecipePhotos(fileList) {
   ocrBusy = true;
   const buttons = document.querySelectorAll('#sheet button'); buttons.forEach(b => b.disabled = true);
   let worker = null;
+  // Signed in: Claude reads the card through the family's helper (handles handwriting). Otherwise, or if that
+  // isn't set up, the reader on this phone does printed text.
+  let note = '';
+  if (typeof callHelper === 'function' && typeof syncAuth !== 'undefined' && syncAuth && navigator.onLine !== false) {
+    try {
+      ocrStatus(`Reading the recipe${files.length > 1 ? ' from ' + files.length + ' photos' : ''}… this takes about 10–20 seconds.`);
+      const images = []; for (const f of files.slice(0, 4)) images.push(await photoForCloud(f));
+      const j = await callHelper({ action: 'read-card', images });
+      if (j?.ingredients?.length) {
+        ocrBusy = false; buttons.forEach(b => b.disabled = false);
+        openImportedRecipe({ name: j.name || 'Recipe card', servings: j.servings, ingredients: j.ingredients, steps: j.steps || [], prepMinutes: j.prepMinutes, cookMinutes: j.cookMinutes, notes: j.notes, sourceType: 'Imported from a photo' });
+        if (j.unclear?.length) setTimeout(() => toast('Double-check these, they were hard to read: ' + j.unclear.slice(0, 6).join(', ')), 600);
+        return;
+      }
+      note = 'No ingredients found in that photo. ';
+    } catch (e) {
+      if (e.setup) note = 'The handwriting reader isn\'t set up in Supabase yet (ANTHROPIC_API_KEY), so this phone read it instead, which only works for printed text. ';
+      else if (!e.signin) note = (e.message || 'The handwriting reader didn\'t answer.') + ' Reading it on this phone instead (printed text only). ';
+    }
+  }
   try {
     ocrStatus(navigator.onLine === false && !window.Tesseract ? 'The text reader downloads once the first time (about 5 MB). Connect to the internet and try again.' : 'Getting the text reader ready… (the first time downloads about 5 MB)');
     await loadTesseract();
@@ -82,7 +109,7 @@ async function readRecipePhotos(fileList) {
     const box = document.getElementById('importText');
     if (box) { box.value = normalizeRecipeText(text); box.rows = 14; box.scrollIntoView({ block: 'center', behavior: 'smooth' }); box.focus({ preventScroll: true }) }
     window.importContext = { ...(window.importContext || {}), sourceType: 'Imported from a photo' };
-    ocrStatus('Done. Check the text below and fix anything the reader got wrong, then tap Read recipe text.');
+    ocrStatus(note + 'Done. Check the text below and fix anything the reader got wrong, then tap Read recipe text.', !!note);
   } catch (e) {
     console.error(e);
     ocrStatus(e?.message?.includes('load') ? 'The text reader couldn\'t download. Check your connection and try again.' : 'Couldn\'t read that photo. Try another, or type the recipe in below.', true);

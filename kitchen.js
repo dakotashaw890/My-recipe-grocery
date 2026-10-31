@@ -314,7 +314,7 @@ function openImportedRecipe(src) {
     return { name: known || p.name, qty: p.qty ?? '', unit: p.unit, container: p.sizeNote, note: p.note || '', existingSelected: !!known, importedText: p.text };
   });
   window.importContext = null;
-  openRecipeEditor(null, { name, baseServings: src.servings || 4, prepMinutes: src.prepMinutes ?? null, cookMinutes: src.cookMinutes ?? null, directions: src.steps || [], ingredients, photoUrl: src.photoUrl || '', sourceUrl: src.sourceUrl || '', sourceType: src.sourceType || (src.sourceUrl ? 'Imported from website' : 'Imported from text') });
+  openRecipeEditor(null, { name, baseServings: src.servings || 4, prepMinutes: src.prepMinutes ?? null, cookMinutes: src.cookMinutes ?? null, directions: src.steps || [], ingredients, photoUrl: src.photoUrl || '', sourceUrl: src.sourceUrl || '', sourceType: src.sourceType || (src.sourceUrl ? 'Imported from website' : 'Imported from text'), ...(src.notes ? { notes: src.notes } : {}) });
 }
 
 // =====================================================================
