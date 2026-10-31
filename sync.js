@@ -202,6 +202,7 @@ function localEntries(s, photos) {
   for (const t of s.spending?.trips || []) if (t?.id != null) put('trip/' + t.id, t);
   if (s.spending?.budget != null) put('setting/budget', s.spending.budget);
   if (s.planPrefs && Object.keys(s.planPrefs).length) put('setting/planPrefs', s.planPrefs);
+  if (s.kroger?.id) put('setting/kroger', s.kroger);
   for (const [id, url] of Object.entries(photos || {})) put('photo/' + id, photoStorage === 'missing' ? url : PHOTO_MARK);
   // photos the family has that are still downloading count as present, so they're never "removed"
   if (photos === photoCache) for (const id of pendingPhotos) if (!photos[id]) put('photo/' + id, PHOTO_MARK);
@@ -216,6 +217,7 @@ function setEntry(s, photos, key, value) {
   if (prefix === 'trip/') { s.spending ??= { trips: [], budget: 0 }; s.spending.trips ??= []; const i = s.spending.trips.findIndex(t => String(t.id) === k); i >= 0 ? s.spending.trips[i] = value : s.spending.trips.push(value); return true }
   if (key === 'setting/budget') { s.spending ??= { trips: [], budget: 0 }; s.spending.budget = value; return true }
   if (key === 'setting/planPrefs') { s.planPrefs = value || {}; return true }
+  if (key === 'setting/kroger') { s.kroger = value; return true }
   if (prefix === 'photo/') { if (isPhotoMark(value)) { if (!photos[k]) { pendingPhotos.add(k); savePending() } } else photos[k] = value; return true }
   return false;   // a kind of data from a newer version of the app: leave it alone
 }
@@ -227,12 +229,14 @@ function removeEntry(s, photos, key) {
   if (prefix === 'trip/') { if (s.spending?.trips) s.spending.trips = s.spending.trips.filter(t => String(t.id) !== k); return }
   if (key === 'setting/budget') { if (s.spending) s.spending.budget = 0; return }
   if (key === 'setting/planPrefs') { s.planPrefs = {}; return }
+  if (key === 'setting/kroger') { delete s.kroger; return }
   if (prefix === 'photo/') { delete photos[k]; if (pendingPhotos.delete(k)) savePending(); return }
 }
 function clearSharedData(s) {
   s.data ??= {}; s.data.recipes = {}; s.data.ingredients = {};
   for (const [, , ensure] of SYNC_MAPS) { const obj = ensure(s); for (const k of Object.keys(obj)) delete obj[k] }
   s.favorites = []; s.deletedIngredients = []; s.spending = { trips: [], budget: 0 }; s.pantryHistory = [];
+  s.planPrefs = {}; delete s.kroger;
 }
 
 // ---------- Sending and receiving ----------

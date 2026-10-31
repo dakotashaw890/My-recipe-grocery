@@ -1,5 +1,5 @@
-const CACHE='gingham-v24';
-const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./ui.js?v=24','./units.js?v=24','./groups.js?v=24','./planner.js?v=24','./family.js?v=24','./cooking.js?v=24','./shop.js?v=24','./starter-recipes.js?v=24','./week.js?v=24','./core.js?v=24','./sync-config.js?v=17','./storage.js?v=24','./sync.js?v=24','./extras.js?v=24','./kitchen.js?v=24','./pictures.js?v=24','./imports.js?v=24','./app.css?v=24','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
+const CACHE='gingham-v25';
+const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./ui.js?v=24','./units.js?v=24','./groups.js?v=25','./planner.js?v=24','./family.js?v=24','./cooking.js?v=24','./shop.js?v=25','./starter-recipes.js?v=25','./week.js?v=24','./core.js?v=25','./sync-config.js?v=17','./storage.js?v=24','./sync.js?v=25','./extras.js?v=24','./kitchen.js?v=24','./pictures.js?v=24','./imports.js?v=24','./prices.js?v=25','./nutrition.js?v=25','./community.js?v=25','./app.css?v=25','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
 const IMAGES=[];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(async c=>{
   await c.addAll(CORE);

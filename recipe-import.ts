@@ -233,6 +233,9 @@ async function handle(req: Request): Promise<Response> {
 
   let body: any = {};
   try { body = await req.json() } catch (_) {}
+  if (body.action === 'kroger-stores') return reply(...await krogerStores(body));
+  if (body.action === 'kroger-prices') return reply(...await krogerPrices(body));
+  if (body.action === 'nutrition') return reply(...await nutritionFacts(body));
   const url = allowedUrl(body.url);
   if (!url) return reply(400, { error: 'That doesn\'t look like a web address. Copy the full link starting with https://' });
 
@@ -260,4 +263,95 @@ async function handle(req: Request): Promise<Response> {
     return reply(422, { error: 'No recipe found on that page. Use Paste recipe text instead.' });
   }
   return reply(200, recipe);
+}
+
+// =====================================================================
+// Store prices from Kroger (Kroger, King Soopers, Ralphs, Fry's, Fred Meyer, Smith's, Harris Teeter, Dillons…)
+// Needs two Supabase secrets: KROGER_CLIENT_ID and KROGER_CLIENT_SECRET (free app at developer.kroger.com).
+// =====================================================================
+const KROGER = 'https://api.kroger.com/v1';
+let krogerToken: { value: string, until: number } | null = null;
+async function krogerAuth(): Promise<string | null> {
+  const id = Deno.env.get('KROGER_CLIENT_ID'), secret = Deno.env.get('KROGER_CLIENT_SECRET');
+  if (!id || !secret) return null;
+  if (krogerToken && Date.now() < krogerToken.until) return krogerToken.value;
+  const r = await fetch(KROGER + '/connect/oauth2/token', {
+    method: 'POST', signal: AbortSignal.timeout(10000),
+    headers: { Authorization: 'Basic ' + btoa(id + ':' + secret), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=client_credentials&scope=product.compact',
+  });
+  if (!r.ok) throw new Error('kroger-auth ' + r.status);
+  const j = await r.json();
+  krogerToken = { value: j.access_token, until: Date.now() + (Number(j.expires_in || 1800) - 60) * 1000 };
+  return krogerToken.value;
+}
+const notSetUp = (what: string) => [503, { error: `${what} isn't set up in Supabase yet. See STORE-NUTRITION-SETUP.md.`, setup: true }] as const;
+async function krogerGet(path: string, token: string) {
+  const r = await fetch(KROGER + path, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
+  if (r.status === 401) krogerToken = null;
+  if (!r.ok) throw new Error('kroger ' + r.status);
+  return r.json();
+}
+export async function krogerStores(body: any): Promise<[number, unknown]> {
+  const zip = String(body.zip || '').trim();
+  if (!/^\d{5}$/.test(zip)) return [400, { error: 'Enter a 5-digit ZIP code.' }];
+  const token = await krogerAuth().catch(() => null);
+  if (token === null) return [...notSetUp('Kroger prices')];
+  const j = await krogerGet(`/locations?filter.zipCode.near=${zip}&filter.limit=10&filter.radiusInMiles=25`, token);
+  const stores = (j.data || []).map((l: any) => ({ id: l.locationId, name: l.name || l.chain, chain: l.chain || '', address: [l.address?.addressLine1, l.address?.city, l.address?.state].filter(Boolean).join(', ') }));
+  return [200, { stores }];
+}
+// one search per ingredient; up to 6 matches each so the family can pick the right product
+export async function krogerPrices(body: any): Promise<[number, unknown]> {
+  const location = String(body.locationId || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 12);
+  const terms: string[] = (Array.isArray(body.terms) ? body.terms : []).map((t: unknown) => String(t || '').trim().slice(0, 60)).filter(Boolean).slice(0, 25);
+  if (!location || !terms.length) return [400, { error: 'Choose a store first.' }];
+  const token = await krogerAuth().catch(() => null);
+  if (token === null) return [...notSetUp('Kroger prices')];
+  const results: Record<string, unknown[]> = {};
+  for (const term of terms) {
+    try {
+      const j = await krogerGet(`/products?filter.term=${encodeURIComponent(term)}&filter.locationId=${location}&filter.limit=6`, token);
+      results[term] = (j.data || []).map((p: any) => {
+        const item = (p.items || []).find((i: any) => i.price) || p.items?.[0] || {};
+        const img = (p.images || []).find((i: any) => i.perspective === 'front') || p.images?.[0];
+        const thumb = img?.sizes?.find((x: any) => x.size === 'thumbnail' || x.size === 'small')?.url || img?.sizes?.[0]?.url || '';
+        return { id: p.productId, name: p.description, brand: p.brand || '', size: item.size || '', price: item.price?.regular ?? null, promo: item.price?.promo || null, image: /^https:\/\//.test(thumb) ? thumb : '' };
+      }).filter((x: any) => x.price != null);
+    } catch (_) { results[term] = [] }
+  }
+  return [200, { results, at: new Date().toISOString() }];
+}
+
+// =====================================================================
+// Nutrition facts from USDA FoodData Central (public domain).
+// Needs the Supabase secret FDC_API_KEY (free key at api.data.gov/signup).
+// =====================================================================
+const NUTRIENTS: Record<string, string> = { '1008': 'calories', '1003': 'protein', '1004': 'fat', '1258': 'satFat', '1005': 'carbs', '1079': 'fiber', '2000': 'sugar', '1093': 'sodium' };
+export async function nutritionFacts(body: any): Promise<[number, unknown]> {
+  const key = Deno.env.get('FDC_API_KEY');
+  if (!key) return [...notSetUp('Nutrition facts')];
+  const terms: string[] = (Array.isArray(body.terms) ? body.terms : []).map((t: unknown) => String(t || '').trim().slice(0, 60)).filter(Boolean).slice(0, 25);
+  const results: Record<string, unknown[]> = {};
+  for (const term of terms) {
+    try {
+      const r = await fetch('https://api.nal.usda.gov/fdc/v1/foods/search?api_key=' + encodeURIComponent(key), {
+        method: 'POST', signal: AbortSignal.timeout(10000), headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: term, dataType: ['Foundation', 'SR Legacy'], pageSize: 5 }),
+      });
+      if (!r.ok) { results[term] = []; continue }
+      const j = await r.json();
+      results[term] = (j.foods || []).map((f: any) => {
+        const per100g: Record<string, number> = {};
+        for (const n of f.foodNutrients || []) {
+          const id = String(n.nutrientNumber === '208' ? '1008' : n.nutrientId), name = NUTRIENTS[id];
+          if (name && typeof n.value === 'number' && (name !== 'calories' || /kcal/i.test(n.unitName || 'kcal'))) per100g[name] = Math.round(n.value * 100) / 100;
+          // Foundation foods often give energy only as "Atwater" values (2047/2048)
+          if (per100g.calories == null && (String(n.nutrientId) === '2047' || String(n.nutrientId) === '2048') && /kcal/i.test(n.unitName || '')) per100g.calories = Math.round(n.value);
+        }
+        return { id: f.fdcId, name: f.description, per100g };
+      }).filter((x: any) => x.per100g.calories != null);
+    } catch (_) { results[term] = [] }
+  }
+  return [200, { results }];
 }

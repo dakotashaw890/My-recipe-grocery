@@ -46,6 +46,7 @@ function viewTitle(view) {
   if (view === 'all') return '📖 All recipes';
   if (view === 'favorites') return '★ Favorites';
   if (view === 'ungrouped') return '📂 Not in a group';
+  if (view === 'community') return '🌍 Community recipes';
   return groupName(view);
 }
 function groupCover(ids) {
@@ -62,6 +63,7 @@ function hueFor(text) { let h = 0; for (const c of String(text)) h = (h * 31 + c
 function renderGroupTiles() {
   const groups = groupList(), all = recipeViewIds('all'), fav = recipeViewIds('favorites');
   const tiles = [groupTile('all', 'All recipes', all, '📖', 18), groupTile('favorites', 'Favorites', fav, '★', 42)];
+  if (typeof communityTileHTML === 'function' && (() => { try { return syncConfigured } catch (_) { return false } })()) tiles.push(communityTileHTML());
   for (const g of groups) tiles.push(groupTile(g.id, g.name, groupRecipeIds(g.id), g.emoji, hueFor(g.name)));
   tiles.push(`<button class="group-tile new-group" onclick="openGroupEditor()"><span class="group-cover"><span class="group-emoji">＋</span></span><span class="group-name">New group</span><span class="group-count">Your own collection</span></button>`);
   return `${groups.length ? '' : `<div class="card small muted group-hint">Make groups for the way your family cooks, like <b>Weeknight dinners</b>, <b>Holidays</b> or <b>Grandma's recipes</b>. A recipe can be in as many groups as you like.</div>`}

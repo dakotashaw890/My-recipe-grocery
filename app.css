@@ -1745,3 +1745,25 @@ details.advanced > summary > span { display: flex; flex-direction: column; }
 .adv-title { font-family: var(--serif); font-size: 1.15rem; font-weight: 400; }
 .adv-block { padding: 14px 0 4px; border-top: 1px solid var(--line); margin-top: 12px; }
 .adv-block[hidden] { display: none; }
+
+/* v25: community, store prices, nutrition */
+.community-tile .group-cover { background: hsl(150 40% 86%); }
+.community-card h3 { margin: 6px 0 2px; }
+.community-card a { color: var(--tomato-text); }
+.plain-list { padding-left: 20px; line-height: 1.55; }
+.plain-list li { margin: 3px 0; }
+.share-facts { padding-left: 18px; line-height: 1.5; }
+.store-price { margin: 8px 0; padding: 8px 10px; background: var(--card-2); border-radius: 10px; line-height: 1.45; }
+.store-price .sale, .menu-item s + * { color: var(--olive-text); font-weight: 700; }
+.store-current { background: var(--olive-tint); box-shadow: none; }
+.product-thumb { width: 44px; height: 44px; object-fit: contain; background: #fff; border-radius: 8px; flex: none; }
+.menu-item.chosen { background: var(--olive-tint); }
+details.nutrition > summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+details.nutrition > summary::-webkit-details-marker { display: none; }
+details.nutrition > summary::after { content: '▾'; color: var(--muted); }
+details.nutrition[open] > summary::after { content: '▴'; }
+.nf-cal { margin-left: auto; color: var(--ink-2); }
+.nf-table { width: 100%; border-collapse: collapse; margin: 10px 0 6px; }
+.nf-table th, .nf-table td { padding: 7px 4px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 500; }
+.nf-table td { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.menu-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }

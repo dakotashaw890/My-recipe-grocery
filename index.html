@@ -12,7 +12,7 @@
 <meta name="description" content="Gingham: family recipes, meal planning, pantry and a shared shopping list.">
 <link rel="icon" href="icon-192.png" type="image/png"><link rel="manifest" href="manifest.json?v=17b">
 <style>html{background:#FBF6EC}@media (prefers-color-scheme:dark){html{background:#1E1A17}}</style>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=24">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=25">
 </head>
 <body>
 <header><div class="header-row"><div><div class="brand">Gingham</div><div class="sub">Family meals, pantry &amp; shopping</div></div><div class="row" style="gap:4px"><button id="syncBadge" class="sync-badge" hidden onclick="showSettings()"></button><button class="iconbtn" aria-label="Settings" onclick="showSettings()">⚙️</button></div></div></header>
@@ -85,19 +85,22 @@
 
 <script src="ui.js?v=24"></script>
 <script src="units.js?v=24"></script>
-<script src="groups.js?v=24"></script>
+<script src="groups.js?v=25"></script>
 <script src="planner.js?v=24"></script>
 <script src="family.js?v=24"></script>
 <script src="cooking.js?v=24"></script>
-<script src="shop.js?v=24"></script>
-<script src="starter-recipes.js?v=24"></script>
+<script src="shop.js?v=25"></script>
+<script src="starter-recipes.js?v=25"></script>
 <script src="week.js?v=24"></script>
-<script src="core.js?v=24"></script>
+<script src="core.js?v=25"></script>
 <script src="sync-config.js?v=17"></script>
 <script src="storage.js?v=24"></script>
-<script src="sync.js?v=24"></script>
+<script src="sync.js?v=25"></script>
 <script src="extras.js?v=24"></script>
 <script src="kitchen.js?v=24"></script>
 <script src="pictures.js?v=24"></script>
 <script src="imports.js?v=24"></script>
+<script src="prices.js?v=25"></script>
+<script src="nutrition.js?v=25"></script>
+<script src="community.js?v=25"></script>
 <script>window.addEventListener('load',()=>{setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},450)});setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},2500);</script><script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Offline support unavailable',e)));</script></body></html>

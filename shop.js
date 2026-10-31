@@ -82,6 +82,7 @@ function openShopMenu() {
   openModal(`<div class="row between"><h2>Shopping options</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
     <div class="menu-list">
       ${item('💲', showPrices ? 'Hide prices' : 'Show prices', 'Estimated cost of the list', 'closeModal();togglePrices()')}
+      ${item('🏪', state.kroger ? 'Store: ' + esc(state.kroger.name) : 'Choose your store for live prices', state.kroger ? 'Tap to update prices or change store' : 'Kroger-family stores', state.kroger ? 'closeModal();refreshStorePrices({all:true})' : 'closeModal();openStorePicker()')}
       ${item(hide ? '👁️' : '🙈', hide ? 'Show checked items' : 'Hide checked items', 'Keep the list short while you shop', 'closeModal();toggleHideChecked()')}
       ${item('☐', 'Uncheck all', nChecked ? `${nChecked} item${nChecked === 1 ? '' : 's'} checked` : 'Nothing checked', 'closeModal();clearChecks()')}
       ${item('🧹', 'Clear recipes added by hand', nSel ? `${nSel} recipe${nSel === 1 ? '' : 's'} not from the meal plan` : 'None added', 'closeModal();clearSelections()')}
