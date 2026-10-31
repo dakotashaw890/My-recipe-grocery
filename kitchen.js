@@ -120,6 +120,64 @@ function matchKnownIngredient(name, raw) {
   return state.pantry?.[ingredientKey(k)]?.name || k.charAt(0).toUpperCase() + k.slice(1);
 }
 
+// ---------- one-line captions ----------
+// TikTok's caption comes through as ONE line: "Cheeseburger Bombs 🍔 Ingredients: 1 lb ground beef 1 tsp salt
+// 1 can biscuits (8 count) … Instructions: 1. Brown the beef. 2. …". Find the parts and give each item its own line.
+const RUNON_QTY = /^(?:\d+(?:\.\d+)?(?:\/\d+)?|\d*[¼½¾⅓⅔⅛⅜⅝⅞]|a|an|one|two|three|four|half)$/i;
+const RUNON_NOT_ING = /^(min|mins|minutes?|hours?|hrs?|seconds?|secs?|degrees?|°|f|c|°f|°c|inch|inches|in|times|x|days?|people|servings?|pieces?\b)$/i;
+function runOnQty(w) { return /^(?:\d+(?:\.\d+)?(?:\/\d+)?|\d*[¼½¾⅓⅔⅛⅜⅝⅞])$/.test(w) }
+function splitIngredientRun(region) {
+  const items = [];
+  // hard separators: emoji, bullets, semicolons, pipes, " - "
+  const pieces = region.split(/\s*(?:[\p{Extended_Pictographic}•▪▫●◦‣⁃∙➡✔✅]️?|;|\|| [-–—] )\s*/u).map(x => x.trim()).filter(Boolean);
+  for (const piece of pieces) {
+    // commas split items when the next part starts with an amount, or when it's a bare list ("salt, pepper, parsley")
+    const parts = piece.split(/\s*,\s*/), merged = [];
+    for (const part of parts) {
+      const startsQty = runOnQty(part.split(/\s+/)[0] || '');
+      if (!merged.length || startsQty || (!/\d/.test(part) && !/\d/.test(merged[merged.length - 1]) && part.split(/\s+/).length <= 3)) merged.push(part);
+      else merged[merged.length - 1] += ', ' + part;   // "4 oz cheddar, cubed"
+    }
+    // within each part, a new amount starts a new ingredient: "1 lb ground beef 1 tsp salt 1/2 tsp pepper"
+    for (const m of merged) {
+      const words = m.split(/\s+/); let cur = [], depth = 0, hasWord = false;
+      words.forEach((w, i) => {
+        const prev = words[i - 1] || '', next = words[i + 1] || '';
+        const startsNew = depth === 0 && runOnQty(w) && hasWord && !runOnQty(prev) && !/^(to|or|-|–|x|and|of|by)$/i.test(prev) && !/[-–]$/.test(prev) && !RUNON_NOT_ING.test(next.replace(/[.,)]$/, ''));
+        if (startsNew) { items.push(cur.join(' ')); cur = []; hasWord = false }
+        cur.push(w);
+        depth += (w.match(/\(/g) || []).length - (w.match(/\)/g) || []).length; if (depth < 0) depth = 0;
+        if (!runOnQty(w) && !/^\(/.test(w)) hasWord = true;
+      });
+      if (cur.length) items.push(cur.join(' '));
+    }
+  }
+  return items.map(x => x.replace(/^[-–•*]\s*/, '').replace(/[.,]$/, '').trim()).filter(x => x && x.length < 120);
+}
+function splitRunOnCaption(line) {
+  const qtyCount = (line.match(/(?:^|\s)(?:\d+(?:\.\d+)?(?:\/\d+)?|[¼½¾⅓⅔⅛])\s+[a-z(]/gi) || []).length;
+  if (line.length < 140 || qtyCount < 3) return line;
+  // where the steps begin: "Instructions:", "Directions", "How to make it", or a "1." followed later by "2."
+  const stepWord = line.match(/\b(?:instructions?|directions?|method|steps?|how to make(?: it)?|preparation)\b\s*[:：\-–—]?\s*(?=(?:step\s*)?1[.):]|[A-Z])/i);
+  const numbered = /(?:^|[\s.!?])(?:step\s*)?1[.):]\s+\S/i.exec(line), has2 = /(?:^|[\s.!?])(?:step\s*)?2[.):]\s+\S/i.test(line);
+  let stepsAt = stepWord ? stepWord.index : numbered && has2 ? numbered.index + (/^[\s.!?]/.test(numbered[0]) ? 1 : 0) : -1;
+  const stepsText = stepsAt >= 0 ? line.slice(stepsAt).replace(/^(?:instructions?|directions?|method|steps?|how to make(?: it)?|preparation)\b\s*[:：\-–—]?\s*/i, '') : '';
+  const head = stepsAt >= 0 ? line.slice(0, stepsAt) : line;
+  // where the ingredients begin: "Ingredients:", "You'll need", or the first amount
+  const ingWord = head.match(/\b(?:ingredients?(?: list)?|what you(?:'|’)?ll need|you(?:'|’)?ll need|you will need|what you need)\b\s*[:：\-–—]?\s*/i);
+  let title = '', region = head;
+  if (ingWord) { title = head.slice(0, ingWord.index); region = head.slice(ingWord.index + ingWord[0].length) }
+  else { const first = head.search(/(?:^|\s)(?:\d+(?:\.\d+)?(?:\/\d+)?|[¼½¾⅓⅔⅛])\s+[a-z(]/i); if (first > 0) { title = head.slice(0, first); region = head.slice(first) } }
+  const items = splitIngredientRun(region);
+  if (items.length < 2) return line;
+  title = (title.split(/\s*[\p{Extended_Pictographic}]/u).find(x => x.trim().length > 2) || title).replace(/\b(?:you need|you(?:'|’)?ll need|here(?:'|’)?s what you need)\b.*$/i, '').replace(/[\p{Extended_Pictographic}️]/gu, ' ').replace(/\s+/g, ' ').replace(/[:\-–—\s]+$/, '').trim();
+  // a long intro: the title is its first phrase ("Cheeseburger Bombs! These are so good…" -> "Cheeseburger Bombs")
+  if (title.length > 70) title = (title.split(/[!.?|]\s/)[0] || '').slice(0, 70).trim();
+  let steps = stepsText ? stepsText.split(/(?:^|\s+)(?:step\s*)?\d{1,2}[.):]\s+/i).map(x => x.trim()).filter(x => x.length > 2) : [];
+  if (steps.length === 1) steps = steps[0].split(/(?<=[.!?])\s+(?=[A-Z])/).map(x => x.trim()).filter(Boolean);   // unnumbered: one step per sentence
+  return [title, 'Ingredients', ...items, ...(steps.length ? ['Directions', ...steps] : [])].filter(Boolean).join('\n');
+}
+
 // Captions from TikTok/Instagram/YouTube and photo text come out messy: emoji bullets, hashtags,
 // "Ingredients: 2 chicken breasts, 3 tbsp butter, salt" on one line, "1️⃣ Mix…". Put it into plain lines.
 const SECTION_RE = /(ingredients?( list)?|what you(?:'|’)?ll need|you(?:'|’)?ll need|you will need|instructions?|directions?|method|steps?|how to make(?: it)?|preparation)\s*[:：]/gi;
@@ -129,7 +187,9 @@ function normalizeRecipeText(text) {
   t = t.replace(/([0-9])\uFE0F?\u20E3/g, (m, d) => '\n' + keycaps[d] + '. ').replace(/🔟/g, '\n10. ');
   t = t.replace(/(^|\s)#[\p{L}\p{N}_]+/gu, ' ')                       // hashtags
        .replace(/https?:\/\/\S+/g, ' ')                                 // links
-       .replace(/(^|\n)\s*(?:[\p{Extended_Pictographic}\u2022\u25AA-\u25AB\u25CF\u25E6\u2023\u2043\u2219\u27A1\u2714\u2705\-–*]\uFE0F?\s*)+/gu, '$1- ')   // emoji/bullet at line start
+       .replace(/(^|\s)@[\w.]+/g, ' ');                                 // @mentions
+  t = t.split('\n').map(splitRunOnCaption).join('\n');                 // TikTok & co. send the caption as one long line
+  t = t       .replace(/(^|\n)\s*(?:[\p{Extended_Pictographic}\u2022\u25AA-\u25AB\u25CF\u25E6\u2023\u2043\u2219\u27A1\u2714\u2705\-–*]\uFE0F?\s*)+/gu, '$1- ')   // emoji/bullet at line start
        .replace(/[\p{Extended_Pictographic}]\uFE0F?/gu, ' ')            // other emoji
        .replace(/\uFE0F/g, '');
   // section words written inline get their own line
