@@ -5,7 +5,8 @@
 const DB_NAME = 'recipe-grocery';
 const SNAPSHOT_LIMIT = 10;
 const AUTO_SNAPSHOT_EVERY = 20 * 60 * 60 * 1000;   // roughly daily
-const EXPORT_REMINDER_AFTER = 21 * 24 * 60 * 60 * 1000;
+const EXPORT_REMINDER_AFTER = 7 * 24 * 60 * 60 * 1000;   // remind to save a backup file weekly
+const WEEKLY_REASON = 'Weekly backup', WEEKLY_KEEP = 8, WEEK_MS = 7 * 864e5;
 
 window.photoCache = {};          // photo id -> data:image URL
 let photoDB = null;
@@ -82,8 +83,9 @@ async function createSnapshot(reason = 'Automatic daily backup') {
   if (!photoDB) return null;
   const snap = { id: Date.now(), at: new Date().toISOString(), reason, state: clone(state), photos: { ...photoCache } };
   await idbRun('snapshots', 'readwrite', os => os.put(snap));
-  const all = await listSnapshots();
-  for (const old of all.slice(SNAPSHOT_LIMIT)) await idbRun('snapshots', 'readwrite', os => os.delete(old.id));
+  const all = await listSnapshots(), weekly = all.filter(s => s.reason === WEEKLY_REASON), others = all.filter(s => s.reason !== WEEKLY_REASON);
+  // weekly copies are kept separately, so a burst of daily backups never pushes out older weeks
+  for (const old of [...others.slice(SNAPSHOT_LIMIT), ...weekly.slice(WEEKLY_KEEP)]) await idbRun('snapshots', 'readwrite', os => os.delete(old.id));
   return snap.id;
 }
 async function listSnapshots() {
@@ -91,11 +93,16 @@ async function listSnapshots() {
   const all = Object.values(await idbAllEntries('snapshots'));
   return all.sort((a, b) => b.id - a.id);
 }
-let lastAutoSnapshot = null;   // time of the newest automatic backup, once known
+let lastAutoSnapshot = null, lastWeeklySnapshot = null;   // times of the newest automatic backups, once known
 async function maybeAutoSnapshot() {
   if (!photoDB) return;
   try {
-    if (lastAutoSnapshot === null) lastAutoSnapshot = (await listSnapshots()).find(s => s.reason === 'Automatic daily backup')?.id || 0;
+    if (lastAutoSnapshot === null || lastWeeklySnapshot === null) {
+      const all = await listSnapshots();
+      lastAutoSnapshot = all.find(s => s.reason === 'Automatic daily backup')?.id || 0;
+      lastWeeklySnapshot = all.find(s => s.reason === WEEKLY_REASON)?.id || 0;
+    }
+    if (Date.now() - lastWeeklySnapshot >= WEEK_MS) { lastWeeklySnapshot = Date.now(); await createSnapshot(WEEKLY_REASON); if (Date.now() - lastAutoSnapshot >= AUTO_SNAPSHOT_EVERY) lastAutoSnapshot = Date.now(); return }
     if (Date.now() - lastAutoSnapshot < AUTO_SNAPSHOT_EVERY) return;
     lastAutoSnapshot = Date.now();
     await createSnapshot();
@@ -126,6 +133,20 @@ function downloadBackupFile(data, name) {
   a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
+// Android's share sheet lets the file go straight to Google Drive, Gmail or Files; otherwise it downloads.
+async function shareBackupFile() {
+  const name = 'gingham-backup-' + localDate() + '.json';
+  const data = JSON.stringify({ ...state, photos: { ...(window.photoCache || {}) } });
+  try {
+    const file = new File([data], name, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Gingham backup', text: 'Gingham backup from ' + new Date().toLocaleDateString() });
+      noteExport(); toast('✓ Backup saved'); if (document.getElementById('home')?.classList.contains('active')) renderHome(); return;
+    }
+  } catch (e) { if (e?.name === 'AbortError') return; console.warn('Share unavailable, downloading instead', e) }
+  exportData();
+}
+function canShareFiles() { try { return !!navigator.canShare?.({ files: [new File(['{}'], 'x.json', { type: 'application/json' })] }) } catch (_) { return false } }
 function noteExport() { try { localStorage.setItem(KEY + '-lastExport', String(Date.now())) } catch (_) {} }
 function lastExportAt() { return Number(localStorage.getItem(KEY + '-lastExport') || 0) }
 
@@ -136,7 +157,7 @@ function backupReminderHTML() {
   const last = lastExportAt(), since = Date.now() - Math.max(last, firstSeen);
   if (since < EXPORT_REMINDER_AFTER || Date.now() < snoozed) return '';
   const days = last ? Math.floor((Date.now() - last) / 864e5) + ' days ago' : 'never on this phone';
-  return `<div class="card backup-reminder"><div class="row between"><div><b>Download a backup file</b><div class="small muted">Last backup file: ${days}. Automatic backups stay on this phone; a file protects you if the phone is lost.</div></div></div><div class="actions"><button class="btn" onclick="exportData()">Download backup</button><button class="btn secondary" onclick="snoozeBackupReminder()">Later</button></div></div>`;
+  return `<div class="card backup-reminder"><div class="row between"><div><b>Weekly backup</b><div class="small muted">Last backup file: ${days}. Automatic backups stay on this phone; a file saved to Google Drive or email protects you if the phone is lost.</div></div></div><div class="actions"><button class="btn" onclick="shareBackupFile()">${canShareFiles() ? 'Save to Drive or email' : 'Download backup'}</button><button class="btn secondary" onclick="snoozeBackupReminder()">Later</button></div></div>`;
 }
 function snoozeBackupReminder() { try { localStorage.setItem(KEY + '-backupSnooze', String(Date.now() + 7 * 864e5)) } catch (_) {} renderHome() }
 
@@ -147,7 +168,7 @@ async function renderBackupList() {
   const snaps = await listSnapshots();
   box.innerHTML = snaps.length ? snaps.map(s => {
     const recipes = Object.keys(s.state?.data?.recipes || {}).length, planned = Object.values(s.state?.plan || {}).filter(x => x?.recipe).length;
-    return `<div class="listitem snapshot-row"><div class="grow"><b>${esc(new Date(s.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))}</b><div class="tiny muted">${esc(s.reason)} · ${recipes} recipes · ${planned} planned meals</div></div><button class="btn secondary" onclick="restoreSnapshot(${s.id})">Restore</button><button class="btn ghost" aria-label="Download this backup" onclick="downloadSnapshot(${s.id})">⬇</button></div>`;
+    return `<div class="listitem snapshot-row${s.reason === WEEKLY_REASON ? ' weekly' : ''}"><div class="grow"><b>${s.reason === WEEKLY_REASON ? '📅 ' : ''}${esc(new Date(s.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))}</b><div class="tiny muted">${esc(s.reason)} · ${recipes} recipes · ${planned} planned meals</div></div><button class="btn secondary" onclick="restoreSnapshot(${s.id})">Restore</button><button class="btn ghost" aria-label="Download this backup" onclick="downloadSnapshot(${s.id})">⬇</button></div>`;
   }).join('') : '<div class="small muted">The first automatic backup is made today.</div>';
 }
 

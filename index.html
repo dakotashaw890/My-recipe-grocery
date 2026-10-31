@@ -12,7 +12,7 @@
 <meta name="description" content="Gingham: family recipes, meal planning, pantry and a shared shopping list.">
 <link rel="icon" href="icon-192.png" type="image/png"><link rel="manifest" href="manifest.json?v=17b">
 <style>html{background:#FBF6EC}@media (prefers-color-scheme:dark){html{background:#1E1A17}}</style>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=25">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=26">
 </head>
 <body>
 <header><div class="header-row"><div><div class="brand">Gingham</div><div class="sub">Family meals, pantry &amp; shopping</div></div><div class="row" style="gap:4px"><button id="syncBadge" class="sync-badge" hidden onclick="showSettings()"></button><button class="iconbtn" aria-label="Settings" onclick="showSettings()">⚙️</button></div></div></header>
@@ -60,15 +60,16 @@
 <h1>Settings & Data</h1>
 <div class="card" id="familyCard"></div>
 <div class="card" id="pictureCard"></div>
+<div class="card" id="setupCheckCard"></div>
 <div class="card">
 <h3>Backup files</h3><p class="muted small">A backup file (including your ingredient photos) protects you if a phone is lost. Keep one somewhere safe, like Google Drive or email.</p>
 <div class="actions">
-<button class="btn secondary" onclick="exportData()">Download backup file</button>
+<button class="btn secondary" onclick="shareBackupFile()">Save backup file</button><button class="btn ghost" onclick="exportData()">Download</button>
 <button class="btn secondary" onclick="document.getElementById('importFile').click()">Import backup</button>
 <input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
 </div>
 </div>
-<div class="card"><h3>Automatic backups</h3><p class="muted small">This phone saves a copy of your data about once a day, and before any big change (joining a family, importing, resetting). The last 10 are kept.</p><div id="snapshotList"></div></div>
+<div class="card"><h3>Automatic backups</h3><p class="muted small">This phone saves a copy of your data every day, plus a weekly copy, and before any big change (joining a family, importing, resetting). The last 10 daily copies and 8 weekly copies are kept, so you can go back about two months.</p><div id="snapshotList"></div></div>
 <details class="card advanced" id="advancedCard"><summary><span><b class="adv-title">Advanced</b><span class="small muted">Package sizes, prices, start over</span></span></summary>
 <div class="adv-block"><b>Ingredient package sizes</b><p class="small muted">The usual package each ingredient is bought in. Shopping amounts are worked out from these.</p><div id="packageEditor"></div><div class="actions"><button class="btn secondary" onclick="openIngredientInspector()">🔎 Ingredient inspector</button><button class="btn secondary" onclick="openPackageEditor()">Edit package sizes</button></div></div>
 <div class="adv-block"><b>Prices</b><p class="small muted">Prices you type in, or pay when you finish a trip, are used for cost estimates. Clearing them keeps package sizes and trip history.</p><div class="actions"><button class="btn secondary" onclick="clearManualPrices()">Clear prices I typed in</button></div></div>
@@ -92,15 +93,17 @@
 <script src="shop.js?v=25"></script>
 <script src="starter-recipes.js?v=25"></script>
 <script src="week.js?v=24"></script>
-<script src="core.js?v=25"></script>
+<script src="core.js?v=26"></script>
+<script src="catalog.js?v=26"></script>
 <script src="sync-config.js?v=17"></script>
-<script src="storage.js?v=24"></script>
+<script src="storage.js?v=26"></script>
 <script src="sync.js?v=25"></script>
-<script src="extras.js?v=24"></script>
-<script src="kitchen.js?v=24"></script>
+<script src="extras.js?v=26"></script>
+<script src="kitchen.js?v=26"></script>
 <script src="pictures.js?v=24"></script>
 <script src="imports.js?v=24"></script>
 <script src="prices.js?v=25"></script>
 <script src="nutrition.js?v=25"></script>
 <script src="community.js?v=25"></script>
+<script src="setup-check.js?v=26"></script>
 <script>window.addEventListener('load',()=>{setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},450)});setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},2500);</script><script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Offline support unavailable',e)));</script></body></html>

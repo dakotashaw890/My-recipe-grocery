@@ -1767,3 +1767,21 @@ details.nutrition[open] > summary::after { content: '▴'; }
 .nf-table th, .nf-table td { padding: 7px 4px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 500; }
 .nf-table td { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 .menu-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+/* v26: ingredient picker (built-in ingredient list) */
+.ingredient-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px }
+.ingredient-suggestions .btn { margin: 0; padding: 7px 11px; font-size: .92rem }
+.ingredient-suggestions .ing-add { flex-basis: 100%; text-align: left; border: 1px dashed var(--line-strong); background: transparent; color: var(--ink-2) }
+.ing-ok { color: var(--olive-text); margin-top: 4px }
+.ing-new { color: var(--butter-text); margin-top: 4px }
+.ing-unknown { color: var(--tomato-text); margin-top: 4px; font-weight: 600 }
+.edit-ing.flagged { border: 2px solid var(--tomato); background: var(--tomato-tint) }
+.setup-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line) }
+.setup-row:first-of-type { border-top: 0 }
+.setup-row .mark { flex: 0 0 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--soft); color: var(--muted) }
+.setup-row.ok .mark { background: var(--olive-tint); color: var(--olive-text) }
+.setup-row.bad .mark { background: var(--tomato-tint); color: var(--tomato-text) }
+.setup-row.warn .mark { background: var(--butter-tint); color: var(--butter-text) }
+.setup-row .what { flex: 1; min-width: 0 }
+.setup-row .fix { color: var(--ink-2); margin-top: 2px }
+.edit-ing .ingredient-suggestions .btn { width: auto }

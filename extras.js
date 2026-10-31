@@ -87,6 +87,7 @@ function renderSettingsExtras() {
   if (typeof renderBackupList === 'function') renderBackupList();
   if (typeof renderPictureCard === 'function') renderPictureCard();
   if (typeof renderPeopleCard === 'function') renderPeopleCard();
+  if (typeof renderSetupCheck === 'function') renderSetupCheck();
   const v9 = document.getElementById('v9Block'); if (v9) v9.hidden = (state.auditVersion || 0) >= 9 || !Object.keys(state.data.recipes).length;
 }
 

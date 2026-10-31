@@ -107,6 +107,13 @@ function matchKnownIngredient(name, raw) {
     const fits = known.filter(x => sameThingWithDescriptors(raw, x)).sort((a, b) => nameWords(b).length - nameWords(a).length);
     k = fits[0];
   }
+  if (!k && typeof catalogEntry === 'function') {
+    // not one of the family's yet: try the built-in ingredient list (alternate names included)
+    let e = catalogEntry(name);
+    if (!e && raw) { const fits = CATALOG_ENTRIES.filter(x => sameThingWithDescriptors(raw, x.name) || x.aliases.some(a => sameThingWithDescriptors(raw, a))).sort((a, b) => nameWords(b.name).length - nameWords(a.name).length); e = fits[0] }
+    if (!e && raw && raw !== name) e = catalogEntry(raw);
+    if (e) return (typeof familyIngredient === 'function' && familyIngredient(e.name)) || e.name;
+  }
   if (!k) return null;
   // use the spelling the family's recipes already use ("Ground beef", not "ground beef")
   for (const r of Object.values(state.data.recipes)) for (const i of r.ingredients || []) if (ingredientKey(i.name) === ingredientKey(k)) return i.name;
