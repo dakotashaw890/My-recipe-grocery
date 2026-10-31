@@ -236,6 +236,7 @@ async function handle(req: Request): Promise<Response> {
   if (body.action === 'kroger-stores') return reply(...await krogerStores(body));
   if (body.action === 'kroger-prices') return reply(...await krogerPrices(body));
   if (body.action === 'nutrition') return reply(...await nutritionFacts(body));
+  if (body.action === 'image') return reply(...await fetchImage(body));
   const url = allowedUrl(body.url);
   if (!url) return reply(400, { error: 'That doesn\'t look like a web address. Copy the full link starting with https://' });
 
@@ -292,6 +293,20 @@ async function krogerGet(path: string, token: string) {
   if (!r.ok) throw new Error('kroger ' + r.status);
   return r.json();
 }
+// A recipe's picture, copied once so it keeps working: TikTok and Instagram picture links stop working after a few days.
+export async function fetchImage(body: any): Promise<[number, unknown]> {
+  const u = allowedUrl(body.url);
+  if (!u) return [400, { error: 'Not a picture link.' }];
+  const r = await fetch(u.href, { redirect: 'follow', signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36', Accept: 'image/*' } }).catch(() => null);
+  const type = (r?.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (!r || !r.ok || !/^image\/(jpeg|png|webp|gif)$/.test(type)) return [422, { error: 'Couldn\'t get that picture.' }];
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  if (bytes.length > 4_000_000) return [413, { error: 'That picture is too big.' }];
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return [200, { data: `data:${type};base64,${btoa(bin)}` }];
+}
+
 export async function krogerStores(body: any): Promise<[number, unknown]> {
   const zip = String(body.zip || '').trim();
   if (!/^\d{5}$/.test(zip)) return [400, { error: 'Enter a 5-digit ZIP code.' }];

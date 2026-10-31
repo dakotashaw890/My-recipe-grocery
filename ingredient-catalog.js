@@ -361,7 +361,7 @@ const INGREDIENT_CATALOG=[
 ["Cheese sauce",2,[],[15,"oz","jar"]],
 ["Refrigerated pie crust",2,["pie crust","pie dough"],[2,"ea.","box"]],
 ["Crescent rolls",2,["crescent dough","pillsbury crescent"],[8,"oz","can"]],
-["Refrigerated biscuit dough",2,["canned biscuits","biscuit dough","refrigerated biscuits"],[16,"oz","can"]],
+["Refrigerated biscuit dough",2,["canned biscuits","biscuit dough","refrigerated biscuits","biscuits","grands biscuits","pillsbury grands biscuits","pillsbury biscuits","can biscuits","flaky biscuits"],[16,"oz","can"]],
 ["Pizza dough",2,["refrigerated pizza crust"],[13.8,"oz","can"]],
 ["Cinnamon roll dough",2,["cinnamon rolls refrigerated"],[12.4,"oz","can"]],
 ["Cookie dough",2,["refrigerated cookie dough"],[16,"oz","package"]],

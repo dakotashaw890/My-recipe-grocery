@@ -530,3 +530,42 @@ function updateTotalTime() {
   const el = document.getElementById('editTotal');
   if (el) el.textContent = prep + cook > 0 ? `Total time: ${formatMinutes(prep + cook)}` : 'Total time is calculated from prep + cook.';
 }
+
+// =====================================================================
+// Keep imported pictures: copy a recipe's picture onto the phone (and into family photo storage), because
+// TikTok and Instagram picture links stop working after a few days.
+// =====================================================================
+const EXPIRING_PICTURES = /(tiktokcdn|tiktokv|ttwstatic|cdninstagram|fbcdn|instagram\.f[a-z0-9-]+\.fna)/i;
+async function pictureToDataUrl(url) {
+  let blob = null;
+  try { const r = await fetch(url, { mode: 'cors', credentials: 'omit' }); if (r.ok && /^image\//.test(r.headers.get('content-type') || '')) blob = await r.blob() } catch (_) {}
+  if (!blob && typeof callHelper === 'function') {
+    try { const j = await callHelper({ action: 'image', url }); if (/^data:image\//.test(j?.data || '')) blob = await (await fetch(j.data)).blob() } catch (_) {}
+  }
+  if (!blob) return null;
+  try {
+    const img = await createImageBitmap(blob), s = Math.min(1, 1000 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .82);
+  } catch (_) { return null }
+}
+const keepingPhotos = new Set();
+async function keepRecipePhoto(id) {
+  const r = state.data.recipes[id], url = r?.photoUrl;
+  if (!url || r.photoId || !/^https:\/\//i.test(url) || keepingPhotos.has(id) || typeof storePhoto !== 'function') return false;
+  if (typeof SYNC_URL !== 'undefined' && SYNC_URL && url.startsWith(SYNC_URL)) return false;   // community pictures are already kept
+  keepingPhotos.add(id);
+  try {
+    await window.photosReady;
+    const data = await pictureToDataUrl(url); if (!data) return false;
+    const now = state.data.recipes[id]; if (!now || now.photoUrl !== url || now.photoId) return false;   // changed meanwhile
+    now.photoId = await storePhoto(data); delete now.photoUrl; save();
+    return true;
+  } catch (e) { console.warn('Picture not kept', e); return false }
+  finally { keepingPhotos.delete(id) }
+}
+// once after opening: rescue pictures from earlier imports while their links still work
+async function keepImportedPictures() {
+  for (const [id, r] of Object.entries(state?.data?.recipes || {})) if (r?.photoUrl && !r.photoId && EXPIRING_PICTURES.test(r.photoUrl)) await keepRecipePhoto(id);
+}
+window.addEventListener('load', () => setTimeout(keepImportedPictures, 4000));
