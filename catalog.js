@@ -19,7 +19,7 @@
   window.ensureCatalog = function () {
     build();
     if (names.length) return Promise.resolve(true);
-    return loading ??= loadScriptOnce('ingredient-catalog.js?v=26').then(() => {
+    return loading ??= loadScriptOnce('ingredient-catalog.js?v=27').then(() => {
       build(); familyIndexCache = null;
       // screens drawn before the list arrived get its departments and package sizes
       try { if (document.getElementById('shopping')?.classList.contains('active')) renderShopping() } catch (_) {}

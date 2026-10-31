@@ -1785,3 +1785,13 @@ details.nutrition[open] > summary::after { content: '▴'; }
 .setup-row .what { flex: 1; min-width: 0 }
 .setup-row .fix { color: var(--ink-2); margin-top: 2px }
 .edit-ing .ingredient-suggestions .btn { width: auto }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--tomato-text); text-decoration: underline; font: inherit; cursor: pointer }
+.app-list { margin: 6px 0 10px 18px; padding: 0; line-height: 1.5 }
+.unknown-row { padding: 10px 0; border-top: 1px solid var(--line) }
+.unknown-row:first-of-type { border-top: 0 }
+.import-pick { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); font-weight: 400 }
+.import-pick input { width: auto; margin-top: 3px }
+.swap-list .swap { padding: 10px 0; border-top: 1px solid var(--line) }
+.swap-list .swap:first-child { border-top: 0 }
+.swap-btn { margin-left: 6px; padding: 3px 9px; font-size: .82rem }
+.danger-zone { border: 1px solid var(--tomato-tint) }

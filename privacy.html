@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gingham Privacy Policy</title>
+<meta name="description" content="How Gingham: Family Meal Planner handles your information.">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root { --paper: #FBF6EC; --card: #FFFDF8; --ink: #2B2420; --muted: #7A6B5E; --line: #E8DCC8; --tomato: #C8412F; --tomato-text: #9C2F21 }
+  @media (prefers-color-scheme: dark) { :root { --paper: #1F1A16; --card: #2A231E; --ink: #F3EADC; --muted: #B5A595; --line: #3F352D; --tomato: #D9573F; --tomato-text: #F29A86 } }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif }
+  header { background: var(--tomato); color: #FFFDF8; padding: 18px 16px }
+  header b { font: 600 1.4rem Georgia, serif }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 56px }
+  h1 { font: 600 1.8rem Georgia, serif; margin: 0 0 4px }
+  h2 { font: 600 1.25rem Georgia, serif; margin: 28px 0 6px; padding-top: 14px; border-top: 1px solid var(--line) }
+  .muted { color: var(--muted) }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; margin: 8px 0 }
+  th, td { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--line) }
+  th { font-weight: 600 }
+  .wrap { overflow-x: auto }
+  a { color: var(--tomato-text) }
+  ul { padding-left: 20px }
+</style>
+</head>
+<body>
+<header><b>Gingham</b></header>
+<main>
+<h1>Privacy Policy</h1>
+<p class="muted">Gingham: Family Meal Planner · Effective October 31, 2026</p>
+
+<p>Gingham helps families keep recipes, plan meals and shop together. This policy explains what information the app uses, where it goes and the choices you have. In short: <b>your recipes are yours. Gingham has no ads, no tracking or analytics, and never sells or rents your information.</b></p>
+
+<h2>1. Who we are</h2>
+<p>Gingham is made by <span data-fill="owner">[YOUR NAME]</span> (“we”, “us”). Contact details are in <a href="#contact">section 11</a>.</p>
+
+<h2>2. Using Gingham without an account</h2>
+<p>You can use Gingham without signing in. Your recipes, meal plans, shopping lists, pantry, prices and photos are then stored <b>only on your device</b>, in the browser storage that belongs to the app. We can't see them. The app also keeps automatic backup copies on your device (up to 10 daily and 8 weekly). Backup files you choose to save or share go wherever you send them.</p>
+
+<h2>3. Family sync (optional account)</h2>
+<p>To share a kitchen between phones, you create an account with an email address and password. Then this is stored with our cloud provider, <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Supabase</a>:</p>
+<ul>
+  <li><b>Account:</b> your email address and password (stored only as a secure hash), the display name you enter, and the family name.</li>
+  <li><b>Your family's kitchen:</b> recipes, groups, meal plans, shopping list and checked items, pantry amounts, package sizes, prices you enter or pay, store choice, ratings, family members' names, planning preferences and app settings.</li>
+  <li><b>Photos</b> you add to recipes and ingredients.</li>
+</ul>
+<p>Only signed-in members of your family can read or change your family's data. This is enforced by the database's security rules, not just by the app. Data is sent over encrypted connections (HTTPS). When a family member deletes something, the app keeps a small “deleted” marker so every phone removes it too. That marker stays with your family's data until your family is deleted.</p>
+
+<h2>4. Community recipes (optional)</h2>
+<p>If you choose <b>Share with the community</b> on a recipe, that recipe (with its photo, its source link if any, and the family or display name shown as its author) becomes <b>public</b>: anyone using Gingham can see it, save it or report it. You can remove a recipe you shared at any time. Recipes reported by several people are hidden automatically.</p>
+
+<h2>5. Features that contact other services</h2>
+<p>Some features send the minimum needed to another service. None of them receive your email address or account details.</p>
+<div class="wrap"><table>
+  <tr><th>Feature</th><th>What is sent</th><th>To</th></tr>
+  <tr><td>Import a recipe from a link</td><td>The link you paste or share. Our helper (running on Supabase) fetches that page.</td><td>The website or social network in the link</td></tr>
+  <tr><td>Store prices</td><td>The ZIP code you search, the store you pick and ingredient names</td><td><a href="https://www.kroger.com/i/privacy/policy" target="_blank" rel="noopener">Kroger</a>, through our helper</td></tr>
+  <tr><td>Nutrition facts</td><td>Ingredient names</td><td><a href="https://fdc.nal.usda.gov/" target="_blank" rel="noopener">USDA FoodData Central</a>, through our helper</td></tr>
+  <tr><td>Barcode scanning</td><td>The barcode number</td><td><a href="https://world.openfoodfacts.org/privacy" target="_blank" rel="noopener">Open Food Facts</a></td></tr>
+  <tr><td>Find online recipes</td><td>Your search words</td><td>TheMealDB</td></tr>
+  <tr><td>Reading a recipe from a photo</td><td>Nothing: the text is read on your device. The reading tool is downloaded once from the jsDelivr network.</td><td>—</td></tr>
+  <tr><td>App fonts</td><td>A standard request for the font files</td><td>Google Fonts</td></tr>
+</table></div>
+<p>Like any website, these services can see your device's IP address when it connects to them. Their own privacy policies apply.</p>
+
+<h2>6. Camera and photos</h2>
+<p>The camera is used only when you choose to scan a barcode, take a recipe or ingredient photo, or photograph a recipe card. Barcode and recipe-card reading happens on your device. Photos are kept on your device, and are also stored in your family's private storage if you use family sync, or published if you share a recipe to Community.</p>
+
+<h2>7. What we don't do</h2>
+<ul>
+  <li>No advertising, and no advertising or tracking identifiers.</li>
+  <li>No analytics or usage tracking, and no selling, renting or trading of your information.</li>
+  <li>No location tracking. Store prices use only the ZIP code you type.</li>
+  <li>No access to your contacts.</li>
+</ul>
+
+<h2>8. How long data is kept</h2>
+<p>Data on your device stays until you delete it or erase the app's data. Family sync data stays until you delete it, leave, or delete your account. When the last member of a family deletes their account, that family's data and photos are deleted. Supabase's own short-term backups may keep copies for a limited time before they are overwritten.</p>
+
+<h2>9. Deleting your data</h2>
+<ul>
+  <li><b>In the app:</b> Settings → Account &amp; privacy → <b>Delete my account</b>. This deletes your sign-in, your family membership, your family's shared data and photos if you're its last member, and recipes you shared to Community.</li>
+  <li><b>On the web:</b> <a href="delete-account.html">delete your account here</a>, without the app.</li>
+  <li><b>This device only:</b> Settings → Account &amp; privacy → <b>Erase everything on this phone</b>, or uninstall the app.</li>
+  <li>Or email us from your account's email address (<a href="#contact">section 11</a>) and we'll delete it within 30 days.</li>
+</ul>
+
+<h2>10. Children</h2>
+<p>Gingham is meant for adults managing a household. It isn't directed to children under 13, and we don't knowingly collect personal information from them. If you believe a child has created an account, contact us and we'll delete it.</p>
+
+<h2 id="contact">11. Changes and contact</h2>
+<p>If this policy changes, we'll update the date at the top. Significant changes will also be shown in the app. Questions or requests: <a data-fill="email" href="mailto:[CONTACT EMAIL]">[CONTACT EMAIL]</a>.</p>
+</main>
+</body>
+</html>

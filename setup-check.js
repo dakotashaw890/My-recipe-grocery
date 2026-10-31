@@ -6,6 +6,7 @@ const SETUP_CHECKS = [
   { id: 'helper', title: 'Recipe link helper', run: checkHelper },
   { id: 'kroger', title: 'Kroger store prices', run: checkKroger },
   { id: 'nutrition', title: 'Nutrition facts', run: checkNutrition },
+  { id: 'deletion', title: 'Account deletion', run: checkDeletion },
 ];
 let setupResults = null, setupRunning = false;
 
@@ -69,6 +70,14 @@ async function checkNutrition() {
   return helperProblem(e) || setupBad('Nutrition lookup answered with an error: ' + e.message, 'Check the recipe-imports function\'s Logs in Supabase.');
 }
 
+async function checkDeletion() {
+  if (typeof syncActive !== 'function' || !syncActive()) return needsFamily();
+  try {
+    const r = await fetch(SYNC_URL + '/rest/v1/rpc/rg_family_size', { method: 'POST', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' }, body: JSON.stringify({ fid: '00000000-0000-0000-0000-000000000000' }) });
+    if (r.ok) return setupOk('People can delete their account (required by Google Play).');
+    return setupBad('Account deletion isn\'t set up.', 'In Supabase → SQL Editor, run account-deletion.sql once.');
+  } catch (e) { return offline() }
+}
 async function runSetupCheck() {
   if (setupRunning) return;
   setupRunning = true; setupResults = {}; renderSetupCheck();

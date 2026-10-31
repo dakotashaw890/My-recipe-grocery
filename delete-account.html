@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete your Gingham account</title>
+<meta name="description" content="Permanently delete your Gingham account and the data stored with it.">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root { --paper: #FBF6EC; --card: #FFFDF8; --ink: #2B2420; --muted: #7A6B5E; --line: #E8DCC8; --tomato: #C8412F; --tomato-text: #9C2F21; --tomato-tint: #F8E1DA; --olive-text: #4E5A27; --olive-tint: #ECEFD9 }
+  @media (prefers-color-scheme: dark) { :root { --paper: #1F1A16; --card: #2A231E; --ink: #F3EADC; --muted: #B5A595; --line: #3F352D; --tomato: #D9573F; --tomato-text: #F29A86; --tomato-tint: #3E2420; --olive-text: #C9D69A; --olive-tint: #2C3120 } }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif }
+  header { background: var(--tomato); color: #FFFDF8; padding: 18px 16px }
+  header b { font: 600 1.4rem Georgia, serif }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px }
+  h1 { font: 600 1.6rem Georgia, serif; margin: 0 0 8px }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin: 16px 0 }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; font-size: .95rem }
+  input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; background: var(--paper); color: var(--ink) }
+  button { margin-top: 16px; padding: 12px 18px; border: 0; border-radius: 12px; font: 600 1rem system-ui, sans-serif; background: var(--tomato); color: #FFFDF8; cursor: pointer }
+  button:disabled { opacity: .5; cursor: default }
+  .muted { color: var(--muted); font-size: .92rem }
+  .msg { margin-top: 12px; font-size: .95rem }
+  .bad { color: var(--tomato-text) } .ok { background: var(--olive-tint); color: var(--olive-text); padding: 12px; border-radius: 10px }
+  ul { padding-left: 20px } a { color: var(--tomato-text) }
+</style>
+</head>
+<body>
+<header><b>Gingham</b></header>
+<main>
+  <h1>Delete your Gingham account</h1>
+  <p>You can delete your account here or in the app (Settings → Account &amp; privacy → Delete my account). Deleting permanently removes:</p>
+  <ul>
+    <li>your sign-in (email and password)</li>
+    <li>your membership in your family. If you're its only member, the family's shared recipes, meal plans, shopping lists, pantry and photos are deleted too. Otherwise the other members keep them.</li>
+    <li>any recipes you shared to Community recipes, with their photos</li>
+  </ul>
+  <p class="muted">Deletion happens right away and can't be undone. Copies kept on your own phone aren't touched; erase those in the app (Settings → Account &amp; privacy → Erase everything on this phone) or by uninstalling it. See the <a href="privacy.html">privacy policy</a>.</p>
+  <div class="card" id="form">
+    <label for="email">Email</label><input id="email" type="email" autocomplete="username">
+    <label for="password">Password</label><input id="password" type="password" autocomplete="current-password">
+    <label for="confirm">Type DELETE to confirm</label><input id="confirm" autocomplete="off" autocapitalize="characters">
+    <button id="go" onclick="go()">Delete my account</button>
+    <div id="msg" class="msg" role="status"></div>
+  </div>
+  <p class="muted">Forgot your password, or can't sign in? Email the address in the <a href="privacy.html#contact">privacy policy</a> from your account's email address and we'll delete it within 30 days.</p>
+</main>
+<script src="sync-config.js"></script>
+<script src="account.js?v=27"></script>
+<script>
+  const cfg = window.RG_SYNC_CONFIG || {}, URL_ = String(cfg.url || '').replace(/\/+$/, ''), KEY_ = String(cfg.anonKey || '');
+  const msg = (t, cls = '') => { const m = document.getElementById('msg'); m.textContent = t; m.className = 'msg ' + cls };
+  async function go() {
+    const email = document.getElementById('email').value.trim(), password = document.getElementById('password').value;
+    if (!email || !password) return msg('Enter the email and password you use in Gingham.', 'bad');
+    if (document.getElementById('confirm').value.trim().toUpperCase() !== 'DELETE') return msg('Type DELETE to confirm.', 'bad');
+    const btn = document.getElementById('go'); btn.disabled = true; msg('Signing in…');
+    try {
+      const r = await fetch(URL_ + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: KEY_, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.access_token) { btn.disabled = false; return msg(/confirm/i.test(j.msg || j.error_description || '') ? 'Confirm your email first (check your inbox), then try again.' : 'That email and password didn\'t match. Check them and try again.', 'bad') }
+      await deleteGinghamAccount({ url: URL_, key: KEY_, token: j.access_token, progress: t => msg(t) });
+      document.getElementById('form').innerHTML = '<div class="ok"><b>✓ Your account has been deleted.</b><br>If Gingham is still installed, open it and choose “Erase everything on this phone” in Settings, or uninstall it, to remove the copy on your phone.</div>';
+    } catch (e) { btn.disabled = false; msg(e instanceof TypeError ? 'Couldn\'t connect. Check your internet connection and try again.' : e.message, 'bad') }
+  }
+</script>
+</body>
+</html>

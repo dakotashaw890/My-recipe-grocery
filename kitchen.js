@@ -198,6 +198,7 @@ function openRecipeImport(opts = {}) {
       ${opts.note ? `<p class="small warning">${esc(opts.note)}</p>` : ''}
       <textarea id="importText" rows="${opts.text ? 12 : 8}" placeholder="Grandma's Chili&#10;Serves 6&#10;Ingredients&#10;1 1/2 lb ground beef&#10;2 cans kidney beans&#10;Directions&#10;Brown the beef…">${esc(opts.text || '')}</textarea>
       <div class="actions"><button class="btn secondary" onclick="importFromText()">Read recipe text</button></div></div>
+    <div class="card"><h3>From another recipe app</h3><p class="small muted">Paprika, Plan to Eat, Mela, Mealie and more: bring all your recipes over at once.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('import-apps.js?v=27').then(()=>openAppImport())">📦 Choose export file</button></div></div>
     <div id="importMsg" class="small" role="status"></div>`);
 }
 function importMessage(text, bad) { const el = document.getElementById('importMsg'); if (el) { el.textContent = text; el.className = 'small ' + (bad ? 'warning' : 'muted') } }

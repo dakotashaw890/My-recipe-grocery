@@ -143,7 +143,7 @@ function smartFillPlan() {
       if (limit && t && t > limit) s -= (t - limit) / 10;            // only when nothing fit: closest wins
       if (limit && !t) s -= 0.5;
       if (recent.has(id)) s -= 1.5;                                  // had it in the last two weeks
-      if (target != null) { if (cost == null) s -= 1; else if (cost > target) s -= Math.min(6, (cost - target) / Math.max(target, 1) * 4); else s += 0.5 }
+      if (target != null) { if (cost == null) s -= 1; else if (cost > target) s -= Math.min(12, Math.log2(cost / Math.max(target, 1)) * 3 + 0.5); else s += 0.5 }   // pricier is always worse, even when everything is over
       return { id, s, cost };
     }).sort((a, b) => b.s - a.s);
     const pick = scored[0];

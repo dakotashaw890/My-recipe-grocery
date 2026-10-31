@@ -94,13 +94,15 @@ async function listSnapshots() {
   return all.sort((a, b) => b.id - a.id);
 }
 let lastAutoSnapshot = null, lastWeeklySnapshot = null;   // times of the newest automatic backups, once known
-async function maybeAutoSnapshot() {
+let autoSnapshotRunning = null;
+function maybeAutoSnapshot() { return autoSnapshotRunning ??= autoSnapshot().finally(() => { autoSnapshotRunning = null }) }   // startup and sync both ask; run once at a time
+async function autoSnapshot() {
   if (!photoDB) return;
   try {
     if (lastAutoSnapshot === null || lastWeeklySnapshot === null) {
       const all = await listSnapshots();
-      lastAutoSnapshot = all.find(s => s.reason === 'Automatic daily backup')?.id || 0;
       lastWeeklySnapshot = all.find(s => s.reason === WEEKLY_REASON)?.id || 0;
+      lastAutoSnapshot = Math.max(all.find(s => s.reason === 'Automatic daily backup')?.id || 0, lastWeeklySnapshot);   // a weekly copy counts as that day's copy
     }
     if (Date.now() - lastWeeklySnapshot >= WEEK_MS) { lastWeeklySnapshot = Date.now(); await createSnapshot(WEEKLY_REASON); if (Date.now() - lastAutoSnapshot >= AUTO_SNAPSHOT_EVERY) lastAutoSnapshot = Date.now(); return }
     if (Date.now() - lastAutoSnapshot < AUTO_SNAPSHOT_EVERY) return;
