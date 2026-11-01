@@ -236,6 +236,7 @@ async function handle(req: Request): Promise<Response> {
   if (body.action === 'kroger-stores') return reply(...await krogerStores(body));
   if (body.action === 'kroger-prices') return reply(...await krogerPrices(body));
   if (body.action === 'nutrition') return reply(...await nutritionFacts(body));
+  if (body.action === 'portions') return reply(...await foodPortions(body));
   if (body.action === 'image') return reply(...await fetchImage(body));
   if (body.action === 'read-card') return reply(...await readRecipeCard(body));
   const url = allowedUrl(body.url);
@@ -388,6 +389,36 @@ export async function krogerPrices(body: any): Promise<[number, unknown]> {
 // Needs the Supabase secret FDC_API_KEY (free key at api.data.gov/signup).
 // =====================================================================
 const NUTRIENTS: Record<string, string> = { '1008': 'calories', '1003': 'protein', '1004': 'fat', '1258': 'satFat', '1005': 'carbs', '1079': 'fiber', '2000': 'sugar', '1093': 'sodium' };
+// Measured weights from USDA: how much 1 cup weighs, and 1 "each" (a medium onion, a large egg, a chicken breast).
+const EACH_WORDS = [/^medium\b/, /^large\b/, /^(1 )?(whole|each|item|unit)\b/, /^(1 )?(breast|fillet|thigh|drumstick|wing|chop|link|patty|clove|slice|stalk|spear|leaf|tortilla|bun|roll|bagel|muffin|cookie|piece|bar|egg|fruit|ear)\b/, /^small\b/];
+function portionWeights(f: any) {
+  const ps = (f.foodPortions || []).map((p: any) => {
+    const unit = p.measureUnit?.name && !/undetermined/i.test(p.measureUnit.name) ? p.measureUnit.name : '';
+    const desc = [unit, p.modifier, p.portionDescription].filter(Boolean).join(' ').toLowerCase().replace(/^\d+(\.\d+)?\s+/, '').trim();
+    return { desc, g: Number(p.gramWeight) / (Number(p.amount) || 1) };
+  }).filter((p: any) => p.g > 0 && p.desc);
+  const cupP = ps.find((p: any) => /^cups?\b/.test(p.desc)), tbspP = ps.find((p: any) => /^(tbsp|tablespoons?)\b/.test(p.desc));
+  const cup = cupP ? { g: Math.round(cupP.g * 10) / 10, label: cupP.desc } : tbspP ? { g: Math.round(tbspP.g * 16 * 10) / 10, label: '16 × ' + tbspP.desc } : null;
+  const isEgg = /^egg\b/i.test(f.description || '');
+  let eachP = null;
+  for (const re of isEgg ? [/^large\b/, ...EACH_WORDS] : EACH_WORDS) { eachP = ps.find((p: any) => re.test(p.desc) && !/^cups?\b|^(tbsp|tsp|oz|lb)\b/.test(p.desc)); if (eachP) break }
+  const each = eachP ? { g: Math.round(eachP.g * 10) / 10, label: eachP.desc } : null;
+  return { cup, each };
+}
+export async function foodPortions(body: any): Promise<[number, unknown]> {
+  const key = Deno.env.get('FDC_API_KEY');
+  if (!key) return [...notSetUp('Nutrition facts')];
+  const ids: number[] = (Array.isArray(body.fdcIds) ? body.fdcIds : []).map(Number).filter((n: number) => Number.isInteger(n) && n > 0).slice(0, 20);
+  if (!ids.length) return [400, { error: 'No foods given.' }];
+  const r = await fetch('https://api.nal.usda.gov/fdc/v1/foods?api_key=' + encodeURIComponent(key), {
+    method: 'POST', signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fdcIds: ids, format: 'full' }),
+  }).catch(() => null);
+  if (!r || !r.ok) return [502, { error: 'The USDA database didn\'t answer. Try again in a minute.' }];
+  const foods = await r.json().catch(() => []);
+  const results: Record<string, unknown> = {};
+  for (const f of Array.isArray(foods) ? foods : []) if (f?.fdcId) results[f.fdcId] = portionWeights(f);
+  return [200, { results }];
+}
 export async function nutritionFacts(body: any): Promise<[number, unknown]> {
   const key = Deno.env.get('FDC_API_KEY');
   if (!key) return [...notSetUp('Nutrition facts')];

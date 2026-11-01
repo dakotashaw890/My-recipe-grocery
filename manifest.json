@@ -34,12 +34,21 @@
   ],
   "description": "Family recipes, meal planning, pantry and a shared shopping list.",
   "share_target": {
-    "action": "./index.html",
-    "method": "GET",
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
     "params": {
       "title": "share_title",
       "text": "share_text",
-      "url": "share_url"
+      "url": "share_url",
+      "files": [
+        {
+          "name": "share_image",
+          "accept": [
+            "image/*"
+          ]
+        }
+      ]
     }
   }
 }

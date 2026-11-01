@@ -73,6 +73,7 @@
 <div class="card" id="accountCard"></div>
 <details class="card advanced" id="advancedCard"><summary><span><b class="adv-title">Advanced</b><span class="small muted">Package sizes, prices, start over</span></span></summary>
 <div class="adv-block"><b>Ingredient package sizes</b><p class="small muted">The usual package each ingredient is bought in. Shopping amounts are worked out from these.</p><div id="packageEditor"></div><div class="actions"><button class="btn secondary" onclick="openIngredientInspector()">🔎 Ingredient inspector</button><button class="btn secondary" onclick="openPackageEditor()">Edit package sizes</button></div></div>
+<div class="adv-block"><b>Ingredient weights</b><p class="small muted">How much a cup or one of each ingredient weighs, so recipe amounts turn into what you buy and nutrition adds up. Can be filled in from USDA measurements.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('weights.js?v=36').then(()=>openWeights())">Ingredient weights</button></div></div>
 <div class="adv-block"><b>Prices</b><p class="small muted">Prices you type in, or pay when you finish a trip, are used for cost estimates. Clearing them keeps package sizes and trip history.</p><div class="actions"><button class="btn secondary" onclick="clearManualPrices()">Clear prices I typed in</button></div></div>
 <div class="adv-block" id="v9Block"><b>Version 9 ingredient fixes</b><p class="small muted">Only for kitchens started before version 9. Updates built-in recipes whose ingredients still match the old values; your own changes are kept. Download a backup first.</p><div class="actions"><button class="btn secondary" onclick="applyV9Corrections()">Apply version 9 fixes</button></div></div>
 <div class="adv-block"><b>Start over</b><p class="small muted">Removes this phone's recipes, plan and edits, then asks how you'd like to start. A backup is saved on this phone first (Automatic backups).</p><div class="actions"><button class="btn danger" onclick="resetApp()">Start over</button></div></div>
@@ -102,7 +103,7 @@
 <script src="extras.js?v=33"></script>
 <script src="kitchen.js?v=32"></script>
 <script src="pictures.js?v=24"></script>
-<script src="imports.js?v=30"></script>
+<script src="imports.js?v=36"></script>
 <script src="prices.js?v=25"></script>
 <script src="community.js?v=25"></script>
 <script>// features that aren't needed for the first screen load just after it

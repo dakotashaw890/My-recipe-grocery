@@ -1,13 +1,22 @@
-const CACHE='gingham-v35';
-const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./ui.js?v=24','./units.js?v=35','./groups.js?v=25','./planner.js?v=27','./family.js?v=24','./cooking.js?v=24','./shop.js?v=32','./starter-recipes.js?v=25','./week.js?v=34','./core.js?v=35','./shop-extras.js?v=35','./onboarding.js?v=33','./sharing.js?v=33','./ingredient-catalog.js?v=29','./catalog.js?v=29','./sync-config.js?v=17','./storage.js?v=27','./sync.js?v=33','./extras.js?v=33','./kitchen.js?v=32','./pictures.js?v=24','./imports.js?v=30','./prices.js?v=25','./nutrition.js?v=35','./community.js?v=25','./setup-check.js?v=33','./import-apps.js?v=27','./substitutions.js?v=27','./account.js?v=27','./app.css?v=35','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
+const CACHE='gingham-v36';
+const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./ui.js?v=24','./units.js?v=35','./groups.js?v=25','./planner.js?v=27','./family.js?v=24','./cooking.js?v=24','./shop.js?v=32','./starter-recipes.js?v=25','./week.js?v=34','./core.js?v=35','./shop-extras.js?v=35','./onboarding.js?v=33','./sharing.js?v=33','./ingredient-catalog.js?v=29','./catalog.js?v=29','./sync-config.js?v=17','./storage.js?v=27','./sync.js?v=33','./extras.js?v=33','./kitchen.js?v=32','./pictures.js?v=24','./imports.js?v=36','./weights.js?v=36','./prices.js?v=25','./nutrition.js?v=35','./community.js?v=25','./setup-check.js?v=33','./import-apps.js?v=27','./substitutions.js?v=27','./account.js?v=27','./app.css?v=35','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
 const IMAGES=[];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(async c=>{
   await c.addAll(CORE);
   // Images are cached individually so one missing file never blocks the update.
   await Promise.all(IMAGES.map(u=>c.add(u).catch(()=>{})));
 }))});
-self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))])));
+self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k!=='gingham-share').map(k=>caches.delete(k))))])));
 self.addEventListener('fetch',e=>{
+  // Share → Gingham (links, text and pictures) arrives as a form post; keep any pictures, then open the app with the rest
+  if(e.request.method==='POST'&&new URL(e.request.url).pathname.endsWith('/share-target')){e.respondWith((async()=>{
+    const fd=await e.request.formData(),q=new URLSearchParams(),c=await caches.open('gingham-share');
+    for(const k of await c.keys())await c.delete(k);
+    let n=0;for(const f of fd.getAll('share_image')){if(f&&f.size&&/^image\//.test(f.type)&&n<4)await c.put('./shared-image-'+(n++),new Response(f,{headers:{'Content-Type':f.type}}))}
+    for(const k of ['share_title','share_text','share_url']){const v=fd.get(k);if(v)q.set(k,v)}
+    if(n)q.set('shared_images',String(n));
+    return Response.redirect(new URL('./index.html?'+q.toString(),self.registration.scope).href,303);
+  })());return}
   if(e.request.method!=='GET')return;
   const url=new URL(e.request.url);
   if(url.origin!==location.origin)return;   // Supabase and other sites: straight to the network

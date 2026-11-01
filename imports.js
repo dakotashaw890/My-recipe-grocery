@@ -7,10 +7,20 @@
 // manifest.json registers Gingham as a share target; Android opens index.html?share_text=…&share_url=…
 function sharedContent() {
   const q = new URLSearchParams(location.search);
-  if (!['share_title', 'share_text', 'share_url'].some(k => q.has(k))) return null;
+  if (!['share_title', 'share_text', 'share_url', 'shared_images'].some(k => q.has(k))) return null;
   const title = q.get('share_title') || '', text = q.get('share_text') || '', url = q.get('share_url') || '';
   const link = (url.match(/https?:\/\/\S+/) || text.match(/https?:\/\/\S+/) || title.match(/https?:\/\/\S+/) || [])[0]?.replace(/[.,!?)\]]+$/, '') || '';
-  return { title, text, link };
+  return { title, text, link, images: Number(q.get('shared_images')) || 0 };
+}
+// pictures shared to Gingham wait in the service worker's "gingham-share" cache
+async function sharedImageFiles(n) {
+  const out = [];
+  try {
+    const c = await caches.open('gingham-share');
+    for (let i = 0; i < n; i++) { const r = await c.match('./shared-image-' + i); if (r) { const b = await r.blob(); out.push(new File([b], 'shared-' + i + '.jpg', { type: b.type || 'image/jpeg' })) } }
+    for (const k of await c.keys()) await c.delete(k);
+  } catch (_) {}
+  return out;
 }
 function handleShareLaunch() {
   const shared = sharedContent();
@@ -19,6 +29,12 @@ function handleShareLaunch() {
   try { history.replaceState(history.state, '', location.pathname) } catch (_) {}
   showScreen('recipes');
   const signedIn = typeof syncAuth !== 'undefined' && !!syncAuth && syncConfigured;
+  // a picture (a pin, a screenshot, a photo of a recipe card): read it like "From a photo"
+  if (shared.images && !shared.link) {
+    openRecipeImport({ sourceType: 'Shared picture' });
+    sharedImageFiles(shared.images).then(files => { if (files.length) readRecipePhotos(files); else ocrStatus('The shared picture didn\'t come through. Save it to your phone, then use Choose photos.', true) });
+    return;
+  }
   if (shared.link) {
     openRecipeImport({ url: shared.link });
     if (signedIn) importFromLink();
