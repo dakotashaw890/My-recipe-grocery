@@ -425,7 +425,7 @@ function finishTrip() {
   const stores = [...new Set((state.spending?.trips || []).map(t => t.store).filter(Boolean))];
   window.tripRows = rows.map(x => {
     const key = ingredientKey(x.name), last = priceHistory(key).slice(-1)[0], eff = effectivePrice(key);
-    return { key, name: x.name, packs: packsToBuy(x), label: x.pkg?.label || 'item', price: last ? last.price.toFixed(2) : (eff ? eff.value.toFixed(2) : ''), pantry: true };
+    return { key, name: x.name, packs: packsToBuy(x), label: x.pkg?.label || 'item', price: last ? last.price.toFixed(2) : (eff ? eff.value.toFixed(2) : ''), pantry: state.pantryMode !== 'simple' };
   });
   openModal(`<div class="row between"><h2>Finish shopping trip</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
     <p class="small muted">Enter what you paid per package. Prices are remembered, so estimates and recipe costs become your real numbers.</p>
@@ -436,7 +436,7 @@ function finishTrip() {
       <label class="trip-field"><span>$ each</span><input type="number" min="0" step="0.01" inputmode="decimal" value="${t.price}" aria-label="Price per ${esc(t.label)} of ${esc(t.name)}" oninput="tripRows[${i}].price=this.value;tripTotal()"></label><label class="trip-pantry" title="Add to the pantry"><input type="checkbox" ${t.pantry ? 'checked' : ''} onchange="tripRows[${i}].pantry=this.checked" aria-label="Add ${esc(t.name)} to the pantry"><span>🏠</span></label></div>`).join('')}</div>
     <div class="trip-total"><span>Items total</span><b id="tripItemsTotal"></b></div>
     <label for="tripReceipt">Receipt total (optional — include tax and items not on the list)</label><input id="tripReceipt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Uses the items total if blank">
-    <label class="check-line"><input id="tripToPantry" type="checkbox" checked onchange="document.querySelectorAll('.trip-pantry input').forEach((c,i)=>{c.checked=this.checked;tripRows[i].pantry=this.checked})"> Add these to the pantry <span class="small muted">(untick 🏠 on items that won't go in the pantry)</span></label>
+    <label class="check-line"><input id="tripToPantry" type="checkbox" ${state.pantryMode === 'simple' ? '' : 'checked'} onchange="document.querySelectorAll('.trip-pantry input').forEach((c,i)=>{c.checked=this.checked;tripRows[i].pantry=this.checked})"> Add these to the pantry <span class="small muted">(untick 🏠 on items that won't go in the pantry)</span></label>
     <div class="actions"><button class="btn" onclick="saveFinishedTrip()">Save trip</button></div>`);
   tripTotal();
 }

@@ -50,7 +50,7 @@ function renderCookMode() {
   if (!el || !c) return;
   const r = state.data.recipes[c.name], total = c.steps.length;
   const sys = typeof unitSystem === 'function' ? unitSystem() : 'us';
-  const ingredients = r.ingredients.map(i => `<li><span>${esc(i.name)}${i.note ? ` <small>${esc(i.note)}</small>` : ''}</span><b>${typeof cookAmountHTML === 'function' ? cookAmountHTML(i, c.scale) : displayQty(i, c.scale) + ' ' + esc(i.unit || '')}</b></li>`).join('');
+  const ingredients = r.ingredients.map(i => { const k = ingredientKey(i.name), out = !!state.shopOut?.[k]; return `<li><span>${esc(i.name)}${i.note ? ` <small>${esc(i.note)}</small>` : ''}</span><b>${typeof cookAmountHTML === 'function' ? cookAmountHTML(i, c.scale) : displayQty(i, c.scale) + ' ' + esc(i.unit || '')}</b>${typeof markOut === 'function' ? `<button class="cook-out ${out ? 'on' : ''}" ${out ? 'disabled' : ''} aria-label="${out ? esc(i.name) + ' is on the shopping list' : 'Out of ' + esc(i.name) + '? Add it to the shopping list'}" onclick="state.shopOut??={};state.shopOut[decodeURIComponent('${encId(k)}')]={at:Date.now(),name:decodeURIComponent('${encId(i.name)}')};save();renderCookMode();toast('🛒 ${esc(i.name).replace(/'/g, '')} is on the shopping list')">${out ? '✓ On list' : 'Out?'}</button>` : ''}</li>` }).join('');
   const stepText = total ? (typeof convertTemps === 'function' ? convertTemps(c.steps[c.step], sys) : c.steps[c.step]) : '';
   el.setAttribute('aria-label', 'Cooking ' + recipeName(c.name));
   el.innerHTML = `<div class="cook-top"><div><div class="cook-title">${esc(recipeName(c.name))}</div><div class="cook-sub">${fmt(c.servings)} servings${wakeLock ? ' · screen stays on' : ''}</div></div><div class="cook-top-actions">${typeof toggleUnitSystem === 'function' ? `<button class="cook-units" onclick="toggleUnitSystem()" aria-label="Show amounts in ${sys === 'us' ? 'metric' : 'US'} units">${sys === 'us' ? 'US' : 'Metric'} ⇄</button>` : ''}<button class="cook-close" aria-label="Close cook mode" onclick="closeCookMode()">✕</button></div></div>
@@ -89,6 +89,7 @@ function renderSettingsExtras() {
   if (typeof renderPeopleCard === 'function') renderPeopleCard();
   if (typeof renderSetupCheck === 'function') renderSetupCheck();
   if (typeof renderAccountCard === 'function') renderAccountCard();
+  if (typeof renderGuideCard === 'function') renderGuideCard();
   const v9 = document.getElementById('v9Block'); if (v9) v9.hidden = (state.auditVersion || 0) >= 9 || !Object.keys(state.data.recipes).length;
 }
 

@@ -1806,3 +1806,44 @@ details.nutrition[open] > summary::after { content: '▴'; }
 .skipped-department > summary { color: var(--muted) }
 .trip-pantry { display: flex; align-items: center; gap: 2px; font-size: .9rem; margin: 0 }
 .trip-pantry input { width: auto; margin: 0 }
+.cook-ingredients li { align-items: center }
+.cook-ingredients li > span { flex: 1 }
+.cook-out { flex: 0 0 auto; background: transparent; color: var(--cook-ink); border: 1px solid #ffffff44; border-radius: 999px; padding: 4px 10px; font: 600 .8rem system-ui, sans-serif; opacity: .8 }
+.cook-out.on { border-color: transparent; background: #ffffff22; opacity: 1 }
+.onhand-department > summary .dept-hint, .dept-hint { font-weight: 400; font-size: .85rem; color: var(--muted) }
+.out-btn { padding: 6px 12px; font-size: .85rem; margin-top: 2px }
+.onhand-line { margin: 10px 0 }
+.small-btn { padding: 6px 12px; font-size: .9rem }
+.out-list .check-line { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); margin: 0 }
+.out-list .check-line:first-child { border-top: 0 }
+.out-list input { width: auto; margin: 0 }
+/* v32: setup walkthrough */
+.tour { padding-top: 4px }
+.tour h2 { margin: 6px 0 6px }
+.tour-icon { font-size: 2.2rem; line-height: 1 }
+.tour-dots { display: flex; gap: 6px; justify-content: center; margin: 2px 0 12px }
+.tour-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong) }
+.tour-dots span.done { background: var(--olive) }
+.tour-dots span.on { background: var(--tomato); width: 22px; border-radius: 4px }
+.tour-person { display: flex; gap: 8px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line) }
+.tour-person:first-child { border-top: 0 }
+.tour-person .emoji-select { width: 58px; flex: 0 0 58px }
+.tour-person input { margin: 0 0 6px }
+.tour-wont { font-size: .9rem }
+.tour-choice { display: flex; gap: 10px; align-items: flex-start; padding: 12px; margin: 8px 0; border: 1px solid var(--line); border-radius: 14px; font-weight: 400; cursor: pointer }
+.tour-choice.on { border: 2px solid var(--tomato); background: var(--tomato-tint) }
+.tour-choice input { width: auto; margin-top: 3px }
+.tour-choice small { display: block; color: var(--ink-2); margin-top: 2px; line-height: 1.35 }
+.tour-guide { margin: 6px 0 4px }
+.tour-item { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line) }
+.tour-item:first-child { border-top: 0 }
+.tour-item p { margin: 2px 0 0; font-size: .92rem; color: var(--ink-2); line-height: 1.4 }
+.tour-emoji { font-size: 1.5rem; flex: 0 0 34px; text-align: center }
+.tour-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px }
+.tour-nav .btn { min-width: 110px }
+.tour-skip { display: block; margin: 12px auto 0; font-size: .9rem; color: var(--muted) }
+.tour-card { display: flex; flex-direction: column; gap: 6px; border: 2px solid var(--butter); background: var(--butter-tint) }
+#shoppingList .onhand-department .shop-need, #shoppingList .onhand-department .shop-row .tiny.muted { display: none }
+#shoppingList .onhand-department .shop-buy { background: transparent; color: var(--muted) }
+#shoppingList .onhand-department .shop-buy span { font-size: .7rem }
+#shoppingList .onhand-department .shop-row { padding-top: 8px; padding-bottom: 8px }

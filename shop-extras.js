@@ -62,6 +62,12 @@ function addExtraRows(rows) {
     const r = { name, unit: pkg ? pkg.unit : 'ea.', qty, originalQty: qty, pkg, issues: [], sources: ['Added'], pantryPacks: 0, pantryUsed: 0, extraKey: key, ...(k !== key ? { swappedFrom: new Set([x.name]) } : {}) };
     rows.push(r); byKey.set(k, r);
   }
+  for (const [key, o] of Object.entries(state.shopOut || {})) {
+    if (byKey.has(key)) continue;
+    const name = o?.name ? o.name.charAt(0).toUpperCase() + o.name.slice(1) : key, pkg = getPackage(name), qty = pkg ? pkg.qty : 1;
+    const r = { name, unit: pkg ? pkg.unit : 'ea.', qty, originalQty: qty, pkg, issues: [], sources: ['Ran out'], pantryPacks: 0, pantryUsed: 0, ranOut: true };
+    rows.push(r); byKey.set(key, r);
+  }
   rows.sort((a, b) => a.name.localeCompare(b.name));
   return rows;
 }
@@ -134,6 +140,7 @@ function clearShopExtrasAfterTrip(boughtKeys) {
   for (const k of Object.keys(state.shopExtras || {})) if (bought.has(ingredientKey(shopSwapTarget(state.shopExtras[k].name)))) delete state.shopExtras[k];
   for (const [k, s] of Object.entries(state.shopSwaps || {})) if ((s.parts || []).some(p => bought.has(ingredientKey(p[2])))) delete state.shopSwaps[k];
   state.shopSkips = {};   // "not needed" was for this trip only
+  for (const k of Object.keys(state.shopOut || {})) if (bought.has(k)) delete state.shopOut[k];
 }
 function shopRowExtrasHTML(row) {
   const id = encId(ingredientKey(row.name));
@@ -141,13 +148,13 @@ function shopRowExtrasHTML(row) {
 }
 function shopRowActionsHTML(row) {
   const id = encId(ingredientKey(row.name));
-  return `<button class="btn secondary" onclick="openShopSwap('${id}')">⇄ Swap</button>${row.skipped ? `<button class="btn secondary" onclick="skipShopItem('${id}',false)">↩ Need it after all</button>` : `<button class="btn secondary" onclick="skipShopItem('${id}',true)">✕ Don't need</button>`}${row.extraKey ? `<button class="btn secondary" onclick="removeShopExtra('${encId(row.extraKey)}')">${row.uses?.length ? 'Remove what I added' : 'Remove'}</button>` : ''}</div>${shopUsesHTML(row)}<div>`;
+  return `<button class="btn secondary" onclick="openShopSwap('${id}')">⇄ Swap</button>${row.skipped ? `<button class="btn secondary" onclick="skipShopItem('${id}',false)">↩ Need it after all</button>` : `<button class="btn secondary" onclick="skipShopItem('${id}',true)">✕ Don't need</button>`}${row.onHand ? `<button class="btn secondary" onclick="setOnHand('${id}',false)">Always put it on the list</button>` : state.shopOut?.[ingredientKey(row.name)] ? `<button class="btn secondary" onclick="delete state.shopOut[decodeURIComponent('${id}')];save();renderShopping()">↩ Not out after all</button>` : !alwaysOnHand(ingredientKey(row.name)) && !['Produce', 'Meat & Seafood'].includes(departmentFor(row.name)) ? `<button class="btn secondary" onclick="setOnHand('${id}',true)">🧂 I always have this</button>` : ''}${row.extraKey ? `<button class="btn secondary" onclick="removeShopExtra('${encId(row.extraKey)}')">${row.uses?.length ? 'Remove what I added' : 'Remove'}</button>` : ''}</div>${shopUsesHTML(row)}<div>`;
 }
 
 // ---------- which recipes need it ----------
 function shopForHTML(row) {
   const names = [...new Set((row.uses || []).map(u => recipeName(u.rid)).filter(Boolean))];
-  const extra = [...(row.extraKey ? ['added by hand'] : []), ...(row.staple ? ['staple'] : [])];
+  const extra = [...(row.extraKey ? ['added by hand'] : []), ...(row.staple ? ['staple'] : []), ...(state.shopOut?.[ingredientKey(row.name)] ? ['ran out'] : [])];
   const all = [...names, ...extra]; if (!all.length) return '';
   return `<span class="shop-for">For ${esc(all.slice(0, 2).join(', '))}${all.length > 2 ? ` +${all.length - 2} more` : ''}</span>`;
 }
@@ -163,4 +170,62 @@ function skipShopItem(encoded, on) {
   const key = decodeURIComponent(encoded); state.shopSkips ??= {};
   if (on) { state.shopSkips[key] = { at: Date.now() }; delete state.checks[key] } else delete state.shopSkips[key];
   save(); renderShopping(); toast(on ? 'Moved to "Not needed this trip"' : 'Back on the list');
+}
+
+// ---------- things you almost always have (seasonings, oils, condiments, toppings) ----------
+// Not tracked in the pantry? Then they go in a folded "Check you have" section instead of the list,
+// until someone taps "I'm out". itemMeta[key].onHand: true = always assume, false = never assume.
+const ON_HAND_DEFAULTS = new Set(["olive oil", "extra virgin olive oil", "vegetable oil", "canola oil", "coconut oil", "avocado oil", "sesame oil", "peanut oil", "cooking spray", "white vinegar", "apple cider vinegar", "red wine vinegar", "white wine vinegar", "balsamic vinegar", "rice vinegar", "ketchup", "yellow mustard", "dijon mustard", "spicy brown mustard", "whole grain mustard", "honey mustard", "mayonnaise", "miracle whip", "relish", "hot sauce", "sriracha", "buffalo sauce", "bbq sauce", "worcestershire sauce", "soy sauce", "tamari", "teriyaki sauce", "hoisin sauce", "oyster sauce", "fish sauce", "sweet chili sauce", "chili garlic sauce", "gochujang", "curry paste", "ranch dressing", "ranch seasoning mix", "italian dressing", "caesar dressing", "balsamic vinaigrette", "blue cheese dressing", "thousand island dressing", "honey mustard dressing", "french dressing", "poppy seed dressing", "steak sauce", "cocktail sauce", "tartar sauce", "horseradish", "liquid smoke", "tahini", "salt", "kosher salt", "sea salt", "seasoned salt", "garlic salt", "celery salt", "black pepper", "whole black peppercorns", "white pepper", "garlic powder", "onion powder", "minced garlic", "minced onion", "paprika", "smoked paprika", "chili powder", "cayenne pepper", "red pepper flakes", "chipotle chili powder", "ground cumin", "cumin seeds", "ground coriander", "turmeric", "curry powder", "garam masala", "ground ginger", "ground cinnamon", "cinnamon sticks", "ground nutmeg", "ground cloves", "ground allspice", "pumpkin pie spice", "apple pie spice", "ground cardamom", "dried oregano", "dried basil", "dried thyme", "dried rosemary", "dried parsley", "dried dill", "rubbed sage", "dried marjoram", "dried tarragon", "bay leaves", "italian seasoning", "herbes de provence", "poultry seasoning", "cajun seasoning", "old bay seasoning", "lemon pepper", "steak seasoning", "taco seasoning", "fajita seasoning", "chili seasoning mix", "sazon seasoning", "adobo seasoning", "everything bagel seasoning", "greek seasoning", "jerk seasoning", "chinese five spice", "za'atar", "sesame seeds", "poppy seeds", "celery seed", "mustard seed", "ground mustard", "fennel seed", "saffron", "msg", "gravy mix", "country gravy mix", "turkey gravy mix", "lemon juice", "lime juice", "all-purpose flour", "granulated sugar", "brown sugar", "powdered sugar", "baking soda", "baking powder", "cornstarch", "cream of tartar", "vanilla extract", "almond extract", "honey", "maple syrup", "vegetable shortening", "cocoa powder", "chicken bouillon", "beef bouillon", "breadcrumbs", "italian breadcrumbs", "panko", "active dry yeast", "instant yeast", "sesame seeds"]);
+function onHandByDefault(key) {
+  if (ON_HAND_DEFAULTS.has(key)) return true;
+  const e = typeof catalogEntry === 'function' ? catalogEntry(key) : null;
+  return !!e && ON_HAND_DEFAULTS.has(e.name.toLowerCase());
+}
+function onHandSetting(key) { const v = state.itemMeta?.[key]?.onHand; return v === true || v === false ? v : null }
+function alwaysOnHand(key) { const s = onHandSetting(key); return s != null ? s : onHandByDefault(key) }
+function assumedOnHand(row) {
+  const key = ingredientKey(row.name);
+  if (state.pantry?.[key] || state.shopOut?.[key] || row.extraKey || row.staple) return false;   // tracked, out, or asked for
+  const s = onHandSetting(key);
+  if (s === false) return false;
+  if (s === true || onHandByDefault(key)) return 'always';
+  // a little of something long-lasting: this week's recipes use under a tenth of one package
+  const dept = departmentFor(row.name), issues = row.issues || [];
+  if (row.pkg && row.originalQty > 0 && row.originalQty < row.pkg.qty * 0.1 && !['Produce', 'Meat & Seafood', 'Bakery', 'Frozen'].includes(dept) && !issues.some(t => /^(Conversion needed|Cannot|Check recipe)/.test(t))) return 'small';
+  return false;
+}
+function markOut(encoded, quiet) {
+  const key = decodeURIComponent(encoded); state.shopOut ??= {};
+  state.shopOut[key] = { at: Date.now(), name: state.shopOut[key]?.name || (window.lastShoppingRows || []).find(r => ingredientKey(r.name) === key)?.name || key };
+  delete state.shopSkips?.[key];
+  save(); if (document.getElementById('shopping')?.classList.contains('active')) renderShopping();
+  if (!quiet) toast('🛒 On the list');
+}
+function setOnHand(encoded, on) {
+  const key = decodeURIComponent(encoded); state.itemMeta ??= {};
+  const m = state.itemMeta[key] = { ...(state.itemMeta[key] || {}) };
+  if (on === null || on === onHandByDefault(key)) delete m.onHand; else m.onHand = on;
+  if (on === false && state.shopOut?.[key]) delete state.shopOut[key];
+  save(); if (document.getElementById('shopping')?.classList.contains('active')) renderShopping();
+  toast(on ? 'Got it: you always have ' + key : 'It will go on the list whenever a recipe needs it');
+}
+function onHandEditorHTML(key) {
+  const on = alwaysOnHand(key), id = encId(key);
+  return `<label class="check-line onhand-line"><input type="checkbox" ${on ? 'checked' : ''} onchange="setOnHand('${id}',this.checked)"> 🧂 I almost always have this <span class="small muted">— keep it under "Check you have" instead of on the list (unless you track it in the pantry)</span></label>`;
+}
+// "Out of something?" from a recipe or cook mode
+function openOutOf(rid) {
+  const r = state.data.recipes[rid]; if (!r) return;
+  const names = [...new Set((r.ingredients || []).map(i => i.name).filter(n => !/^(tap |cold |warm |hot |boiling |ice )?water$/i.test(n)))];
+  openModal(`<div class="row between"><h2>Out of something?</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
+    <p class="small muted">Tick what you've run out of. It goes on the shopping list.</p>
+    <div class="out-list">${names.map((n, i) => `<label class="check-line"><input type="checkbox" class="outPick" value="${esc(ingredientKey(n))}" data-name="${esc(n)}" ${state.shopOut?.[ingredientKey(n)] ? 'checked disabled' : ''}> ${esc(n)}${state.shopOut?.[ingredientKey(n)] ? ' <span class="small muted">· already on the list</span>' : ''}</label>`).join('')}</div>
+    <div class="actions"><button class="btn" onclick="saveOutOf()">Add to shopping list</button><button class="btn secondary" onclick="closeModal()">Cancel</button></div>`);
+}
+function saveOutOf() {
+  const picks = [...document.querySelectorAll('.outPick:checked:not(:disabled)')];
+  if (!picks.length) return closeModal();
+  state.shopOut ??= {};
+  for (const p of picks) state.shopOut[p.value] = { at: Date.now(), name: p.dataset.name };
+  save(); closeModal(); toast('🛒 ' + picks.length + ' item' + (picks.length === 1 ? '' : 's') + ' added to the shopping list');
 }

@@ -97,6 +97,7 @@ const SYNC_MAPS = [
   ['extra/', s => s.shopExtras, s => (s.shopExtras ??= {})],
   ['swap/', s => s.shopSwaps, s => (s.shopSwaps ??= {})],
   ['skip/', s => s.shopSkips, s => (s.shopSkips ??= {})],
+  ['out/', s => s.shopOut, s => (s.shopOut ??= {})],
 ];
 function hashText(str) {   // cyrb53
   let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
@@ -206,6 +207,7 @@ function localEntries(s, photos) {
   if (s.spending?.budget != null) put('setting/budget', s.spending.budget);
   if (s.planPrefs && Object.keys(s.planPrefs).length) put('setting/planPrefs', s.planPrefs);
   if (s.kroger?.id) put('setting/kroger', s.kroger);
+  if (s.pantryMode) put('setting/pantryMode', s.pantryMode);
   for (const [id, url] of Object.entries(photos || {})) put('photo/' + id, photoStorage === 'missing' ? url : PHOTO_MARK);
   // photos the family has that are still downloading count as present, so they're never "removed"
   if (photos === photoCache) for (const id of pendingPhotos) if (!photos[id]) put('photo/' + id, PHOTO_MARK);
@@ -221,6 +223,7 @@ function setEntry(s, photos, key, value) {
   if (key === 'setting/budget') { s.spending ??= { trips: [], budget: 0 }; s.spending.budget = value; return true }
   if (key === 'setting/planPrefs') { s.planPrefs = value || {}; return true }
   if (key === 'setting/kroger') { s.kroger = value; return true }
+  if (key === 'setting/pantryMode') { s.pantryMode = value; return true }
   if (prefix === 'photo/') { if (isPhotoMark(value)) { if (!photos[k]) { pendingPhotos.add(k); savePending() } } else photos[k] = value; return true }
   return false;   // a kind of data from a newer version of the app: leave it alone
 }
@@ -233,6 +236,7 @@ function removeEntry(s, photos, key) {
   if (key === 'setting/budget') { if (s.spending) s.spending.budget = 0; return }
   if (key === 'setting/planPrefs') { s.planPrefs = {}; return }
   if (key === 'setting/kroger') { delete s.kroger; return }
+  if (key === 'setting/pantryMode') { delete s.pantryMode; return }
   if (prefix === 'photo/') { delete photos[k]; if (pendingPhotos.delete(k)) savePending(); return }
 }
 function clearSharedData(s) {
