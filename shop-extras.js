@@ -161,8 +161,8 @@ function shopForHTML(row) {
 function shopUsesHTML(row) {
   const uses = row.uses || []; if (!uses.length) return '';
   const by = new Map();
-  for (const u of uses) { const k = u.rid + '|' + normUnit(u.unit) + '|' + (u.from || ''); const cur = by.get(k); if (cur && cur.qty != null && u.qty != null) cur.qty += u.qty; else if (!cur) by.set(k, { ...u }) }
-  return `<b class="small">Needed for</b><ul class="shop-uses">${[...by.values()].map(u => `<li><a href="#" onclick="event.preventDefault();openRecipe(decodeURIComponent('${encId(u.rid)}'))">${esc(recipeName(u.rid))}</a> · ${u.qty != null ? fmt(Math.round(u.qty * 100) / 100) + ' ' + esc(u.unit) : 'some'}${u.from ? ` <span class="muted">(instead of ${esc(u.from)})</span>` : ''}</li>`).join('')}</ul>`;
+  for (const u of uses) { const k = u.rid + '|' + normUnit(u.unit) + '|' + (u.from || ''); const cur = by.get(k); if (cur && cur.qty != null && u.qty != null) { cur.qty += u.qty; cur.base = null } else if (!cur) by.set(k, { ...u }) }
+  return `<b class="small">Needed for</b><ul class="shop-uses">${[...by.values()].map(u => `<li><a href="#" onclick="event.preventDefault();openRecipe(decodeURIComponent('${encId(u.rid)}'))">${esc(recipeName(u.rid))}</a> · ${u.qty != null ? fmt(Math.round(u.qty * (['count', 'container'].includes(unitKind(unitName(u.unit))) ? 10 : 100)) / (['count', 'container'].includes(unitKind(unitName(u.unit))) ? 10 : 100)) + ' ' + esc(u.unit) + (u.base != null && u.planned && u.serves && Math.abs(u.planned - u.serves) > 1e-9 ? ` <span class="muted">(${fmt(u.base)} in the recipe, which serves ${fmt(u.serves)}; planned for ${fmt(u.planned)} servings)</span>` : '') : 'some'}${u.from ? ` <span class="muted">(instead of ${esc(u.from)})</span>` : ''}</li>`).join('')}</ul>`;
 }
 
 // ---------- don't need it this trip ----------

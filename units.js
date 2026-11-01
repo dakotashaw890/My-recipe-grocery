@@ -43,7 +43,7 @@ const TYPICAL_GRAMS_PER_CUP = {
 };
 const TYPICAL_GRAMS_EACH = {
   'eggs': 50, 'egg': 50, 'garlic cloves': 5, 'garlic': 5, 'yellow onions': 150, 'onion': 150, 'onions': 150, 'potatoes': 213, 'russet potatoes': 213, 'lime': 67, 'lemon': 85, 'orange': 130,
-  'carrots': 61, 'celery': 40, 'tomatoes': 123, 'bell peppers': 119, 'banana': 118, 'avocado': 150, 'apple': 182, 'boneless skinless chicken breasts': 175, 'hot dogs': 45, 'flour tortillas': 45, 'corn tortillas': 26,
+  'carrots': 61, 'celery': 40, 'tomatoes': 123, 'bell peppers': 119, 'banana': 118, 'avocado': 150, 'apple': 182, 'boneless skinless chicken breasts': 175, 'chicken breasts': 175, 'chicken breast': 175, 'thin sliced chicken breasts': 113, 'thin-sliced chicken breasts': 113, 'chicken cutlets': 113, 'chicken thighs': 115, 'boneless skinless chicken thighs': 115, 'chicken tenders': 45, 'chicken drumsticks': 110, 'chicken wings': 30, 'pork chops': 200, 'salmon fillets': 170, 'bacon': 28, 'sausage links': 60, 'shallots': 40, 'zucchini': 200, 'jalapeños': 14, 'limes': 67, 'lemons': 85, 'hot dogs': 45, 'flour tortillas': 45, 'corn tortillas': 26,
 };
 function factorFor(key, field, typical) {
   const own = Number(state.itemMeta?.[key]?.[field]);
@@ -103,6 +103,12 @@ function convertDetail(q, from, to, name) {
   if (f === t) return { result: { qty: q, estimate: false } };
   const saved = rememberedConversion(key, f, t);
   if (saved) return { result: { qty: q * saved.qty, estimate: false, remembered: true } };
+  // well-known amounts: a stick of butter is 4 oz; a head of garlic is about 10 cloves; "2 breasts" or "2 fillets" are 2 each
+  if (f === 'stick' && /butter|margarine|shortening/.test(key)) return convertDetail(q * 113.4, 'g', t, name);
+  if (/garlic/.test(key) && f === 'clove' && (t === 'ea.' || t === 'head')) return { result: { qty: q / 10, estimate: true } };
+  if (/garlic/.test(key) && (f === 'ea.' || f === 'head') && t === 'clove') return { result: { qty: q * 10, estimate: true } };
+  if ((f === 'breast' || f === 'fillet' || f === 'piece') && t !== f) return convertDetail(q, 'ea.', t, name);
+  if ((t === 'breast' || t === 'fillet') && f === 'ea.') return { result: { qty: q, estimate: false } };
   const a = toBasic(q, f, key);
   if (!a) return { result: null, need: 'unknownUnit' };
   // target: a container word means "how many containers"
@@ -344,4 +350,20 @@ function askShopConversion(encoded) {
   const key = decodeURIComponent(encoded), row = (window.lastShoppingRows || []).find(x => ingredientKey(x.name) === key);
   if (!row?.convNeed) return;
   askConversion(row.name, row.convNeed.from, row.convNeed.to, () => { refreshAllRecipeConversions(); renderShopping() });
+}
+
+// Shopping list "Need": whole things (eggs, chicken breasts) can't be bought in fractions, so show the
+// amount the recipes call for, rounded sensibly, instead of "9.14".
+function needText(x) {
+  const u = unitName(x.unit || ''), q = x.originalQty;
+  if (unitKind(u) === 'count' || unitKind(u) === 'container') {
+    return `${fmt(Math.max(Math.round(q) === 0 && q > 0 ? 1 : 0, Math.ceil(q - 0.05)))} ${esc(x.unit)}`;   // you can't buy 9.14 chicken breasts
+  }
+  return `${fmt(Math.round(q * 100) / 100)} ${esc(x.unit)}`;
+}
+// "8 in the recipe (serves 7), planned for 8 servings": explains amounts that were scaled
+function scaleNoteHTML(x) {
+  const scaled = (x.uses || []).filter(u => u.base != null && u.planned && u.serves && Math.abs(u.planned - u.serves) > 1e-9);
+  if (!scaled.length) return '';
+  return `<div class="tiny muted scale-note">${scaled.slice(0, 2).map(u => `${esc(fmt(u.base))} ${esc(u.unit)} in ${esc(recipeName(u.rid))} serves ${esc(fmt(u.serves))}; planned for ${esc(fmt(u.planned))}`).join(' · ')}${scaled.length > 2 ? ' …' : ''}</div>`;
 }

@@ -3,6 +3,13 @@
 // A recipe's facts per serving = sum over ingredients of (grams × per-100 g values) ÷ servings.
 'use strict';
 
+// tap a macro next to the ring: open the table at that nutrient
+function openNutrient(k) {
+  const d = document.querySelector('#detailNutrition .nf-details'); if (!d) return;
+  d.open = true;
+  const order = ['calories', 'fat', 'satFat', 'carbs', 'fiber', 'sugar', 'protein', 'sodium'], item = d.querySelectorAll('.nf-item')[order.indexOf(k)];
+  if (item) { item.open = true; item.scrollIntoView({ block: 'center', behavior: 'smooth' }) }
+}
 const NUTRIENT_ROWS = [['calories', 'Calories', ''], ['protein', 'Protein', 'g'], ['carbs', 'Carbs', 'g'], ['fiber', 'Fiber', 'g'], ['sugar', 'Sugar', 'g'], ['fat', 'Fat', 'g'], ['satFat', 'Saturated fat', 'g'], ['sodium', 'Sodium', 'mg']];
 // grams of an ingredient amount, using the same conversions as shopping (cups → grams needs a weight per cup, etc.)
 function gramsOf(q, unit, name) {
@@ -15,7 +22,7 @@ function recipeNutrition(id, servings) {
   const r = state.data.recipes[id]; if (!r) return null;
   const n = servings || r.baseServings || 4, scale = n / (r.baseServings || 4);
   const total = Object.fromEntries(NUTRIENT_ROWS.map(([k]) => [k, 0]));
-  const missingFacts = [], missingWeight = []; let counted = 0, estimate = false, skipped = 0;
+  const missingFacts = [], missingWeight = [], parts = []; let counted = 0, estimate = false, skipped = 0;
   for (const i of r.ingredients || []) {
     const q = num(i.qty);
     if (q === null || q <= 0) { skipped++; continue }          // "salt to taste"
@@ -23,11 +30,13 @@ function recipeNutrition(id, servings) {
     if (!facts) { missingFacts.push(i.name); continue }
     const g = gramsOf(q * scale, i.unit, i.name);
     if (!g) { missingWeight.push(i.name); continue }
-    for (const [k] of NUTRIENT_ROWS) total[k] += (Number(facts[k]) || 0) * g.g / 100;
+    const part = { name: i.name, grams: g.g / n };
+    for (const [k] of NUTRIENT_ROWS) { const v = (Number(facts[k]) || 0) * g.g / 100; total[k] += v; part[k] = v / n }
+    parts.push(part);
     counted++; if (g.estimate) estimate = true;
   }
   const per = Object.fromEntries(Object.entries(total).map(([k, v]) => [k, v / n]));
-  return { per, counted, of: (r.ingredients || []).length - skipped, missingFacts, missingWeight, estimate, servings: n };
+  return { per, parts, counted, of: (r.ingredients || []).length - skipped, missingFacts, missingWeight, estimate, servings: n };
 }
 // ---------- looks ----------
 // FDA Daily Values (2,000-calorie diet). Sugar has no daily value for total sugars.
@@ -65,22 +74,34 @@ function nutritionHTML(id, servings) {
   const kcal = { protein: p.protein * 4, carbs: p.carbs * 4, fat: p.fat * 9 }, kTotal = kcal.protein + kcal.carbs + kcal.fat || 1;
   const ring = ringSVG(['protein', 'carbs', 'fat'].map(k => ({ frac: kcal[k] / kTotal, color: MACRO_COLORS[k] })), 132, 13,
     `<b>${approx}${nfRound('calories', p.calories)}</b><span>calories</span>`, `${Math.round(p.calories)} calories per serving`);
-  const legend = [['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']].map(([k, label]) => `<div class="nf-macro"><span class="nf-dot" style="background:${MACRO_COLORS[k]}"></span><span class="nf-macro-name">${label}</span><b>${nfRound(k, p[k])} g</b><span class="nf-macro-pct">${Math.round(kcal[k] / kTotal * 100)}%</span></div>`).join('');
+  const legend = [['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']].map(([k, label]) => `<div class="nf-macro" role="button" tabindex="0" onclick="openNutrient('${k}')"><span class="nf-dot" style="background:${MACRO_COLORS[k]}"></span><span class="nf-macro-name">${label}</span><b>${nfRound(k, p[k])} g</b><span class="nf-macro-pct">${Math.round(kcal[k] / kTotal * 100)}%</span></div>`).join('');
   const badges = nutritionBadges(p);
   const rows = [['calories', 'Calories', ''], ['fat', 'Fat', 'g'], ['satFat', 'Saturated fat', 'g', true], ['carbs', 'Carbs', 'g'], ['fiber', 'Fiber', 'g', true], ['sugar', 'Sugars', 'g', true], ['protein', 'Protein', 'g'], ['sodium', 'Sodium', 'mg']]
     .map(([k, label, u, sub]) => { const dv = DAILY_VALUES[k], pct = dv ? Math.round(p[k] / dv * 100) : null;
-      return `<div class="nf-row ${sub ? 'sub' : ''}"><span class="nf-name">${label}</span><span class="nf-val">${nfRound(k, p[k])}${u ? ' ' + u : ''}</span><span class="nf-pct">${pct != null ? pct + '%' : ''}</span>${pct != null ? `<span class="nf-bar"><span style="width:${Math.min(100, pct)}%;background:${k === 'sodium' || k === 'satFat' ? (pct >= 20 ? 'var(--nf-warn)' : 'var(--nf-fiber)') : MACRO_COLORS[k] || 'var(--nf-fiber)'}"></span></span>` : '<span class="nf-bar none"></span>'}</div>` }).join('');
+      const color = k === 'sodium' || k === 'satFat' ? (pct >= 20 ? 'var(--nf-warn)' : 'var(--nf-fiber)') : MACRO_COLORS[k] || 'var(--nf-fiber)';
+      return `<details class="nf-item ${sub ? 'sub' : ''}"><summary class="nf-row"><span class="nf-name">${label}</span><span class="nf-val">${nfRound(k, p[k])}${u ? ' ' + u : ''}</span><span class="nf-pct">${pct != null ? pct + '%' : ''}</span>${pct != null ? `<span class="nf-bar"><span style="width:${Math.min(100, pct)}%;background:${color}"></span></span>` : '<span class="nf-bar none"></span>'}</summary>${contributorsHTML(nf, k, u, color)}</details>` }).join('');
   return `<div class="card nutrition nf-card">
     <div class="nf-head"><h3>Nutrition</h3><span class="small muted">Per serving${nf.servings ? ' · ' + fmt(nf.servings) + ' servings' : ''}</span></div>
     <div class="nf-hero">${ring}<div class="nf-legend">${legend}</div></div>
     ${badges.length ? `<div class="nf-badges">${badges.map(([t, b]) => `<span class="nf-badge ${t}">${t === 'good' ? '✓' : '!'} ${b}</span>`).join('')}</div>` : ''}
     <details class="nf-details"><summary><span>Nutrition per serving</span><span class="small muted">% Daily Value</span></summary>
+      <p class="tiny muted nf-tip">Tap a nutrient to see which ingredients it comes from.</p>
       <div class="nf-rows">${rows}</div>
       <p class="tiny muted">% Daily Value is based on a 2,000-calorie diet. Calories split shows where the calories come from. From USDA FoodData Central.</p>
       <p class="tiny muted">Matched foods: ${(state.data.recipes[id].ingredients || []).map(i => state.itemMeta?.[ingredientKey(i.name)]?.nutrition).filter(Boolean).map(x => esc(x.name)).slice(0, 3).join('; ')}… <button class="linkish" onclick="openNutritionMatches(decodeURIComponent('${encId(id)}'))">Review matches</button></p>
     </details>
     ${partial ? `<p class="nf-note small">${approx ? '≈ ' : ''}Counts ${nf.counted} of ${nf.of} ingredients.${nf.missingFacts.length && signedIn ? ` <button class="linkish" onclick="lookUpNutrition(decodeURIComponent('${encId(id)}'))">Look up ${esc(nf.missingFacts.slice(0, 3).join(', '))}${nf.missingFacts.length > 3 ? '…' : ''}</button>` : nf.missingFacts.length ? ' Missing: ' + esc(nf.missingFacts.join(', ')) + '.' : ''}${nf.missingWeight.length ? ` Needs a weight: ${nf.missingWeight.map(n => `<button class="linkish" onclick="askNutritionWeight(decodeURIComponent('${encId(id)}'),decodeURIComponent('${encId(n)}'))">${esc(n)}</button>`).join(', ')}` : ''}</p>` : nf.estimate ? '<p class="nf-note tiny muted">Some amounts use typical weights.</p>' : ''}
   </div>`;
+}
+// what in the recipe makes up a nutrient (per serving), biggest first
+function contributorsHTML(nf, k, u, color) {
+  const total = nf.per[k] || 0, list = (nf.parts || []).map(x => ({ name: x.name, v: x[k] || 0 })).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
+  if (!list.length || total <= 0) return `<div class="nf-contrib"><p class="tiny muted">None of the counted ingredients have any ${k === 'satFat' ? 'saturated fat' : k}.</p></div>`;
+  const shown = list.slice(0, 6), rest = list.slice(6).reduce((s, x) => s + x.v, 0);
+  if (rest > 0) shown.push({ name: `${list.length - 6} more`, v: rest, more: true });
+  return `<div class="nf-contrib">${shown.map(x => { const share = Math.round(x.v / total * 100);
+    return `<div class="nf-c ${x.more ? 'more' : ''}"><span class="nf-c-name">${esc(x.name)}</span><span class="nf-c-val">${nfRound(k, x.v)}${u ? ' ' + u : ''}</span><span class="nf-c-share">${share}%</span><span class="nf-c-bar"><span style="width:${Math.max(2, share)}%;background:${color}"></span></span></div>` }).join('')}
+    ${nf.missingFacts.length || nf.missingWeight.length ? `<p class="tiny muted">Not counted: ${esc([...nf.missingFacts, ...nf.missingWeight].join(', '))}.</p>` : ''}</div>`;
 }
 // recipe cards: calories per serving, when most ingredients are counted
 function recipeCaloriePill(id) {
