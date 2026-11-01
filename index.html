@@ -12,7 +12,7 @@
 <meta name="description" content="Gingham: family recipes, meal planning, pantry and a shared shopping list.">
 <link rel="icon" href="icon-192.png" type="image/png"><link rel="manifest" href="manifest.json?v=17b">
 <style>html{background:#FBF6EC}@media (prefers-color-scheme:dark){html{background:#1E1A17}}</style>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=32">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=33">
 </head>
 <body>
 <header><div class="header-row"><div><div class="brand">Gingham</div><div class="sub">Family meals, pantry &amp; shopping</div></div><div class="row" style="gap:4px"><button id="syncBadge" class="sync-badge" hidden onclick="showSettings()"></button><button class="iconbtn" aria-label="Settings" onclick="showSettings()">⚙️</button></div></div></header>
@@ -94,12 +94,12 @@
 <script src="shop.js?v=32"></script>
 <script src="starter-recipes.js?v=25"></script>
 <script src="week.js?v=24"></script>
-<script src="core.js?v=32"></script>
+<script src="core.js?v=33"></script>
 <script src="catalog.js?v=29"></script>
 <script src="sync-config.js?v=17"></script>
 <script src="storage.js?v=27"></script>
-<script src="sync.js?v=32"></script>
-<script src="extras.js?v=32"></script>
+<script src="sync.js?v=33"></script>
+<script src="extras.js?v=33"></script>
 <script src="kitchen.js?v=32"></script>
 <script src="pictures.js?v=24"></script>
 <script src="imports.js?v=30"></script>
@@ -107,5 +107,5 @@
 <script src="nutrition.js?v=25"></script>
 <script src="community.js?v=25"></script>
 <script>// features that aren't needed for the first screen load just after it
-window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['shop-extras.js?v=32','onboarding.js?v=32','substitutions.js?v=27','account.js?v=27','setup-check.js?v=30','import-apps.js?v=27']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(typeof renderTourCard==='function')renderTourCard()},300));</script>
+window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['shop-extras.js?v=32','onboarding.js?v=33','sharing.js?v=33','substitutions.js?v=27','account.js?v=27','setup-check.js?v=33','import-apps.js?v=27']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(typeof renderTourCard==='function')renderTourCard();if(typeof renderShareCodeLine==='function'&&document.getElementById('settings')?.classList.contains('active'))renderShareCodeLine()},300));</script>
 <script>window.addEventListener('load',()=>{setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},450)});setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},2500);</script><script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Offline support unavailable',e)));</script></body></html>

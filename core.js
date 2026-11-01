@@ -170,6 +170,7 @@ function recipeCard(name){
   </div>`
 }
 function renderHome(){
+  if(typeof checkInbox==='function')checkInbox();
   const reminder=document.getElementById('backupReminder');if(reminder&&typeof backupReminderHTML==='function')reminder.innerHTML=backupReminderHTML();
   const kitchen=document.getElementById('heroKitchen');if(kitchen)kitchen.textContent=(typeof syncInfo!=='undefined'&&syncInfo?.familyName)||'Your family kitchen';
   const h=new Date().getHours(),greet=document.getElementById('homeGreeting');if(greet)greet.textContent=h<11?'Good morning':h<16?'Good afternoon':'Good evening';
@@ -266,7 +267,7 @@ function openRecipe(name){
   <h2>Ingredients</h2><div id="detailSummary"></div><div id="detailIngredients"></div><div class="actions" style="margin-top:4px"><button class="btn ghost small-btn" onclick="loadScriptOnce('shop-extras.js?v=32').then(()=>openOutOf(decodeURIComponent('${encId(name)}')))">🛒 Out of something?</button></div><div id="detailNutrition"></div>
   ${r.notes?`<h2>Notes</h2><div class="card recipe-notes" style="white-space:pre-line">${esc(r.notes)}</div>`:''}
   ${r.directions.length?`<h2>Instructions</h2><div class="card">${r.directions.flatMap(d=>String(d).split(/\n+/)).map(d=>d.trim()).filter(Boolean).map(d=>`<div class="ingredient">${esc(d)}</div>`).join('')}</div>`:''}
-  <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(name)}'))">👩‍🍳 Cook mode</button><button class="btn secondary" onclick="toggleRecipeSelection(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${state.selected[name]?'✓ Remove from shopping':'＋ Add to shopping'}</button><button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encId(name)}'))">Edit recipe</button><button class="btn secondary" onclick="openRecipePhoto(decodeURIComponent('${encId(name)}'))">📷 Photo</button><button class="btn secondary" onclick="openRecipeGroups(decodeURIComponent('${encId(name)}'))">📁 Groups</button>${typeof communityButtonHTML==='function'?communityButtonHTML(name):''}<button class="btn secondary" onclick="toggleFavorite(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
+  <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(name)}'))">👩‍🍳 Cook mode</button><button class="btn secondary" onclick="toggleRecipeSelection(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${state.selected[name]?'✓ Remove from shopping':'＋ Add to shopping'}</button><button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encId(name)}'))">Edit recipe</button><button class="btn secondary" onclick="openRecipePhoto(decodeURIComponent('${encId(name)}'))">📷 Photo</button><button class="btn secondary" onclick="openRecipeGroups(decodeURIComponent('${encId(name)}'))">📁 Groups</button><button class="btn secondary" onclick="loadScriptOnce('sharing.js?v=33').then(()=>openShareRecipe(decodeURIComponent('${encId(name)}')))">📤 Share</button><button class="btn secondary" onclick="toggleFavorite(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
   renderDetailIngredients(name);
 }
 function changeDetailServings(delta){const el=document.getElementById('detailServings');el.value=Math.max(1,(num(el.value)||1)+delta);renderDetailIngredients(currentModalRecipe())}
@@ -627,7 +628,7 @@ window.addEventListener('gingham-pictures',()=>{try{refreshSavedViews()}catch(_)
 window.addEventListener('load',()=>setTimeout(()=>loadScriptOnce('ingredient-pictures.js?v=24').catch(()=>{}),200));
 
 // ---------- First time on a new phone: how do you want to start? ----------
-function maybeWelcome(){if(state.welcome&&!(typeof syncActive==='function'&&syncActive()))setTimeout(openWelcome,350)}
+function maybeWelcome(){if(/[?&]r=|#recipe=|#access_token=/.test(location.href))return;if(state.welcome&&!(typeof syncActive==='function'&&syncActive()))setTimeout(openWelcome,350)}
 function openWelcome(){
  const n=Object.keys(STARTER_RECIPES).length;
  openModal(`<div class="welcome"><div class="welcome-mark" aria-hidden="true">🍽️</div><h2>Welcome to Gingham</h2>
@@ -645,6 +646,6 @@ function startKitchen(how){
  else if(how==='restore'){showScreen('settings');setTimeout(()=>document.getElementById('importFile')?.click(),250)}
  else if(how==='empty'){showScreen('recipes');toast('Tap ＋ Add or 🔗 Import to add your first recipe')}
  else {showScreen('recipes');toast('Added '+Object.keys(STARTER_RECIPES).length+' example recipes')}
- if(how==='empty'||how==='examples')loadScriptOnce('onboarding.js?v=32').then(()=>startOnboarding()).catch(()=>{})
+ if(how==='empty'||how==='examples')loadScriptOnce('onboarding.js?v=33').then(()=>startOnboarding()).catch(()=>{})
 }
 window.addEventListener('load',()=>maybeWelcome());

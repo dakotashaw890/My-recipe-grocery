@@ -1847,3 +1847,23 @@ details.nutrition[open] > summary::after { content: '▴'; }
 #shoppingList .onhand-department .shop-buy { background: transparent; color: var(--muted) }
 #shoppingList .onhand-department .shop-buy span { font-size: .7rem }
 #shoppingList .onhand-department .shop-row { padding-top: 8px; padding-bottom: 8px }
+.or-line { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; color: var(--muted); font-size: .85rem }
+.or-line::before, .or-line::after { content: ''; flex: 1; height: 1px; background: var(--line) }
+.google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: #fff; color: #1f1f1f; border: 1px solid #dadce0; box-shadow: none }
+.google-btn:hover { background: #f8f9fa }
+/* v33: sharing */
+.share-choice { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; padding: 14px; margin: 10px 0; border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--ink); font: inherit; cursor: pointer }
+div.share-choice { cursor: default }
+.share-choice.off { opacity: .7 }
+.share-choice small { display: block; color: var(--ink-2); margin-top: 3px; line-height: 1.4; font-size: .88rem }
+.share-icon { font-size: 1.5rem; line-height: 1; flex: 0 0 30px; text-align: center }
+.share-send { display: flex; gap: 8px; margin: 10px 0 6px }
+.share-send input { margin: 0; flex: 1; min-width: 0; text-transform: uppercase }
+.share-send .btn { margin: 0 }
+.shared-photo { width: 100%; max-height: 220px; object-fit: cover; border-radius: 14px; margin-bottom: 10px }
+.shared-list { margin: 4px 0 12px; padding-left: 20px; line-height: 1.55 }
+.inbox-card { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; border: 2px solid var(--olive); background: var(--olive-tint); color: var(--ink); font: inherit; cursor: pointer }
+.inbox-card small { display: block; color: var(--ink-2) }
+.inbox-thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 10px; flex: 0 0 52px }
+.share-code-line { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line) }
+.share-send input::placeholder { text-transform: none }

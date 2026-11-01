@@ -20,6 +20,7 @@
   input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; background: var(--paper); color: var(--ink) }
   button { margin-top: 16px; padding: 12px 18px; border: 0; border-radius: 12px; font: 600 1rem system-ui, sans-serif; background: var(--tomato); color: #FFFDF8; cursor: pointer }
   button:disabled { opacity: .5; cursor: default }
+  button.google { display: block; width: 100%; background: #fff; color: #1f1f1f; border: 1px solid #dadce0 }
   .muted { color: var(--muted); font-size: .92rem }
   .msg { margin-top: 12px; font-size: .95rem }
   .bad { color: var(--tomato-text) } .ok { background: var(--olive-tint); color: var(--olive-text); padding: 12px; border-radius: 10px }
@@ -42,6 +43,8 @@
     <label for="password">Password</label><input id="password" type="password" autocomplete="current-password">
     <label for="confirm">Type DELETE to confirm</label><input id="confirm" autocomplete="off" autocapitalize="characters">
     <button id="go" onclick="go()">Delete my account</button>
+    <p class="muted" style="text-align:center;margin:14px 0 0">Signed up with Google?</p>
+    <button id="google" class="google" onclick="googleGo()">Continue with Google</button>
     <div id="msg" class="msg" role="status"></div>
   </div>
   <p class="muted">Forgot your password, or can't sign in? Email the address in the <a href="privacy.html#contact">privacy policy</a> from your account's email address and we'll delete it within 30 days.</p>
@@ -51,6 +54,24 @@
 <script>
   const cfg = window.RG_SYNC_CONFIG || {}, URL_ = String(cfg.url || '').replace(/\/+$/, ''), KEY_ = String(cfg.anonKey || '');
   const msg = (t, cls = '') => { const m = document.getElementById('msg'); m.textContent = t; m.className = 'msg ' + cls };
+  // Google accounts: sign in with Google, come back here, then confirm
+  function googleGo() {
+    if (document.getElementById('confirm').value.trim().toUpperCase() !== 'DELETE') return msg('Type DELETE to confirm first.', 'bad');
+    try { sessionStorage.setItem('gingham-delete-confirmed', '1') } catch (_) {}
+    location.href = URL_ + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(location.origin + location.pathname);
+  }
+  (async () => {
+    const h = new URLSearchParams(location.hash.slice(1)); if (!h.get('access_token') && !h.get('error')) return;
+    history.replaceState(null, '', location.pathname);
+    let ok = false; try { ok = sessionStorage.getItem('gingham-delete-confirmed') === '1'; sessionStorage.removeItem('gingham-delete-confirmed') } catch (_) {}
+    if (h.get('error')) return msg('Google sign-in didn\'t finish: ' + (h.get('error_description') || h.get('error')).replace(/\+/g, ' '), 'bad');
+    if (!ok) return msg('Type DELETE, then tap Continue with Google again.', 'bad');
+    document.querySelectorAll('#form button').forEach(b => b.disabled = true);
+    try {
+      await deleteGinghamAccount({ url: URL_, key: KEY_, token: h.get('access_token'), progress: t => msg(t) });
+      document.getElementById('form').innerHTML = '<div class="ok"><b>✓ Your account has been deleted.</b><br>If Gingham is still installed, open it and choose “Erase everything on this phone” in Settings, or uninstall it, to remove the copy on your phone.</div>';
+    } catch (e) { document.querySelectorAll('#form button').forEach(b => b.disabled = false); msg(e.message, 'bad') }
+  })();
   async function go() {
     const email = document.getElementById('email').value.trim(), password = document.getElementById('password').value;
     if (!email || !password) return msg('Enter the email and password you use in Gingham.', 'bad');

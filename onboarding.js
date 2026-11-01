@@ -52,7 +52,7 @@ function renderTour() {
       ${shared ? `<p>✓ This phone is sharing with <b>${esc(syncInfo.familyName || 'your family')}</b>. Recipes, the plan and the shopping list stay in sync on every phone.</p><p class="small muted">To add someone, share the join code from Settings → Family sync.</p>`
         : `<p class="small">With a free account, everyone's phone shows the same recipes, meal plan and shopping list, and the list updates live while you shop.</p>
       <ul class="small app-list"><li>Create the family on one phone, then share its join code.</li><li>Others tap <b>Join my family's kitchen</b> and enter the code.</li><li>You can do this any time in Settings.</li></ul>
-      <div class="actions"><button class="btn secondary" onclick="finishTour(false,'family')">Set up sharing now</button></div>`}`;
+      <div class="actions"><button class="btn secondary" onclick="finishTour(false,'family')">Set up sharing now</button>${typeof googleSignIn === 'function' && typeof syncConfigured !== 'undefined' && syncConfigured ? '<button class="btn secondary" onclick="finishTour(false,\'google\')">Continue with Google</button>' : ''}</div>`}`;
   } else {
     const items = [
       ['📖', 'Recipes', 'Add your own, tap 🔗 Import for websites, or snap a recipe card (handwriting too). From TikTok or Instagram, tap Share → Gingham.'],
@@ -89,6 +89,7 @@ function finishTour(skipped, then) {
   if (!skipped) saveTourStep();
   try { localStorage.setItem(TOUR_KEY(), 'done') } catch (_) {}
   const only = tour?.only; tour = null; closeModal(); renderTourCard();
+  if (then === 'google') return googleSignIn('settings');
   if (then === 'family') { showScreen('settings'); setTimeout(() => document.getElementById('familyCard')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 200); return }
   if (!only) { if (!skipped) showScreen('home'); toast(skipped ? 'You can finish setup any time in Settings → Help' : 'Welcome to Gingham!') }
 }

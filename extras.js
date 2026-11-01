@@ -90,6 +90,7 @@ function renderSettingsExtras() {
   if (typeof renderSetupCheck === 'function') renderSetupCheck();
   if (typeof renderAccountCard === 'function') renderAccountCard();
   if (typeof renderGuideCard === 'function') renderGuideCard();
+  if (typeof renderShareCodeLine === 'function') renderShareCodeLine();
   const v9 = document.getElementById('v9Block'); if (v9) v9.hidden = (state.auditVersion || 0) >= 9 || !Object.keys(state.data.recipes).length;
 }
 

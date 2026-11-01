@@ -48,6 +48,34 @@ function keepSession(j) {
   writeStore(AUTH_STORE, syncAuth);
   return true;
 }
+// ---------- Sign in with Google (Supabase sends the person to Google and back to this page) ----------
+function googleSignIn(after) {
+  if (!syncConfigured) return alert('Family sync isn\'t set up yet.');
+  try { sessionStorage.setItem('gingham-oauth-after', after || 'settings') } catch (_) {}
+  const back = location.origin + location.pathname;
+  location.href = SYNC_URL + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(back);
+}
+// Back from Google: the sign-in arrives in the address after "#"
+(function finishGoogleSignIn() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const err = h.get('error_description') || h.get('error');
+  if (!h.get('access_token') && !err) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  let after = 'settings'; try { after = sessionStorage.getItem('gingham-oauth-after') || 'settings'; sessionStorage.removeItem('gingham-oauth-after') } catch (_) {}
+  if (err) { window.addEventListener('load', () => setTimeout(() => alert('Google sign-in didn\'t finish: ' + err.replace(/\+/g, ' ')), 600)); return }
+  keepSession({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token'), expires_in: Number(h.get('expires_in')) || 3600, expires_at: Number(h.get('expires_at')) || 0, user: {} });
+  fetch(SYNC_URL + '/auth/v1/user', { headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + syncAuth.access_token } }).then(r => r.ok ? r.json() : null).then(u => {
+    if (u?.id && syncAuth) { syncAuth.user = { id: u.id, email: u.email, name: u.user_metadata?.full_name || u.user_metadata?.name || '' }; writeStore(AUTH_STORE, syncAuth) }
+    if (typeof renderFamilyCard === 'function') renderFamilyCard();
+  }).catch(() => {});
+  window.addEventListener('load', () => setTimeout(() => {
+    try { closeModal() } catch (_) {}
+    if (syncInfo?.familyId) { runSync(); toast('✓ Signed in with Google'); return }
+    showScreen(after === 'home' ? 'home' : 'settings');
+    setTimeout(() => document.getElementById('familyCard')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
+    toast('✓ Signed in with Google. Now create your family or join one.');
+  }, 400));
+})();
 let refreshing = null;
 function refreshSession() {
   refreshing ??= (async () => {
@@ -98,6 +126,7 @@ const SYNC_MAPS = [
   ['swap/', s => s.shopSwaps, s => (s.shopSwaps ??= {})],
   ['skip/', s => s.shopSkips, s => (s.shopSkips ??= {})],
   ['out/', s => s.shopOut, s => (s.shopOut ??= {})],
+  ['contact/', s => s.shareContacts, s => (s.shareContacts ??= {})],
 ];
 function hashText(str) {   // cyrb53
   let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
@@ -495,12 +524,15 @@ async function renderFamilyCard() {
     body = `<p class="small muted">Family sync isn't connected yet. Add your Supabase project details to <code>sync-config.js</code> (see SYNC-SETUP.md), then reopen the app.</p>`;
   } else if (!syncAuth) {
     body = `${syncInfo?.familyId ? `<p class="small warning">Signed out of ${esc(syncInfo.familyName || 'your family')}. Sign in again to keep syncing.</p>` : '<p class="small muted">Share one meal plan, pantry and shopping list across your family\'s phones. Each person signs in with their own email.</p>'}
+      <button class="btn google-btn" onclick="googleSignIn()"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google</button>
+      <div class="or-line"><span>or use email</span></div>
       <label for="familyEmail">Email</label><input id="familyEmail" type="email" autocomplete="email" value="${esc(syncAuth?.user?.email || '')}">
       <label for="familyPassword">Password</label><input id="familyPassword" type="password" autocomplete="current-password">
-      <div class="actions"><button class="btn" onclick="familySignIn(false)">Sign in</button><button class="btn secondary" onclick="familySignIn(true)">Create account</button></div>`;
+      <div class="actions"><button class="btn" onclick="familySignIn(false)">Sign in</button><button class="btn secondary" onclick="familySignIn(true)">Create account</button></div>
+`;
   } else if (!syncInfo?.familyId) {
     body = `<p class="small muted">Signed in as ${esc(syncAuth.user?.email || '')}.</p>
-      <label for="familyDisplayName">Your name (shown to your family)</label><input id="familyDisplayName" placeholder="e.g. Dakota">
+      <label for="familyDisplayName">Your name (shown to your family)</label><input id="familyDisplayName" placeholder="e.g. Dakota" value="${esc((syncAuth.user?.name || '').split(' ')[0])}">
       <h4>Joining from a second phone?</h4><label for="familyCode">Join code from the other phone</label><input id="familyCode" autocapitalize="characters" placeholder="e.g. TSX4XEV7"><div class="actions"><button class="btn" onclick="familyJoin()">Join family</button></div>
       <h4>Setting up the first phone?</h4><label for="familyName">Family name</label><input id="familyName" placeholder="Our kitchen"><div class="actions"><button class="btn secondary" onclick="familyCreate()">Create family from this phone's data</button></div>
       <div class="actions"><button class="btn ghost" onclick="familyStop()">Sign out</button></div>`;

@@ -8,6 +8,8 @@ const SETUP_CHECKS = [
   { id: 'nutrition', title: 'Nutrition facts', run: checkNutrition },
   { id: 'handwriting', title: 'Handwritten recipe reader', run: checkHandwriting },
   { id: 'deletion', title: 'Account deletion', run: checkDeletion },
+  { id: 'sharing', title: 'Sharing recipes', run: checkSharing },
+  { id: 'google', title: 'Sign in with Google', run: checkGoogle },
 ];
 let setupResults = null, setupRunning = false;
 
@@ -76,6 +78,22 @@ async function checkHandwriting() {
   if (e && /add a photo/i.test(e.message)) return setupOk('Handwritten recipe cards can be read.');
   if (e?.setup && !/needs updating/.test(e.message)) return setupBad('Claude key missing.', 'In Supabase → Edge Functions → Secrets, add ANTHROPIC_API_KEY (from console.anthropic.com → API keys), then check again. Printed recipes are still read on the phone.');
   return (e && helperProblem(e)) || setupBad('The reader answered with an error' + (e ? ': ' + e.message : '.'), 'Check the recipe-imports function\'s Logs in Supabase.');
+}
+async function checkSharing() {
+  if (typeof syncConfigured === 'undefined' || !syncConfigured) return setupWarn('Needs the Supabase connection.', 'Set up family sync first.');
+  try {
+    const r = await fetch(SYNC_URL + '/rest/v1/rpc/rg_open_link', { method: 'POST', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + SYNC_KEY_ANON, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_code: 'TESTTEST' }) });
+    if (r.ok) return setupOk('Short recipe links and sending to other families work.');
+    return setupBad('Sharing isn\'t set up.', 'In Supabase → SQL Editor, run sharing-setup.sql once. Until then, shared links still work but are long.');
+  } catch (e) { return offline() }
+}
+async function checkGoogle() {
+  if (typeof syncConfigured === 'undefined' || !syncConfigured) return setupWarn('Needs the Supabase connection.', 'Set up family sync first.');
+  try {
+    const r = await fetch(SYNC_URL + '/auth/v1/settings', { headers: { apikey: SYNC_KEY_ANON } }), j = await r.json().catch(() => null);
+    if (j?.external?.google) return setupOk('People can sign in with their Google account.');
+    return setupWarn('Google sign-in is off.', 'Follow GOOGLE-SIGNIN-SETUP.md to turn it on (about 15 minutes). Email and password sign-in still works.');
+  } catch (e) { return offline() }
 }
 async function checkDeletion() {
   if (typeof syncActive !== 'function' || !syncActive()) return needsFamily();
