@@ -169,14 +169,7 @@ export async function socialRecipe(u: URL): Promise<any | null> {
     return (await recipeFromLinks(desc)) || textResult(title, title + '\n' + desc, metaContent(page.text, 'og:image'), 'https://www.youtube.com/watch?v=' + id);
   }
   // Pinterest: a pin usually points at the recipe's own website
-  if (host.endsWith('pinterest.com') || host === 'pin.it' || /pinterest\./.test(host)) {
-    const page = await getText(u.href);
-    const own = extractRecipe(page.text, page.url); if (own) return own;
-    const links = [...page.text.matchAll(/"(?:link|url|tracked_link)":"(https?:[^"]+)"/g)].map(x => jsonString(x[1])).filter(l => !/pinterest\.|pinimg\.|pin\.it/i.test(l));
-    for (const l of [...new Set(links)].slice(0, 3)) { const p = await getText(l); if (p.ok) { const r = extractRecipe(p.text, p.url); if (r) return r } }
-    const d = metaContent(page.text, 'og:description') || metaContent(page.text, 'description');
-    return d && looksLikeRecipeText(d) ? textResult(metaContent(page.text, 'og:title'), d, metaContent(page.text, 'og:image'), page.url) : null;
-  }
+  if (host.endsWith('pinterest.com') || host === 'pin.it' || /pinterest\./.test(host)) return pinterestRecipe(u);
   // Facebook: only public posts, and only what Facebook shows without signing in
   if (host.endsWith('facebook.com') || host === 'fb.watch') {
     const page = await getText(u.href);
@@ -187,6 +180,46 @@ export async function socialRecipe(u: URL): Promise<any | null> {
   return undefined;   // not a social site
 }
 
+// Pinterest pages are built by JavaScript and often show a sign-in wall to servers, so:
+// 1. find the pin's number (pin.it short links redirect to /pin/<number>/),
+// 2. ask Pinterest's public widget service (the one "Pin It" embeds use) for the pin's link, description and picture,
+// 3. read the recipe from the website the pin links to; else the description; else read the pin's picture with Claude
+//    (many recipe pins are a picture with the ingredients printed on it).
+const notPinterest = (l: string) => /^https?:\/\//.test(l) && !/pinterest\.|pinimg\.|pin\.it\b/i.test(l);
+async function pinterestRecipe(u: URL): Promise<any | null> {
+  const page = await getText(u.href);
+  const own = page.ok ? extractRecipe(page.text, page.url) : null; if (own) return own;
+  const id = (page.url.match(/\/pin\/(\d{6,})/) || u.href.match(/\/pin\/(\d{6,})/) || page.text.match(/pinterest\.com\/pin\/(\d{6,})/) || page.text.match(/"pin_id"\s*:\s*"?(\d{6,})/) || [])[1];
+  let pin: any = null;
+  if (id) {
+    const info = await getText('https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + id, { Accept: 'application/json' });
+    try { pin = JSON.parse(info.text)?.data?.[0] || null } catch (_) {}
+  }
+  const rich = pin?.rich_metadata || {};
+  const links = [pin?.link, rich.url, rich.link, ...[...page.text.matchAll(/"(?:link|url|tracked_link)":"(https?:[^"]+)"/g)].map(x => jsonString(x[1]))]
+    .filter((l): l is string => typeof l === 'string' && notPinterest(l));
+  const title = cleanText(pin?.title || rich.title || pin?.grid_title || metaContent(page.text, 'og:title') || '');
+  const imgs = pin?.images || {};
+  const image = (imgs['736x'] || imgs['564x'] || imgs.orig || imgs['474x'] || imgs['237x'] || {}).url || metaContent(page.text, 'og:image') || '';
+  const pinUrl = id ? `https://www.pinterest.com/pin/${id}/` : page.url || u.href;
+  for (const l of [...new Set(links)].slice(0, 3)) {
+    const p = await getText(l);
+    if (p.ok) { const r = extractRecipe(p.text, p.url); if (r) return { ...r, image: r.image || (/^https:/.test(image) ? image : '') } }
+  }
+  const ingr = Array.isArray(rich.recipe?.ingredients) ? rich.recipe.ingredients.flatMap((g: any) => (g?.ingredients || []).map((x: any) => cleanText([x?.amt, x?.name].filter(Boolean).join(' ')))).filter(Boolean) : [];
+  if (ingr.length) return { name: title.slice(0, 120) || 'Pinterest recipe', servings: '', ingredients: ingr.slice(0, 80), steps: [], image: /^https:/.test(image) ? image : '', sourceUrl: pinUrl, prepTime: '', cookTime: '' };
+  const desc = cleanText(pin?.description || rich.description || metaContent(page.text, 'og:description') || metaContent(page.text, 'description') || '');
+  if (desc && looksLikeRecipeText(desc)) return textResult(title || 'Pinterest recipe', desc, image, pinUrl);
+  // last try: the recipe may be printed on the pin's picture
+  if (image && Deno.env.get('ANTHROPIC_API_KEY')) {
+    const [s1, pic]: any = await fetchImage({ url: image });
+    if (s1 === 200 && pic?.data) {
+      const [s2, card]: any = await readRecipeCard({ images: [pic.data] });
+      if (s2 === 200 && card?.ingredients?.length) return { name: (card.name || title || 'Pinterest recipe').slice(0, 120), servings: card.servings || '', ingredients: card.ingredients, steps: card.steps || [], image, sourceUrl: pinUrl, prepTime: card.prepMinutes ? `PT${card.prepMinutes}M` : '', cookTime: card.cookMinutes ? `PT${card.cookMinutes}M` : '' };
+    }
+  }
+  return null;
+}
 // ---------- safety checks ----------
 export function allowedUrl(raw: string): URL | null {
   let u: URL;
@@ -245,6 +278,7 @@ async function handle(req: Request): Promise<Response> {
   // Social posts: read the caption (TikTok, Instagram, YouTube, Pinterest, Facebook)
   const social = await socialRecipe(url).catch(() => null);
   if (social) return reply(200, social);
+  if (social === null && /pinterest\.|pin\.it/i.test(url.hostname)) return reply(422, { error: 'That pin doesn\'t link to a recipe page Gingham can read. Open the pin, tap its picture or "Visit" to go to the recipe\'s website, and share that page to Gingham instead. Or save the pin\'s picture and use Choose photos.' });
   if (social === null) return reply(422, { error: 'Couldn\'t read that post. It may be private, or the site didn\'t share its text. Open the post, copy the caption, and use Paste recipe text.' });
 
   let res: Response;

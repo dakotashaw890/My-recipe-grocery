@@ -248,7 +248,7 @@ function openRecipeImport(opts = {}) {
       <div class="actions"><button class="btn" onclick="importFromLink()" ${signedIn ? '' : 'disabled'}>Import from link</button></div>
       <p class="tiny muted">Works with recipe websites and TikTok, Instagram, YouTube, Pinterest and Facebook posts. Quickest: in any app tap <b>Share → Gingham</b>.</p></div>
     <div class="card"><h3>From a photo</h3>
-      <p class="small muted">A cookbook page or recipe card. Printed recipes read best; handwriting is hit-and-miss, so check the text before reading it.</p>
+      <p class="small muted">A cookbook page or recipe card. Printed or handwritten. Signed in, Claude reads it, even messy handwriting. Not signed in, your phone reads it, which works best on printed recipes.</p>
       <input id="ocrCamera" type="file" accept="image/*" capture="environment" hidden onchange="readRecipePhotos(this.files)">
       <input id="ocrLibrary" type="file" accept="image/*" multiple hidden onchange="readRecipePhotos(this.files)">
       <div class="actions"><button class="btn secondary" onclick="document.getElementById('ocrCamera').click()">📷 Take photo</button><button class="btn secondary" onclick="document.getElementById('ocrLibrary').click()">🖼️ Choose photos</button></div>
