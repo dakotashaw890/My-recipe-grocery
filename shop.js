@@ -66,8 +66,8 @@ function shopDeptOrder(defaultOrder, groups) {
   const sk = shopSortMode(); if (!sk) return defaultOrder;
   const items = state.stores[sk].items;
   const rank = d => { const pos = (groups[d] || []).map(x => items[ingredientKey(x.name)]).filter(v => v != null).sort((a, b) => a - b); return pos.length ? pos[Math.floor(pos.length / 2)] : 2 + defaultOrder.indexOf(d) / 100 };
-  const pantry = defaultOrder.filter(d => d === 'Covered by Pantry');
-  return defaultOrder.filter(d => d !== 'Covered by Pantry').sort((a, b) => rank(a) - rank(b)).concat(pantry);
+  const last = defaultOrder.filter(d => d === 'Covered by Pantry' || d === 'Not needed this trip');
+  return defaultOrder.filter(d => !last.includes(d)).sort((a, b) => rank(a) - rank(b)).concat(last);
 }
 function shopSort(list) {
   const sk = shopSortMode(); if (!sk) return list;

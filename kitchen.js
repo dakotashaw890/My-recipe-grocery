@@ -425,7 +425,7 @@ function finishTrip() {
   const stores = [...new Set((state.spending?.trips || []).map(t => t.store).filter(Boolean))];
   window.tripRows = rows.map(x => {
     const key = ingredientKey(x.name), last = priceHistory(key).slice(-1)[0], eff = effectivePrice(key);
-    return { key, name: x.name, packs: packsToBuy(x), label: x.pkg?.label || 'item', price: last ? last.price.toFixed(2) : (eff ? eff.value.toFixed(2) : '') };
+    return { key, name: x.name, packs: packsToBuy(x), label: x.pkg?.label || 'item', price: last ? last.price.toFixed(2) : (eff ? eff.value.toFixed(2) : ''), pantry: true };
   });
   openModal(`<div class="row between"><h2>Finish shopping trip</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
     <p class="small muted">Enter what you paid per package. Prices are remembered, so estimates and recipe costs become your real numbers.</p>
@@ -433,10 +433,10 @@ function finishTrip() {
     <div><label for="tripDateF">Date</label><input id="tripDateF" type="date" value="${localDate()}"></div></div>
     <div id="tripItems">${window.tripRows.map((t, i) => `<div class="trip-row"><div class="ingredient-thumb small">${ingredientPicture(t.name)}</div><div class="grow"><b>${esc(t.name)}</b></div>
       <label class="trip-field"><span>Qty</span><input type="number" min="0" step="1" value="${t.packs}" aria-label="How many of ${esc(t.name)}" oninput="tripRows[${i}].packs=Number(this.value)||0;tripTotal()"></label>
-      <label class="trip-field"><span>$ each</span><input type="number" min="0" step="0.01" inputmode="decimal" value="${t.price}" aria-label="Price per ${esc(t.label)} of ${esc(t.name)}" oninput="tripRows[${i}].price=this.value;tripTotal()"></label></div>`).join('')}</div>
+      <label class="trip-field"><span>$ each</span><input type="number" min="0" step="0.01" inputmode="decimal" value="${t.price}" aria-label="Price per ${esc(t.label)} of ${esc(t.name)}" oninput="tripRows[${i}].price=this.value;tripTotal()"></label><label class="trip-pantry" title="Add to the pantry"><input type="checkbox" ${t.pantry ? 'checked' : ''} onchange="tripRows[${i}].pantry=this.checked" aria-label="Add ${esc(t.name)} to the pantry"><span>🏠</span></label></div>`).join('')}</div>
     <div class="trip-total"><span>Items total</span><b id="tripItemsTotal"></b></div>
     <label for="tripReceipt">Receipt total (optional — include tax and items not on the list)</label><input id="tripReceipt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Uses the items total if blank">
-    <label class="check-line"><input id="tripToPantry" type="checkbox" checked> Add these to the pantry</label>
+    <label class="check-line"><input id="tripToPantry" type="checkbox" checked onchange="document.querySelectorAll('.trip-pantry input').forEach((c,i)=>{c.checked=this.checked;tripRows[i].pantry=this.checked})"> Add these to the pantry <span class="small muted">(untick 🏠 on items that won't go in the pantry)</span></label>
     <div class="actions"><button class="btn" onclick="saveFinishedTrip()">Save trip</button></div>`);
   tripTotal();
 }
@@ -461,10 +461,11 @@ function saveFinishedTrip() {
       m.priceHistory = [...(m.priceHistory || []), { date, price: Math.round(price * 100) / 100, store }].slice(-24);
       m.price = Math.round(price * 100) / 100; m.priceSource = 'paid';
     }
-    if (toPantry && t.packs > 0) { state.pantry ??= {}; const cur = state.pantry[t.key]; state.pantry[t.key] = { name: cur?.name || t.name, qty: Number(cur?.qty || 0) + t.packs } }
+    if (toPantry && t.pantry !== false && t.packs > 0) { state.pantry ??= {}; const cur = state.pantry[t.key]; state.pantry[t.key] = { name: cur?.name || t.name, qty: Number(cur?.qty || 0) + t.packs } }
     delete state.checks[t.key];
     items.push({ key: t.key, name: t.name, packs: t.packs, price: price > 0 ? price : null });
   }
+  if (typeof clearShopExtrasAfterTrip === 'function') clearShopExtrasAfterTrip(window.tripRows.map(t => t.key));
   state.spending.trips.push({ id: String(Date.now()), store, date, total: Math.round(total * 100) / 100, notes: items.length + ' items from the shopping list', items });
   save(); closeModal(); renderShopping(); toast('Trip saved · $' + total.toFixed(2));
 }

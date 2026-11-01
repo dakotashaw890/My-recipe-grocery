@@ -1795,3 +1795,14 @@ details.nutrition[open] > summary::after { content: '▴'; }
 .swap-list .swap:first-child { border-top: 0 }
 .swap-btn { margin-left: 6px; padding: 3px 9px; font-size: .82rem }
 .danger-zone { border: 1px solid var(--tomato-tint) }
+.swap-badge, .added-badge { display: inline-block; margin: 3px 4px 0 0; padding: 1px 8px; border-radius: 999px; font-size: .78rem; font-weight: 600 }
+.swap-badge { background: var(--butter-tint); color: var(--butter-text) }
+.added-badge { background: var(--olive-tint); color: var(--olive-text) }
+#shoppingList.shopDone .shop-row.done, #shoppingList.shopDone .listitem.done { display: none }
+.shop-for { display: block; margin-top: 2px; color: var(--muted); font-size: .78rem; line-height: 1.3 }
+.shop-uses { margin: 4px 0 10px; padding: 0; list-style: none }
+.shop-uses li { padding: 4px 0; border-top: 1px dashed var(--line); font-size: .9rem }
+.shop-uses li:first-child { border-top: 0 }
+.skipped-department > summary { color: var(--muted) }
+.trip-pantry { display: flex; align-items: center; gap: 2px; font-size: .9rem; margin: 0 }
+.trip-pantry input { width: auto; margin: 0 }
