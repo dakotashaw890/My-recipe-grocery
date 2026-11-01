@@ -80,7 +80,7 @@ function renderPlanner() {
       const chips = planEntries(date, meal).map(([key, v]) => `<button type="button" class="plan-chip ${v.cooked ? 'cooked' : ''}" onclick="openPlanned(decodeURIComponent('${encId(key)}'))" aria-label="${esc(recipeName(v.recipe))}, ${esc(String(v.servings))} servings${v.cooked ? ', cooked' : ''}">${v.cooked ? '✓ ' : ''}${esc(recipeName(v.recipe))}<small>${esc(fmt(v.servings))}</small></button>`).join('');
       return `<div class="plan-row"><span class="plan-meal">${meal}</span><div class="plan-chips">${chips}<button type="button" class="plan-add" aria-label="Add ${meal.toLowerCase()} on ${esc(dayTitle(date))}" onclick="chooseMeal('${date}','${meal}')">＋</button></div></div>`;
     }).join('');
-    return `<div class="day ${past ? 'past' : ''} ${isToday ? 'today' : ''}"><div class="day-head"><h3>${esc(dayTitle(date))}</h3>${isToday ? '<span class="today-badge">Today</span>' : ''}</div>${rows}</div>`;
+    return `<div class="day ${past ? 'past' : ''} ${isToday ? 'today' : ''}"><div class="day-head"><h3>${esc(dayTitle(date))}</h3>${isToday ? '<span class="today-badge">Today</span>' : ''}${typeof dayCaloriesPill === 'function' ? dayCaloriesPill(date) : ''}</div>${rows}</div>`;
   }).join('');
 }
 // tapping a planned recipe: cook it, change it, or remove it
