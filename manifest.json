@@ -1,7 +1,9 @@
 {
   "name": "Gingham: Family Meal Planner",
   "short_name": "Gingham",
+  "id": "./",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#FBF6EC",
   "theme_color": "#C8412F",
@@ -50,5 +52,11 @@
         }
       ]
     }
-  }
+  },
+  "categories": [
+    "food",
+    "lifestyle",
+    "productivity"
+  ],
+  "lang": "en-US"
 }

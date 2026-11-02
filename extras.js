@@ -44,6 +44,8 @@ function openCookMode(name) {
   document.body.classList.add('cooking');
   keepScreenOn();
   renderCookMode();
+  // hands-free was on last time: turn it on again (opening cook mode is a tap, so the phone allows speaking)
+  try { if (localStorage.getItem(KEY + '-handsfree') === '1') loadScriptOnce('handsfree.js?v=38').then(() => { if (cookView && !handsFreeOn()) startHandsFree() }) } catch (_) {}
 }
 function renderCookMode() {
   const el = document.getElementById('cookMode'), c = cookView;
@@ -53,18 +55,20 @@ function renderCookMode() {
   const ingredients = r.ingredients.map(i => { const k = ingredientKey(i.name), out = !!state.shopOut?.[k]; return `<li><span>${esc(i.name)}${i.note ? ` <small>${esc(i.note)}</small>` : ''}</span><b>${typeof cookAmountHTML === 'function' ? cookAmountHTML(i, c.scale) : displayQty(i, c.scale) + ' ' + esc(i.unit || '')}</b>${typeof markOut === 'function' ? `<button class="cook-out ${out ? 'on' : ''}" ${out ? 'disabled' : ''} aria-label="${out ? esc(i.name) + ' is on the shopping list' : 'Out of ' + esc(i.name) + '? Add it to the shopping list'}" onclick="state.shopOut??={};state.shopOut[decodeURIComponent('${encId(k)}')]={at:Date.now(),name:decodeURIComponent('${encId(i.name)}')};save();renderCookMode();toast('🛒 ${esc(i.name).replace(/'/g, '')} is on the shopping list')">${out ? '✓ On list' : 'Out?'}</button>` : ''}</li>` }).join('');
   const stepText = total ? (typeof convertTemps === 'function' ? convertTemps(c.steps[c.step], sys) : c.steps[c.step]) : '';
   el.setAttribute('aria-label', 'Cooking ' + recipeName(c.name));
-  el.innerHTML = `<div class="cook-top"><div><div class="cook-title">${esc(recipeName(c.name))}</div><div class="cook-sub">${fmt(c.servings)} servings${wakeLock ? ' · screen stays on' : ''}</div></div><div class="cook-top-actions">${typeof toggleUnitSystem === 'function' ? `<button class="cook-units" onclick="toggleUnitSystem()" aria-label="Show amounts in ${sys === 'us' ? 'metric' : 'US'} units">${sys === 'us' ? 'US' : 'Metric'} ⇄</button>` : ''}<button class="cook-close" aria-label="Close cook mode" onclick="closeCookMode()">✕</button></div></div>
+  el.innerHTML = `<div class="cook-top"><div><div class="cook-title">${esc(recipeName(c.name))}</div><div class="cook-sub">${fmt(c.servings)} servings${wakeLock ? ' · screen stays on' : ''}</div></div><div class="cook-top-actions">${typeof toggleUnitSystem === 'function' ? `<button class="cook-units" onclick="toggleUnitSystem()" aria-label="Show amounts in ${sys === 'us' ? 'metric' : 'US'} units">${sys === 'us' ? 'US' : 'Metric'} ⇄</button>` : ''}<button class="cook-voice ${typeof handsFreeOn === 'function' && handsFreeOn() ? 'on' : ''}" aria-pressed="${typeof handsFreeOn === 'function' && handsFreeOn()}" aria-label="Hands-free: read steps aloud and listen for commands" onclick="loadScriptOnce('handsfree.js?v=38').then(()=>toggleHandsFree())">🎙<span> Hands-free</span></button><button class="cook-close" aria-label="Close cook mode" onclick="closeCookMode()">✕</button></div></div>
+    <div id="hfBar">${typeof handsFreeBarHTML === 'function' ? handsFreeBarHTML() : ''}</div>
     <div id="cookTimers" class="cook-timers">${typeof timersHTML === 'function' ? timersHTML() : ''}</div>
     <div class="cook-tabs"><button class="${c.showIngredients ? '' : 'on'}" onclick="cookView.showIngredients=false;renderCookMode()" ${total ? '' : 'disabled'}>Steps</button><button class="${c.showIngredients ? 'on' : ''}" onclick="cookView.showIngredients=true;renderCookMode()">Ingredients</button></div>
     ${c.showIngredients ? `<ul class="cook-ingredients">${ingredients}</ul>${total ? '' : '<p class="cook-sub">This recipe has no written steps yet. Add them with Edit recipe.</p>'}`
       : `<div class="cook-count">Step ${c.step + 1} of ${total}</div><div class="cook-step" aria-live="polite">${esc(stepText)}</div>${typeof stepWithTimers === 'function' ? stepWithTimers(c.steps[c.step], c.step + 1) : ''}`}
     ${c.showIngredients ? '' : `<div class="cook-nav"><button onclick="cookMove(-1)" ${c.step === 0 ? 'disabled' : ''}>‹ Back</button><button class="next" onclick="${c.step === total - 1 ? 'closeCookMode(true)' : 'cookMove(1)'}">${c.step === total - 1 ? 'Done ✓' : 'Next ›'}</button></div>`}`;
 }
-function cookMove(d) { cookView.step = Math.min(cookView.steps.length - 1, Math.max(0, cookView.step + d)); renderCookMode() }
+function cookMove(d) { cookView.step = Math.min(cookView.steps.length - 1, Math.max(0, cookView.step + d)); renderCookMode(); if (typeof handsFreeStepChanged === 'function') handsFreeStepChanged() }
 function closeCookMode(finished) {
   const el = document.getElementById('cookMode');
   if (el) el.hidden = true;
   document.body.classList.remove('cooking');
+  if (typeof handsFreeClosed === 'function') handsFreeClosed();
   const name = cookView?.name; cookView = null;
   try { wakeLock?.release() } catch (_) {}
   wakeLock = null;
@@ -88,6 +92,7 @@ function renderSettingsExtras() {
   if (typeof renderPictureCard === 'function') renderPictureCard();
   if (typeof renderPeopleCard === 'function') renderPeopleCard();
   if (typeof renderSetupCheck === 'function') renderSetupCheck();
+  if (typeof renderRemindersCard === 'function') renderRemindersCard();
   if (typeof renderAccountCard === 'function') renderAccountCard();
   if (typeof renderGuideCard === 'function') renderGuideCard();
   if (typeof renderShareCodeLine === 'function') renderShareCodeLine();

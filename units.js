@@ -39,16 +39,23 @@ const TYPICAL_GRAMS_PER_CUP = {
   'peanut butter': 258, 'chocolate chips': 170, 'mayonnaise': 220, 'ketchup': 240, 'salsa': 240, 'olive oil': 216, 'vegetable oil': 218, 'water': 237, 'milk': 245, 'heavy cream': 238,
   'garlic powder': 155, 'onion powder': 110, 'chili powder': 128, 'ground cumin': 96, 'cumin': 96, 'paprika': 110, 'salt': 292, 'kosher salt': 240, 'black pepper': 110, 'ground black pepper': 110,
   'italian seasoning': 50, 'taco seasoning': 130, 'baking soda': 230, 'baking powder': 230, 'ground cinnamon': 125, 'cinnamon': 125, 'vanilla extract': 208, 'soy sauce': 255, 'worcestershire sauce': 270, 'bbq sauce': 280, 'barbecue sauce': 280,
+  // v38: everyday produce, dairy, sauces and snacks (USDA typical weights)
+  'berries': 144, 'mixed berries': 144, 'blueberries': 148, 'strawberries': 152, 'raspberries': 123, 'baby spinach': 30, 'spinach': 30, 'broccoli florets': 91, 'coleslaw mix': 70,
+  'shredded lettuce': 47, 'lettuce': 47, 'romaine lettuce': 47, 'basil pesto': 250, 'pesto': 250, 'vanilla yogurt': 245, 'yogurt': 245, 'croutons': 30, 'granola': 120, 'peanuts': 146,
+  'pretzels': 60, 'raisins': 165, 'frozen green beans': 120, 'green beans': 110, 'frozen hash browns': 80, 'hash browns': 80, 'tomato paste': 262, 'dijon mustard': 249, 'yellow mustard': 249,
+  'mustard': 249, 'dried thyme': 43, 'dried oregano': 43, 'dried basil': 43, 'marinara sauce': 250, 'pasta sauce': 250, 'spaghetti sauce': 250, 'alfredo sauce': 250, 'pizza sauce': 250,
+  'refried beans': 250, 'cream of chicken soup': 250, 'cream of mushroom soup': 250, 'chicken broth': 240, 'beef broth': 240,
   'macaroni': 105, 'macaroni pasta': 105, 'penne': 90, 'penne pasta': 90, 'egg noodles': 75, 'frozen peas': 134, 'corn': 154, 'black beans': 172, 'kidney beans': 177, 'diced tomatoes': 240, 'tomato sauce': 245,
 };
 const TYPICAL_GRAMS_EACH = {
   'eggs': 50, 'egg': 50, 'garlic cloves': 5, 'garlic': 5, 'yellow onions': 150, 'onion': 150, 'onions': 150, 'potatoes': 213, 'russet potatoes': 213, 'lime': 67, 'lemon': 85, 'orange': 130,
-  'carrots': 61, 'celery': 40, 'tomatoes': 123, 'bell peppers': 119, 'banana': 118, 'avocado': 150, 'apple': 182, 'boneless skinless chicken breasts': 175, 'chicken breasts': 175, 'chicken breast': 175, 'thin sliced chicken breasts': 113, 'thin-sliced chicken breasts': 113, 'chicken cutlets': 113, 'chicken thighs': 115, 'boneless skinless chicken thighs': 115, 'chicken tenders': 45, 'chicken drumsticks': 110, 'chicken wings': 30, 'pork chops': 200, 'salmon fillets': 170, 'bacon': 28, 'sausage links': 60, 'shallots': 40, 'zucchini': 200, 'jalapeños': 14, 'limes': 67, 'lemons': 85, 'hot dogs': 45, 'flour tortillas': 45, 'corn tortillas': 26,
+  'carrots': 61, 'celery': 40, 'apples': 182, 'american cheese': 21, 'swiss cheese': 28, 'cheddar cheese': 28, 'provolone cheese': 28, 'sandwich bread': 28, 'bread': 28, 'deli turkey': 28, 'deli ham': 28, 'tomatoes': 123, 'bell peppers': 119, 'banana': 118, 'avocado': 150, 'apple': 182, 'boneless skinless chicken breasts': 175, 'chicken breasts': 175, 'chicken breast': 175, 'thin sliced chicken breasts': 113, 'thin-sliced chicken breasts': 113, 'chicken cutlets': 113, 'chicken thighs': 115, 'boneless skinless chicken thighs': 115, 'chicken tenders': 45, 'chicken drumsticks': 110, 'chicken wings': 30, 'pork chops': 200, 'salmon fillets': 170, 'bacon': 28, 'sausage links': 60, 'shallots': 40, 'zucchini': 200, 'jalapeños': 14, 'limes': 67, 'lemons': 85, 'hot dogs': 45, 'flour tortillas': 45, 'corn tortillas': 26,
 };
 function factorFor(key, field, typical) {
   const own = Number(state.itemMeta?.[key]?.[field]);
   if (own > 0) return { value: own, estimate: false };
-  const singular = key.replace(/es$/, '').replace(/s$/, '');
+  // "apples" → "apple", "tomatoes" → "tomato" (try both endings rather than stripping both)
+  const singular = typical[key.replace(/s$/, '')] != null ? key.replace(/s$/, '') : key.replace(/es$/, '');
   let t = typical[key] ?? typical[singular] ?? typical[key + 's'];
   if (t == null) {
     // "all-purpose white flour" → "flour": the longest typical name the ingredient ends with
@@ -108,6 +115,10 @@ function convertDetail(q, from, to, name) {
   if (/garlic/.test(key) && f === 'clove' && (t === 'ea.' || t === 'head')) return { result: { qty: q / 10, estimate: true } };
   if (/garlic/.test(key) && (f === 'ea.' || f === 'head') && t === 'clove') return { result: { qty: q * 10, estimate: true } };
   if ((f === 'breast' || f === 'fillet' || f === 'piece') && t !== f) return convertDetail(q, 'ea.', t, name);
+  // v38: a bunch of green onions bought "1 each, bunch" is that bunch; celery: about 9 stalks to a bunch
+  { const pk = getPackage(key), label = unitName(pk?.label || '');
+    if (COUNT_UNITS[f] && f !== 'ea.' && t === 'ea.' && label === f) return { result: { qty: q, estimate: false } };
+    if (/celery/.test(key) && f === 'stalk' && (t === 'ea.' || t === 'bunch')) return { result: { qty: q / 9, estimate: true } }; }
   if ((t === 'breast' || t === 'fillet') && f === 'ea.') return { result: { qty: q, estimate: false } };
   const a = toBasic(q, f, key);
   if (!a) return { result: null, need: 'unknownUnit' };

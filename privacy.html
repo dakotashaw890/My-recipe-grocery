@@ -45,6 +45,7 @@
   <li><b>Account:</b> your email address and password (stored only as a secure hash), or, if you choose <b>Continue with Google</b>, the email address and name Google shares for your account (Gingham never sees your Google password); plus the display name you enter and the family name.</li>
   <li><b>Your family's kitchen:</b> recipes, groups, meal plans, shopping list and checked items, pantry amounts, package sizes, prices you enter or pay, store choice, ratings, family members' names, planning preferences and app settings.</li>
   <li><b>Photos</b> you add to recipes and ingredients.</li>
+  <li><b>Prep reminders</b> (if a phone turns them on): that phone's notification address from its push service, and the family's upcoming reminders (for example “Thaw for tomorrow: Chili”) until a few days after they're sent.</li>
   <li><b>Daily usage counts:</b> how many times your account used each online helper (link imports, photo reading, prices, nutrition) each day, so fair daily limits can be applied. Only the counts are kept, for up to 30 days.</li>
 </ul>
 <p>Only signed-in members of your family can read or change your family's data. This is enforced by the database's security rules, not just by the app. Data is sent over encrypted connections (HTTPS). When a family member deletes something, the app keeps a small “deleted” marker so every phone removes it too. That marker stays with your family's data until your family is deleted.</p>
@@ -70,19 +71,21 @@
   <tr><td>Reading a recipe from a photo (signed in)</td><td>The photo of the recipe card or page you choose, through our helper. It is used only to read the recipe; our helper doesn't keep it, and Anthropic's policy for its API is not to train its models on it.</td><td><a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">Anthropic</a> (Claude)</td></tr>
   <tr><td>Reading a recipe from a photo (not signed in)</td><td>Nothing: the text is read on your device. The reading tool is downloaded once from the jsDelivr network.</td><td>—</td></tr>
   <tr><td>Ingredient weights</td><td>USDA food ID numbers</td><td><a href="https://fdc.nal.usda.gov/" target="_blank" rel="noopener">USDA FoodData Central</a>, through our helper</td></tr>
+  <tr><td>Prep reminder notifications</td><td>The reminder's title and text, encrypted so only your phone can read it</td><td>Your phone's push service (Google's Firebase Cloud Messaging on Android, Apple's on iPhone), through our helper</td></tr>
+  <tr><td>Hands-free cooking</td><td>While hands-free is on, what you say is turned into text by your phone's speech service (on Android, Google's). Gingham only uses the words to follow commands like “next”; nothing is recorded or stored.</td><td>Your phone's speech service</td></tr>
   <tr><td>App fonts</td><td>A standard request for the font files</td><td>Google Fonts</td></tr>
 </table></div>
 <p>Like any website, these services can see your device's IP address when it connects to them. Their own privacy policies apply.</p>
 
-<h2>6. Camera and photos</h2>
-<p>The camera is used only when you choose to scan a barcode, take a recipe or ingredient photo, photograph a recipe card, or share a picture to Gingham from another app. Barcode reading happens on your device. Recipe-card photos are read on your device, or by Claude if you're signed in (see section 5). Photos are kept on your device, and are also stored in your family's private storage if you use family sync, or published if you share a recipe to Community.</p>
+<h2>6. Camera, microphone and photos</h2>
+<p>The camera is used only when you choose to scan a barcode, take a recipe or ingredient photo, photograph a recipe card, or share a picture to Gingham from another app. The microphone is used only while hands-free cooking is on. Barcode reading happens on your device. Recipe-card photos are read on your device, or by Claude if you're signed in (see section 5). Photos are kept on your device, and are also stored in your family's private storage if you use family sync, or published if you share a recipe to Community.</p>
 
 <h2>7. What we don't do</h2>
 <ul>
   <li>No advertising, and no advertising or tracking identifiers.</li>
   <li>No analytics or usage tracking, and no selling, renting or trading of your information.</li>
   <li>No location tracking. Store prices use only the ZIP code you type.</li>
-  <li>No access to your contacts.</li>
+  <li>No access to your contacts, and no voice recordings.</li>
 </ul>
 
 <h2>8. How long data is kept</h2>

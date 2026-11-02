@@ -12,7 +12,7 @@
 <meta name="description" content="Gingham: family recipes, meal planning, pantry and a shared shopping list.">
 <link rel="icon" href="icon-192.png" type="image/png"><link rel="manifest" href="manifest.json?v=17b">
 <style>html{background:#FBF6EC}@media (prefers-color-scheme:dark){html{background:#1E1A17}}</style>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=37">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=38">
 </head>
 <body>
 <header><div class="header-row"><div><div class="brand">Gingham</div><div class="sub">Family meals, pantry &amp; shopping</div></div><div class="row" style="gap:4px"><button id="syncBadge" class="sync-badge" hidden onclick="showSettings()"></button><button class="iconbtn" aria-label="Settings" onclick="showSettings()">⚙️</button></div></div></header>
@@ -23,6 +23,7 @@
 <div class="home-hello"><div class="small" id="heroKitchen">Your family kitchen</div><h1 id="homeGreeting">What's cooking?</h1></div>
 <div id="backupReminder"></div>
 <div id="homeToday"></div>
+<div id="homePrep"></div>
 <div id="homeShop"></div>
 <div id="readyCard"></div>
 <div class="section-title"><h2>Favorites</h2><button class="btn ghost" onclick="showScreen('recipes');setRecipeFilter('favorites')">See all</button></div>
@@ -53,8 +54,8 @@
 <section id="ingredients" class="screen"><div class="section-title"><h1>Ingredients</h1></div><input id="ingredientSearch" class="search" type="search" aria-label="Find an ingredient" placeholder="Find an ingredient" oninput="renderIngredients()"><div id="ingredientCatalog"></div></section><section id="spending" class="screen"><h1>Grocery Spending</h1><div id="spendingDashboard"></div><div class="card"><h3>Record a shopping trip</h3><label>Store</label><input id="tripStore" aria-label="Store name" placeholder="Store name"><label>Date</label><input id="tripDate" aria-label="Date" type="date"><label>Actual total paid ($)</label><input id="tripTotal" aria-label="Trip total in dollars" type="number" step="0.01" min="0"><label>Notes (optional)</label><input id="tripNotes" aria-label="Notes" placeholder="Optional notes"><div class="actions"><button class="btn" onclick="addTrip()">Save trip</button></div></div><div id="tripHistory"></div></section><section id="online" class="screen">
 <div class="section-title"><h1>Find Online Recipes</h1><button class="btn secondary" onclick="showScreen('recipes')">My Recipes</button></div>
 <div class="card"><div class="muted small">Search TheMealDB for recipes you can preview and add to your recipe bank. Imported recipes can be edited afterward, including package/container sizes.</div>
-<div class="row" style="margin-top:10px"><input id="onlineSearch" class="search" style="margin:0" placeholder="Try chicken, tacos, casserole…" onkeydown="if(event.key==='Enter')searchOnline()"><button class="btn" onclick="searchOnline()">Search</button></div></div>
-<div class="card"><div class="actions"><button class="chip" onclick="discoverCategory('Chicken')">Chicken</button><button class="chip" onclick="discoverCategory('Beef')">Beef</button><button class="chip" onclick="discoverCategory('Pasta')">Pasta</button><button class="chip" onclick="discoverCategory('Vegetarian')">Vegetarian</button><button class="chip" onclick="surpriseMeal()">Surprise me</button></div><label>Search mode</label><select id="onlineMode"><option value="name">Recipe name</option><option value="ingredient">Main ingredient</option><option value="category">Category</option><option value="area">Cuisine</option></select></div><div id="onlineResults"></div>
+<div class="row" style="margin-top:10px"><input id="onlineSearch" class="search" type="search" aria-label="Search online recipes" style="margin:0" placeholder="Try chicken, tacos, casserole…" onkeydown="if(event.key==='Enter')searchOnline()"><button class="btn" onclick="searchOnline()">Search</button></div></div>
+<div class="card"><div class="actions"><button class="chip" onclick="discoverCategory('Chicken')">Chicken</button><button class="chip" onclick="discoverCategory('Beef')">Beef</button><button class="chip" onclick="discoverCategory('Pasta')">Pasta</button><button class="chip" onclick="discoverCategory('Vegetarian')">Vegetarian</button><button class="chip" onclick="surpriseMeal()">Surprise me</button></div><label>Search mode</label><select id="onlineMode" aria-label="Search by"><option value="name">Recipe name</option><option value="ingredient">Main ingredient</option><option value="category">Category</option><option value="area">Cuisine</option></select></div><div id="onlineResults"></div>
 <div class="card small muted">Online recipe data and artwork are provided by TheMealDB.</div></section>
 <section id="pantry" class="screen"><h1>🥫 Pantry & barcode</h1><div class="card"><h3>Add pantry item</h3><label>Ingredient name</label><input id="pantryName" aria-label="Ingredient name" placeholder="e.g. Rice" list="pantrySuggestions"><datalist id="pantrySuggestions"></datalist><label>Quantity on hand (number of preferred packages; fractions allowed)</label><input id="pantryQty" aria-label="Quantity on hand" type="number" min="0" step="0.01" placeholder="e.g. 1.5"><div class="actions"><button class="btn" onclick="addPantry()">Save pantry item</button></div><p class="small muted">Quantities use your preferred package unit. Shopping estimates account for pantry stock where matching package details are available. Pantry stock is only consumed when you confirm cooking.</p></div><div class="card"><h3>Scan a product</h3><p class="small muted">Use your camera where supported, or enter the barcode manually. Product details require internet and availability from Open Food Facts; always confirm the ingredient name and package.</p><div class="actions"><button class="btn secondary" onclick="startBarcode()">📷 Scan barcode</button><button class="btn secondary" onclick="toggleBarcodeTorch()" id="barcodeTorch" disabled>🔦 Flashlight</button><button class="btn secondary" onclick="stopBarcode()">Stop camera</button></div><video id="barcodeVideo" playsinline autoplay muted style="width:100%;max-height:230px;display:none"></video><label>Barcode</label><input id="barcodeInput" aria-label="Barcode" inputmode="numeric" placeholder="UPC / EAN"><button class="btn" onclick="lookupBarcode()">Look up barcode</button><div id="barcodeResult" class="small muted" aria-live="polite"></div></div><div id="pantryList"></div></section><section id="more" class="screen"><h1>More</h1><div class="card"><div class="actions"><button class="btn secondary" onclick="showScreen('ingredients')">🥕 Ingredients</button><button class="btn secondary" onclick="showScreen('spending')">💳 Spending</button><button class="btn secondary" onclick="showScreen('pantry')">🥫 Pantry & barcode</button><button class="btn secondary" onclick="showScreen('online')">🌐 Online recipes</button><button class="btn secondary" onclick="showScreen('settings')">⚙️ Settings &amp; backups</button></div></div></section><section id="settings" class="screen">
 <h1>Settings & Data</h1>
@@ -70,6 +71,7 @@
 </div>
 </div>
 <div class="card"><h3>Automatic backups</h3><p class="muted small">This phone saves a copy of your data every day, plus a weekly copy, and before any big change (joining a family, importing, resetting). The last 10 daily copies and 8 weekly copies are kept, so you can go back about two months.</p><div id="snapshotList"></div></div>
+<div class="card" id="remindersCard"></div>
 <div class="card" id="helpCard"><h3>Help &amp; feedback</h3><p class="muted small">Something not working? Send a report straight to Gingham's maker. You'll see exactly what's included before it's sent.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('report.js?v=37').then(()=>openProblemReport())">🐞 Send a problem report</button><button class="btn ghost" onclick="loadScriptOnce('report.js?v=37').then(()=>openUsageToday())">Today's usage</button></div></div>
 <div class="card" id="accountCard"></div>
 <details class="card advanced" id="advancedCard"><summary><span><b class="adv-title">Advanced</b><span class="small muted">Package sizes, prices, start over</span></span></summary>
@@ -95,7 +97,7 @@ window.addEventListener('error',function(ev){if(ev.message)note(ev.message,ev.er
 window.addEventListener('unhandledrejection',function(ev){var r=ev.reason;if(r&&(r.signin||r.name==='AbortError'))return;note(r&&r.message||String(r),r&&r.stack)});
 window.recentAppErrors=function(){return list.slice()};window.clearAppErrors=function(){list=[];try{localStorage.removeItem(K)}catch(_){}}})();</script>
 <script src="ui.js?v=24"></script>
-<script src="units.js?v=35"></script>
+<script src="units.js?v=38"></script>
 <script src="groups.js?v=25"></script>
 <script src="planner.js?v=27"></script>
 <script src="family.js?v=24"></script>
@@ -103,17 +105,17 @@ window.recentAppErrors=function(){return list.slice()};window.clearAppErrors=fun
 <script src="shop.js?v=32"></script>
 <script src="starter-recipes.js?v=25"></script>
 <script src="week.js?v=37"></script>
-<script src="core.js?v=35"></script>
+<script src="core.js?v=38"></script>
 <script src="catalog.js?v=29"></script>
 <script src="sync-config.js?v=17"></script>
 <script src="storage.js?v=27"></script>
 <script src="sync.js?v=33"></script>
-<script src="extras.js?v=33"></script>
+<script src="extras.js?v=38"></script>
 <script src="kitchen.js?v=36"></script>
 <script src="pictures.js?v=24"></script>
 <script src="imports.js?v=36"></script>
 <script src="prices.js?v=25"></script>
 <script src="community.js?v=25"></script>
 <script>// features that aren't needed for the first screen load just after it
-window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['nutrition.js?v=37','shop-extras.js?v=35','onboarding.js?v=33','sharing.js?v=33','substitutions.js?v=27','account.js?v=27','setup-check.js?v=37','import-apps.js?v=27']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(document.getElementById('recipes')?.classList.contains('active')&&typeof renderRecipes==='function')renderRecipes();if(document.getElementById('plan')?.classList.contains('active')&&typeof renderPlanner==='function')renderPlanner();if(typeof renderTourCard==='function')renderTourCard();if(typeof renderShareCodeLine==='function'&&document.getElementById('settings')?.classList.contains('active'))renderShareCodeLine()},300));</script>
+window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['nutrition.js?v=37','shop-extras.js?v=35','onboarding.js?v=33','sharing.js?v=33','substitutions.js?v=27','account.js?v=27','setup-check.js?v=38','import-apps.js?v=27','reminders.js?v=38']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(document.getElementById('recipes')?.classList.contains('active')&&typeof renderRecipes==='function')renderRecipes();if(document.getElementById('plan')?.classList.contains('active')&&typeof renderPlanner==='function')renderPlanner();if(typeof renderTourCard==='function')renderTourCard();if(document.getElementById('home')?.classList.contains('active')&&typeof renderPrepCard==='function')renderPrepCard();if(document.getElementById('settings')?.classList.contains('active')&&typeof renderRemindersCard==='function')renderRemindersCard();if(typeof renderShareCodeLine==='function'&&document.getElementById('settings')?.classList.contains('active'))renderShareCodeLine()},300));</script>
 <script>window.addEventListener('load',()=>{setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},450)});setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},2500);</script><script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Offline support unavailable',e)));</script></body></html>

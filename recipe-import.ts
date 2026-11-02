@@ -226,8 +226,8 @@ async function pinterestRecipe(u: URL): Promise<any | null> {
 // touch: it uses the service-role key that Supabase gives every Edge Function automatically (never put it in the app).
 // Change a limit without editing code: add a secret HELPER_LIMITS, e.g. {"read-card":40,"url":100}.
 // Photo reads also have a total for everyone together (READ_CARD_DAILY_TOTAL, default 300 ≈ $3 a day at most).
-const DEFAULT_LIMITS: Record<string, number> = { 'read-card': 25, url: 60, image: 120, nutrition: 150, portions: 60, 'kroger-stores': 40, 'kroger-prices': 300 };
-const LIMIT_NAMES: Record<string, string> = { 'read-card': 'photo recipe reads', url: 'link imports', image: 'picture downloads', nutrition: 'nutrition lookups', portions: 'weight lookups', 'kroger-stores': 'store searches', 'kroger-prices': 'price lookups' };
+const DEFAULT_LIMITS: Record<string, number> = { 'read-card': 25, url: 60, image: 120, nutrition: 150, portions: 60, 'kroger-stores': 40, 'kroger-prices': 300, 'push-test': 10, 'push-setup': 20 };
+const LIMIT_NAMES: Record<string, string> = { 'read-card': 'photo recipe reads', url: 'link imports', image: 'picture downloads', nutrition: 'nutrition lookups', portions: 'weight lookups', 'kroger-stores': 'store searches', 'kroger-prices': 'price lookups', 'push-test': 'test notifications', 'push-setup': 'reminder setups' };
 function limits(): Record<string, number> {
   let extra: Record<string, number> = {};
   try { extra = JSON.parse(Deno.env.get('HELPER_LIMITS') || '{}') } catch (_) {}
@@ -300,6 +300,11 @@ if (typeof Deno !== 'undefined' && Deno.serve) Deno.serve(async (req: Request) =
 
 async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return reply(405, { error: 'Use POST' });
+  // Supabase's scheduler (no sign-in; proves itself with the key kept in the database)
+  if (req.headers.get('content-type')?.includes('json')) {
+    const peek = await req.clone().json().catch(() => null);
+    if (peek?.action === 'send-reminders') return reply(...await sendDueReminders(peek));
+  }
 
   // Only people signed in to this Supabase project (your family) may use the helper.
   const auth = req.headers.get('Authorization') || '';
@@ -319,6 +324,7 @@ async function handle(req: Request): Promise<Response> {
   if (body.action === 'portions') return reply(...await foodPortions(body));
   if (body.action === 'image') return reply(...await fetchImage(body));
   if (body.action === 'read-card') return reply(...await readRecipeCard(body));
+  if (/^push-(key|setup|test)$/.test(String(body.action))) return reply(...await pushAction(body, functionName(req)));
   const url = allowedUrl(body.url);
   if (!url) return reply(400, { error: 'That doesn\'t look like a web address. Copy the full link starting with https://' });
 
@@ -526,4 +532,99 @@ export async function nutritionFacts(body: any): Promise<[number, unknown]> {
     } catch (_) { results[term] = [] }
   }
   return [200, { results }];
+}
+
+// =====================================================================
+// Prep reminders: Web Push notifications (RFC 8291 message encryption, RFC 8292 VAPID signing).
+// The signing keys are made automatically the first time and kept in rg_private_settings (launch-setup.sql),
+// so there's nothing to copy. Supabase's scheduler calls {action:'send-reminders'} every 5 minutes.
+// =====================================================================
+const b64u = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = (s: string) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(s).length + 3) % 4)), c => c.charCodeAt(0));
+const utf8 = (s: string) => new TextEncoder().encode(s);
+function concatBytes(...parts: Uint8Array[]) { const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0)); let at = 0; for (const p of parts) { out.set(p, at); at += p.length } return out }
+async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, bytes: number) {
+  const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info }, key, bytes * 8));
+}
+// Encrypts a message for one phone. `fixed` is only for checking against the RFC 8291 example.
+export async function encryptPush(payload: Uint8Array, p256dh: string, authSecret: string, fixed?: { keys: CryptoKeyPair, salt: Uint8Array }) {
+  const uaPublic = unb64u(p256dh), auth = unb64u(authSecret);
+  const keys = fixed?.keys || await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']) as CryptoKeyPair;
+  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey));
+  const uaKey = await crypto.subtle.importKey('raw', uaPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, keys.privateKey, 256));
+  const ikm = await hkdf(auth, shared, concatBytes(utf8('WebPush: info\0'), uaPublic, asPublic), 32);
+  const salt = fixed?.salt || crypto.getRandomValues(new Uint8Array(16));
+  const cek = await hkdf(salt, ikm, utf8('Content-Encoding: aes128gcm\0'), 16);
+  const nonce = await hkdf(salt, ikm, utf8('Content-Encoding: nonce\0'), 12);
+  const aes = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+  const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aes, concatBytes(payload, new Uint8Array([2]))));
+  const header = new Uint8Array(21); header.set(salt); new DataView(header.buffer).setUint32(16, 4096); header[20] = 65;
+  return concatBytes(header, asPublic, sealed);
+}
+// this helper's own name in Supabase ("recipe-imports"), from the address it was called at
+function functionName(req: Request) { const p = new URL(req.url).pathname.split('/').filter(Boolean), i = p.indexOf('v1'); return ((i >= 0 ? p[i + 1] : p[0]) || 'recipe-imports').replace(/[^A-Za-z0-9_-]/g, '') }
+// a function that returns one value comes back as that value (or, from some servers, as [{name: value}])
+function rpcScalar(x: any) { return Array.isArray(x) ? (x[0] && typeof x[0] === 'object' ? Object.values(x[0])[0] : x[0]) : x }
+let vapidCache: { pub: string, key: CryptoKey } | null = null;
+async function vapidKeys() {
+  if (vapidCache) return vapidCache;
+  const fresh = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']) as CryptoKeyPair;
+  const jwk = await crypto.subtle.exportKey('jwk', fresh.privateKey);
+  const stored = rpcScalar(await usageRpc('rg_setting', { p_key: 'vapid_jwk', p_default: JSON.stringify(jwk) }));   // keeps the first one ever made
+  let use: any = null; try { use = typeof stored === 'string' ? JSON.parse(stored) : null } catch (_) {}
+  if (!use?.d) return null;
+  const key = await crypto.subtle.importKey('jwk', use, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  vapidCache = { pub: b64u(concatBytes(new Uint8Array([4]), unb64u(use.x), unb64u(use.y))), key };
+  return vapidCache;
+}
+async function vapidHeader(endpoint: string, v: { pub: string, key: CryptoKey }) {
+  const enc = (o: unknown) => b64u(utf8(JSON.stringify(o)));
+  const subject = Deno.env.get('VAPID_SUBJECT') || Deno.env.get('SUPABASE_URL') || 'https://supabase.com';
+  const unsigned = enc({ typ: 'JWT', alg: 'ES256' }) + '.' + enc({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject });
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, v.key, utf8(unsigned)));
+  return `vapid t=${unsigned}.${b64u(sig)}, k=${v.pub}`;
+}
+// Push services only; never anywhere else (the address comes from the phone, so it's checked).
+const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com|push\.apple\.com|web\.push\.apple\.com)$/;
+export async function sendPush(sub: { endpoint: string, p256dh: string, auth: string }, message: Record<string, unknown>): Promise<{ ok: boolean, gone: boolean, status: number }> {
+  let u: URL; try { u = new URL(sub.endpoint) } catch (_) { return { ok: false, gone: true, status: 0 } }
+  if (u.protocol !== 'https:' || !(PUSH_HOSTS.test(u.hostname) || Deno.env.get('PUSH_TEST_HOST') === u.hostname)) return { ok: false, gone: true, status: 0 };
+  const v = await vapidKeys(); if (!v) return { ok: false, gone: false, status: 0 };
+  const body = await encryptPush(utf8(JSON.stringify(message)), sub.p256dh, sub.auth);
+  const r = await fetch(sub.endpoint, { method: 'POST', signal: AbortSignal.timeout(10000),
+    headers: { Authorization: await vapidHeader(sub.endpoint, v), 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: '21600', Urgency: 'high' }, body }).catch(() => null);
+  if (!r) return { ok: false, gone: false, status: 0 };
+  await r.body?.cancel().catch(() => {});
+  return { ok: r.ok, gone: r.status === 404 || r.status === 410, status: r.status };
+}
+export async function sendDueReminders(body: any): Promise<[number, unknown]> {
+  const rows = await usageRpc('rg_reminders_due', { p_key: String(body.key || '') });
+  if (!Array.isArray(rows)) return [403, { error: 'Not allowed.' }];
+  let sent = 0, failed = 0;
+  for (const r of rows) {
+    const res = await sendPush(r, { title: r.title, body: r.body, tag: 'prep-' + r.key, url: './index.html?from=reminder' });
+    if (res.ok) sent++; else { failed++; await usageRpc('rg_push_result', { p_endpoint: r.endpoint, p_gone: res.gone }) }
+  }
+  return [200, { sent, failed }];
+}
+async function pushAction(body: any, fnName: string): Promise<[number, unknown]> {
+  if (!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) return [503, { error: 'Reminders need the helper\'s service key, which Supabase normally adds by itself. Redeploy the helper.', setup: true }];
+  if (body.action === 'push-key') {
+    const v = await vapidKeys();
+    return v ? [200, { publicKey: v.pub }] : [503, { error: 'Reminders aren\'t set up yet. In Supabase → SQL Editor, run launch-setup.sql.', setup: true }];
+  }
+  if (body.action === 'push-setup') {
+    const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/${fnName}`;
+    const ok = rpcScalar(await usageRpc('rg_schedule_reminders', { p_url: url }));
+    return ok === true ? [200, { scheduled: true }] : [503, { error: 'Couldn\'t start the reminder schedule. In Supabase → Database → Extensions, turn on pg_cron and pg_net, then run launch-setup.sql again.', setup: true }];
+  }
+  if (body.action === 'push-test') {
+    const s = body.subscription || {};
+    const res = await sendPush({ endpoint: String(s.endpoint || ''), p256dh: String(s.keys?.p256dh || ''), auth: String(s.keys?.auth || '') },
+      { title: '🔔 Gingham reminders are on', body: 'This is how prep reminders will look, like “Thaw the chicken tonight”.', tag: 'prep-test', url: './index.html?from=reminder' });
+    return res.ok ? [200, { sent: true }] : [502, { error: res.gone ? 'This phone\'s notification address didn\'t work. Turn reminders off and on again.' : 'The notification service didn\'t accept it (' + res.status + '). Try again in a minute.' }];
+  }
+  return [400, { error: 'Unknown reminder action.' }];
 }

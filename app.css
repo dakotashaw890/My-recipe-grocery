@@ -7,12 +7,13 @@
   --soft: #F1E7D6;         /* secondary buttons, pills, stats */
   --ink: #2B2420;
   --ink-2: #5A4A3F;
-  --muted: #7A6B5E;
+  --muted: #6E5F54;
   --line: #E8DCC8;
   --line-strong: #D9C8AE;
   --tomato: #C8412F;       /* do this: main actions */
   --tomato-tint: #F8E1DA;
   --tomato-text: #9C2F21;
+  --accent-solid: var(--tomato);
   --olive: #6B7A3A;        /* you have it: ready, covered, complete */
   --olive-tint: #ECEFD9;
   --olive-text: #4E5A27;
@@ -49,7 +50,8 @@
     --muted: #B3A594;
     --line: #3D342D;
     --line-strong: #54483E;
-    --tomato: #E2604C;
+    --tomato: #EF7A66;          /* v38: lighter so red text reads on dark cards */
+    --accent-solid: #C2412D;    /* v38: deeper red behind white button text (4.9:1) */
     --tomato-tint: #4A2620;
     --tomato-text: #F4A090;
     --olive: #A3B465;
@@ -190,7 +192,7 @@ h1 {
 }
 
 .btn {
-  background: var(--green);
+  background: var(--accent-solid, var(--green));
   color:var(--on-accent);
   font-weight: 700;
   transition: transform .12s,filter .12s;
@@ -1614,7 +1616,7 @@ main { touch-action: pan-y pinch-zoom; }
 .rule-row { padding: 10px; margin: 8px 0; background: var(--card-2); box-shadow: none; }
 .day-chips { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
 .day-chip { aspect-ratio: 1; max-height: 40px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--card); color: var(--ink); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; padding: 0; }
-.day-chip.on { background: var(--tomato); border-color: var(--tomato); color: var(--on-accent); }
+.day-chip.on { background: var(--accent-solid); border-color: var(--accent-solid); color: var(--on-accent); }
 .rule-pick { gap: 6px; align-items: center; flex-wrap: nowrap; }
 .rule-pick select { flex: 1; min-width: 0; }
 #planPrefsLine { margin: 6px 2px 10px; }
@@ -1721,7 +1723,7 @@ main { touch-action: pan-y pinch-zoom; }
 #planner .day.past { opacity: .62; }
 .day-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .day-head h3 { margin: 0; }
-.today-badge { background: var(--tomato); color: var(--on-accent); border-radius: 999px; padding: 2px 10px; font-size: .78rem; font-weight: 700; }
+.today-badge { background: var(--accent-solid); color: var(--on-accent); border-radius: 999px; padding: 2px 10px; font-size: .78rem; font-weight: 700; }
 .plan-row { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
 .plan-meal { width: 76px; flex: none; padding-top: 12px; font-size: .85rem; font-weight: 700; color: var(--muted); }
 .plan-chips { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1986,3 +1988,40 @@ div.share-choice { cursor: default }
 .usage-bar { grid-column: 1 / -1; height: 5px; border-radius: 4px; background: var(--nf-track); overflow: hidden; margin-top: 4px }
 .usage-bar span { display: block; height: 100%; background: var(--olive, #6B8E3A); border-radius: 4px }
 .usage-bar span.hot { background: var(--nf-warn) }
+
+/* v38: accessibility */
+.snapshot-row .btn.ghost { min-width: 48px; min-height: 48px }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0 }
+/* v38: hands-free cooking */
+.cook-voice { border: 1px solid #F6EEDF55; background: transparent; color: var(--cook-ink); border-radius: 999px; min-height: 44px; padding: 8px 12px; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap }
+.cook-voice.on { background: var(--cook-ink); color: var(--cook-bg, #14110F); border-color: var(--cook-ink) }
+@media (max-width: 400px) { .cook-voice span { display: none } .cook-voice { width: 44px; padding: 0 } }
+.hf-bar { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; padding: 8px 10px; border-radius: 14px; background: #ffffff14; color: var(--cook-ink); font-size: .9rem }
+.hf-state { flex: none; border: 0; border-radius: 999px; padding: 6px 12px; min-height: 36px; background: #ffffff24; color: var(--cook-ink); font: inherit; font-weight: 700; cursor: pointer }
+.hf-bar.listening .hf-state { background: #4F6B28; color: #fff }
+.hf-bar.speaking .hf-state { background: #E3A92B; color: #14110F }
+.hf-bar.listening .hf-state::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: #fff; vertical-align: 1px; animation: hfPulse 1.4s ease-in-out infinite }
+@keyframes hfPulse { 50% { opacity: .25 } }
+@media (prefers-reduced-motion: reduce) { .hf-bar.listening .hf-state::before { animation: none } }
+.hf-heard { opacity: .85; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
+/* v38: prep reminders */
+.prep-card h3 { margin: 0 }
+.prep-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line) }
+.prep-card .row + .prep-item { border-top: 0; padding-top: 8px }
+.prep-item small { display: block; font-weight: 700; color: var(--tomato-text); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em }
+.prep-item b { display: block }
+.prep-item .small { display: block; color: var(--ink-2) }
+.prep-item.due small { color: var(--butter-text) }
+.prep-done { flex: none; min-height: 44px; padding: 6px 12px }
+.remind-more { margin-top: 8px }
+.remind-more summary { cursor: pointer; padding: 6px 0 }
+.remind-more .check-row span small { display: block }
+.remind-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px }
+.remind-times label { display: grid; gap: 4px; font-size: .85rem; font-weight: 600 }
+.remind-times input { padding: 8px; margin: 0; min-width: 0 }
+/* v38: text-coloured buttons and links use the deeper red so they read on cream cards (4.5:1 or better) */
+.btn.ghost, .linkish { color: var(--tomato-text) }
+/* v38: long buy amounts ("1 container", "2 packages") wrap between words, never mid-word */
+#shoppingList .shop-buy strong { overflow-wrap: normal; word-break: normal; hyphens: none }
+#shoppingList .shop-buy strong.buy-long { font-size: .98rem; line-height: 1.15 }
+@media (max-width: 365px) { #shoppingList .shop-buy strong.buy-long { font-size: .88rem } }

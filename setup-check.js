@@ -12,6 +12,7 @@ const SETUP_CHECKS = [
   { id: 'google', title: 'Sign in with Google', run: checkGoogle },
   { id: 'limits', title: 'Daily limits', run: checkLimits },
   { id: 'reports', title: 'Problem reports', run: checkReports },
+  { id: 'reminders', title: 'Prep reminders', run: checkReminders },
 ];
 let setupResults = null, setupRunning = false;
 
@@ -121,6 +122,17 @@ async function checkReports() {
     if (j?.code === '23514' || /check constraint/i.test(j?.message || '')) return setupOk('People can send you problem reports (read them in Table Editor → rg_problem_reports).');
     return setupBad('Problem reports aren\'t set up.', 'In Supabase → SQL Editor, run launch-setup.sql once.');
   } catch (e) { return offline() }
+}
+async function checkReminders() {
+  if (typeof syncActive !== 'function' || !syncActive() || !syncInfo?.familyId) return needsFamily();
+  try {
+    const r = await fetch(SYNC_URL + '/rest/v1/rpc/rg_reminder_status', { method: 'POST', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' }, body: JSON.stringify({ p_family: syncInfo.familyId }) });
+    const j = await readJSON(r), s = Array.isArray(j) ? j[0] : j;
+    if (!r.ok || !s) return setupBad('Prep reminders aren\'t set up.', 'In Supabase → SQL Editor, run launch-setup.sql once.');
+    if (!s.phones) return setupOk('Ready. Turn on phone notifications in Prep reminders above (they always show on Home).');
+    if (!s.scheduler) return setupBad('Reminders are saved but nothing sends them.', 'In Supabase → Database → Extensions, turn on pg_cron and pg_net, run launch-setup.sql again, then turn reminders off and on in Settings.');
+    return setupOk(`${s.phones} phone${s.phones === 1 ? '' : 's'} get reminders; ${s.upcoming} coming up.`);
+  } catch (e) { return e instanceof TypeError ? offline() : setupBad(e.message) }
 }
 async function runSetupCheck() {
   if (setupRunning) return;

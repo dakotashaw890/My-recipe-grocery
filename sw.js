@@ -1,5 +1,5 @@
-const CACHE='gingham-v38';
-const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./ui.js?v=24','./units.js?v=35','./groups.js?v=25','./planner.js?v=27','./family.js?v=24','./cooking.js?v=24','./shop.js?v=32','./starter-recipes.js?v=25','./week.js?v=37','./core.js?v=35','./shop-extras.js?v=35','./onboarding.js?v=33','./sharing.js?v=33','./ingredient-catalog.js?v=29','./catalog.js?v=29','./sync-config.js?v=17','./storage.js?v=27','./sync.js?v=33','./extras.js?v=33','./kitchen.js?v=36','./pictures.js?v=24','./imports.js?v=36','./weights.js?v=36','./report.js?v=37','./prices.js?v=25','./nutrition.js?v=37','./community.js?v=25','./setup-check.js?v=37','./import-apps.js?v=27','./substitutions.js?v=27','./account.js?v=27','./app.css?v=37','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
+const CACHE='gingham-v39';
+const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./ui.js?v=24','./units.js?v=38','./groups.js?v=25','./planner.js?v=27','./family.js?v=24','./cooking.js?v=24','./shop.js?v=32','./starter-recipes.js?v=25','./week.js?v=37','./core.js?v=38','./shop-extras.js?v=35','./onboarding.js?v=33','./sharing.js?v=33','./ingredient-catalog.js?v=29','./catalog.js?v=29','./sync-config.js?v=17','./storage.js?v=27','./sync.js?v=33','./extras.js?v=38','./kitchen.js?v=36','./pictures.js?v=24','./imports.js?v=36','./weights.js?v=36','./report.js?v=37','./handsfree.js?v=38','./reminders.js?v=38','./prices.js?v=25','./nutrition.js?v=37','./community.js?v=25','./setup-check.js?v=38','./import-apps.js?v=27','./substitutions.js?v=27','./account.js?v=27','./app.css?v=38','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
 const IMAGES=[];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(async c=>{
   await c.addAll(CORE);
@@ -25,4 +25,17 @@ self.addEventListener('fetch',e=>{
   // Sync settings can be edited on GitHub at any time, so prefer the fresh copy.
   if(url.pathname.endsWith('/sync-config.js')){e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request,{ignoreSearch:true})));return}
   e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));
+});
+// Prep reminders (v38): the family's Supabase helper sends them; show them, and open Gingham when tapped
+self.addEventListener('push',e=>{
+  let m={};try{m=e.data?e.data.json():{}}catch(_){m={title:'Gingham',body:e.data?e.data.text():''}}
+  e.waitUntil(self.registration.showNotification(m.title||'Gingham',{body:m.body||'',tag:m.tag||'gingham',icon:'icon-192.png',badge:'icon-192.png',data:{url:m.url||'./index.html'},renotify:!!m.tag}));
+});
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  const target=new URL(e.notification.data?.url||'./index.html',self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+    for(const c of list)if(c.url.startsWith(self.registration.scope)&&'focus' in c){c.postMessage({type:'reminder-open'});return c.focus()}
+    return self.clients.openWindow(target);
+  }));
 });
