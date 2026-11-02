@@ -1,6 +1,6 @@
-// Hands-free cook mode (v38): Gingham reads each step aloud and listens for simple commands, so nobody has to touch
+// Hands-free cook mode (v38): Whole Kitchen reads each step aloud and listens for simple commands, so nobody has to touch
 // the phone with messy hands. Uses the phone's own speech features (Web Speech API); nothing is recorded or sent to
-// Gingham. On Android, Chrome's speech recognition is Google's service, so the policy says so.
+// Whole Kitchen. On Android, Chrome's speech recognition is Google's service, so the policy says so.
 'use strict';
 
 const HF = { on: false, rec: null, speaking: false, heard: '', status: '', restartAt: 0, failures: 0, lastStep: -1, saidHelp: false };

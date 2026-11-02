@@ -6,18 +6,18 @@
 <meta name="theme-color" content="#C8412F" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#9E3326" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Gingham</title>
-<meta name="application-name" content="Gingham">
-<meta name="apple-mobile-web-app-title" content="Gingham">
-<meta name="description" content="Gingham: family recipes, meal planning, pantry and a shared shopping list.">
+<title>Whole Kitchen</title>
+<meta name="application-name" content="Whole Kitchen">
+<meta name="apple-mobile-web-app-title" content="Whole Kitchen">
+<meta name="description" content="Whole Kitchen: family recipes, meal planning, pantry and a shared shopping list.">
 <link rel="icon" href="icon-192.png" type="image/png"><link rel="manifest" href="manifest.json?v=17b">
 <style>html{background:#FBF6EC}@media (prefers-color-scheme:dark){html{background:#1E1A17}}</style>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=38">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=39">
 </head>
 <body>
-<header><div class="header-row"><div><div class="brand">Gingham</div><div class="sub">Family meals, pantry &amp; shopping</div></div><div class="row" style="gap:4px"><button id="syncBadge" class="sync-badge" hidden onclick="showSettings()"></button><button class="iconbtn" aria-label="Settings" onclick="showSettings()">⚙️</button></div></div></header>
+<header><div class="header-row"><div><div class="brand">Whole Kitchen</div><div class="sub">Family meals, pantry &amp; shopping</div></div><div class="row" style="gap:4px"><button id="syncBadge" class="sync-badge" hidden onclick="showSettings()"></button><button class="iconbtn" aria-label="Settings" onclick="showSettings()">⚙️</button></div></div></header>
 
-<div id="launchBrand" aria-label="Opening Gingham"><img src="icon-512.png" alt=""/><h2>Gingham</h2><p>Family meals, pantry &amp; shopping</p></div>
+<div id="launchBrand" aria-label="Opening Whole Kitchen"><img src="icon-512.png" alt=""/><h2>Whole Kitchen</h2><p>Family meals, pantry &amp; shopping</p></div>
 <main>
 <section id="home" class="screen active">
 <div class="home-hello"><div class="small" id="heroKitchen">Your family kitchen</div><h1 id="homeGreeting">What's cooking?</h1></div>
@@ -72,11 +72,11 @@
 </div>
 <div class="card"><h3>Automatic backups</h3><p class="muted small">This phone saves a copy of your data every day, plus a weekly copy, and before any big change (joining a family, importing, resetting). The last 10 daily copies and 8 weekly copies are kept, so you can go back about two months.</p><div id="snapshotList"></div></div>
 <div class="card" id="remindersCard"></div>
-<div class="card" id="helpCard"><h3>Help &amp; feedback</h3><p class="muted small">Something not working? Send a report straight to Gingham's maker. You'll see exactly what's included before it's sent.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('report.js?v=37').then(()=>openProblemReport())">🐞 Send a problem report</button><button class="btn ghost" onclick="loadScriptOnce('report.js?v=37').then(()=>openUsageToday())">Today's usage</button></div></div>
+<div class="card" id="helpCard"><h3>Help &amp; feedback</h3><p class="muted small">Something not working? Send a report straight to Whole Kitchen's maker. You'll see exactly what's included before it's sent.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('report.js?v=39').then(()=>openProblemReport())">🐞 Send a problem report</button><button class="btn ghost" onclick="loadScriptOnce('report.js?v=39').then(()=>openUsageToday())">Today's usage</button></div></div>
 <div class="card" id="accountCard"></div>
 <details class="card advanced" id="advancedCard"><summary><span><b class="adv-title">Advanced</b><span class="small muted">Package sizes, prices, start over</span></span></summary>
 <div class="adv-block"><b>Ingredient package sizes</b><p class="small muted">The usual package each ingredient is bought in. Shopping amounts are worked out from these.</p><div id="packageEditor"></div><div class="actions"><button class="btn secondary" onclick="openIngredientInspector()">🔎 Ingredient inspector</button><button class="btn secondary" onclick="openPackageEditor()">Edit package sizes</button></div></div>
-<div class="adv-block"><b>Ingredient weights</b><p class="small muted">How much a cup or one of each ingredient weighs, so recipe amounts turn into what you buy and nutrition adds up. Can be filled in from USDA measurements.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('weights.js?v=36').then(()=>openWeights())">Ingredient weights</button></div></div>
+<div class="adv-block"><b>Ingredient weights</b><p class="small muted">How much a cup or one of each ingredient weighs, so recipe amounts turn into what you buy and nutrition adds up. Can be filled in from USDA measurements.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('weights.js?v=39').then(()=>openWeights())">Ingredient weights</button></div></div>
 <div class="adv-block"><b>Prices</b><p class="small muted">Prices you type in, or pay when you finish a trip, are used for cost estimates. Clearing them keeps package sizes and trip history.</p><div class="actions"><button class="btn secondary" onclick="clearManualPrices()">Clear prices I typed in</button></div></div>
 <div class="adv-block" id="v9Block"><b>Version 9 ingredient fixes</b><p class="small muted">Only for kitchens started before version 9. Updates built-in recipes whose ingredients still match the old values; your own changes are kept. Download a backup first.</p><div class="actions"><button class="btn secondary" onclick="applyV9Corrections()">Apply version 9 fixes</button></div></div>
 <div class="adv-block"><b>Start over</b><p class="small muted">Removes this phone's recipes, plan and edits, then asks how you'd like to start. A backup is saved on this phone first (Automatic backups).</p><div class="actions"><button class="btn danger" onclick="resetApp()">Start over</button></div></div>
@@ -103,19 +103,19 @@ window.recentAppErrors=function(){return list.slice()};window.clearAppErrors=fun
 <script src="family.js?v=24"></script>
 <script src="cooking.js?v=24"></script>
 <script src="shop.js?v=32"></script>
-<script src="starter-recipes.js?v=25"></script>
+<script src="starter-recipes.js?v=39"></script>
 <script src="week.js?v=37"></script>
-<script src="core.js?v=38"></script>
-<script src="catalog.js?v=29"></script>
+<script src="core.js?v=39"></script>
+<script src="catalog.js?v=39"></script>
 <script src="sync-config.js?v=17"></script>
-<script src="storage.js?v=27"></script>
-<script src="sync.js?v=33"></script>
-<script src="extras.js?v=38"></script>
-<script src="kitchen.js?v=36"></script>
+<script src="storage.js?v=39"></script>
+<script src="sync.js?v=39"></script>
+<script src="extras.js?v=39"></script>
+<script src="kitchen.js?v=39"></script>
 <script src="pictures.js?v=24"></script>
-<script src="imports.js?v=36"></script>
+<script src="imports.js?v=39"></script>
 <script src="prices.js?v=25"></script>
-<script src="community.js?v=25"></script>
+<script src="community.js?v=39"></script>
 <script>// features that aren't needed for the first screen load just after it
-window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['nutrition.js?v=37','shop-extras.js?v=35','onboarding.js?v=33','sharing.js?v=33','substitutions.js?v=27','account.js?v=27','setup-check.js?v=38','import-apps.js?v=27','reminders.js?v=38']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(document.getElementById('recipes')?.classList.contains('active')&&typeof renderRecipes==='function')renderRecipes();if(document.getElementById('plan')?.classList.contains('active')&&typeof renderPlanner==='function')renderPlanner();if(typeof renderTourCard==='function')renderTourCard();if(document.getElementById('home')?.classList.contains('active')&&typeof renderPrepCard==='function')renderPrepCard();if(document.getElementById('settings')?.classList.contains('active')&&typeof renderRemindersCard==='function')renderRemindersCard();if(typeof renderShareCodeLine==='function'&&document.getElementById('settings')?.classList.contains('active'))renderShareCodeLine()},300));</script>
+window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['nutrition.js?v=37','shop-extras.js?v=35','onboarding.js?v=39','sharing.js?v=39','substitutions.js?v=27','account.js?v=39','setup-check.js?v=39','import-apps.js?v=39','reminders.js?v=39']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(document.getElementById('recipes')?.classList.contains('active')&&typeof renderRecipes==='function')renderRecipes();if(document.getElementById('plan')?.classList.contains('active')&&typeof renderPlanner==='function')renderPlanner();if(typeof renderTourCard==='function')renderTourCard();if(document.getElementById('home')?.classList.contains('active')&&typeof renderPrepCard==='function')renderPrepCard();if(document.getElementById('settings')?.classList.contains('active')&&typeof renderRemindersCard==='function')renderRemindersCard();if(typeof renderShareCodeLine==='function'&&document.getElementById('settings')?.classList.contains('active'))renderShareCodeLine()},300));</script>
 <script>window.addEventListener('load',()=>{setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},450)});setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},2500);</script><script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Offline support unavailable',e)));</script></body></html>

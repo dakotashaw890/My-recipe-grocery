@@ -4,15 +4,15 @@ About 15 minutes. You need the Google account you want to own the app's sign-in 
 
 ## 1. Google Cloud: create the sign-in client
 
-1. Go to **console.cloud.google.com** and create a project (top bar → project picker → **New project**, name it "Gingham").
+1. Go to **console.cloud.google.com** and create a project (top bar → project picker → **New project**, name it "Whole Kitchen").
 2. Left menu → **APIs & Services → OAuth consent screen** (may be called **Google Auth Platform → Branding**).
-   - App name: **Gingham**. User support email: your email.
+   - App name: **Whole Kitchen**. User support email: your email.
    - Audience / user type: **External**.
    - Authorized domains: add **supabase.co** and **github.io**.
    - Developer contact email: your email. Save.
-   - Under **Audience**, click **Publish app** so anyone can sign in (Gingham only asks for name and email, so Google doesn't need to review it).
+   - Under **Audience**, click **Publish app** so anyone can sign in (Whole Kitchen only asks for name and email, so Google doesn't need to review it).
 3. Left menu → **Clients** (or **Credentials → Create credentials → OAuth client ID**).
-   - Application type: **Web application**. Name: Gingham.
+   - Application type: **Web application**. Name: Whole Kitchen.
    - **Authorized JavaScript origins:** `https://dakotashaw890.github.io`
    - **Authorized redirect URIs:** `https://pgqhbapseuzuyvvekcyu.supabase.co/auth/v1/callback`
    - Create. Copy the **Client ID** and **Client secret**.

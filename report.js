@@ -33,7 +33,7 @@ async function buildReport(message, withDetails, contactOk) {
   return r;
 }
 function reportPreviewText(r) {
-  const lines = [`Gingham ${r.app_version} · screen: ${r.screen || '—'}`];
+  const lines = [`Whole Kitchen ${r.app_version} · screen: ${r.screen || '—'}`];
   if (r.device) lines.push('Phone: ' + r.device);
   if (r.errors) {
     const i = r.errors.info; lines.push(`Recipes ${i.recipes}, planned meals ${i.plannedMeals}, pantry items ${i.pantryItems} · signed in: ${i.signedIn ? 'yes' : 'no'} · installed: ${i.installed ? 'yes' : 'no'} · ${i.window}`);
@@ -87,7 +87,7 @@ async function sendProblemReport() {
 // ---------- Today's usage of the helper (daily limits) ----------
 async function openUsageToday() {
   openModal(`<div class="row between"><h2>Today's usage</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
-    <p class="small muted">Each account can use the online helpers a set number of times a day, which keeps Gingham free for everyone.</p><div id="usageBox" class="small muted">Checking…</div>`);
+    <p class="small muted">Each account can use the online helpers a set number of times a day, which keeps Whole Kitchen free for everyone.</p><div id="usageBox" class="small muted">Checking…</div>`);
   const box = document.getElementById('usageBox');
   try {
     const j = await callHelper({ action: 'limits' });

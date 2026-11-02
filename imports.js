@@ -1,10 +1,10 @@
 // Getting recipes in from other apps (v21):
-//  - Share → Gingham from TikTok, Instagram, YouTube, Pinterest, Facebook, Chrome or a recipe app
+//  - Share → Whole Kitchen from TikTok, Instagram, YouTube, Pinterest, Facebook, Chrome or a recipe app
 //  - Reading a photo of a cookbook page or recipe card (text recognition runs on the phone)
 'use strict';
 
-// ---------- Share → Gingham ----------
-// manifest.json registers Gingham as a share target; Android opens index.html?share_text=…&share_url=…
+// ---------- Share → Whole Kitchen ----------
+// manifest.json registers Whole Kitchen as a share target; Android opens index.html?share_text=…&share_url=…
 function sharedContent() {
   const q = new URLSearchParams(location.search);
   if (!['share_title', 'share_text', 'share_url', 'shared_images'].some(k => q.has(k))) return null;
@@ -12,7 +12,7 @@ function sharedContent() {
   const link = (url.match(/https?:\/\/\S+/) || text.match(/https?:\/\/\S+/) || title.match(/https?:\/\/\S+/) || [])[0]?.replace(/[.,!?)\]]+$/, '') || '';
   return { title, text, link, images: Number(q.get('shared_images')) || 0 };
 }
-// pictures shared to Gingham wait in the service worker's "gingham-share" cache
+// pictures shared to Whole Kitchen wait in the service worker's "gingham-share" cache
 async function sharedImageFiles(n) {
   const out = [];
   try {
@@ -44,8 +44,8 @@ function handleShareLaunch() {
   // shared text with no link (a recipe app sharing the recipe itself, a note, an email)
   const text = [shared.title, shared.text].filter(Boolean).join('\n');
   const p = parseRecipeText(normalizeRecipeText(text));
-  if (p.ingredients.length >= 2) openImportedRecipe({ name: p.name || shared.title, servings: p.servings, ingredients: p.ingredients, steps: p.steps, prepMinutes: p.prepMinutes, cookMinutes: p.cookMinutes, sourceType: 'Shared to Gingham' });
-  else openRecipeImport({ text: normalizeRecipeText(text), note: 'Here\'s what was shared. Put each ingredient on its own line, then tap Read recipe text.', sourceType: 'Shared to Gingham' });
+  if (p.ingredients.length >= 2) openImportedRecipe({ name: p.name || shared.title, servings: p.servings, ingredients: p.ingredients, steps: p.steps, prepMinutes: p.prepMinutes, cookMinutes: p.cookMinutes, sourceType: 'Shared to Whole Kitchen' });
+  else openRecipeImport({ text: normalizeRecipeText(text), note: 'Here\'s what was shared. Put each ingredient on its own line, then tap Read recipe text.', sourceType: 'Shared to Whole Kitchen' });
 }
 window.addEventListener('load', () => setTimeout(handleShareLaunch, 300));
 

@@ -1,4 +1,4 @@
-// Gingham built-in ingredient list: everyday US grocery ingredients by department.
+// Whole Kitchen built-in ingredient list: everyday US grocery ingredients by department.
 // Generated from the hand-curated catalog; each row is [name, department, alternate names, usual package].
 const CATALOG_DEPARTMENTS=["Produce", "Meat & Seafood", "Dairy & Refrigerated", "Bakery", "Pantry & Canned", "Frozen", "Household"];
 const INGREDIENT_CATALOG=[

@@ -1,4 +1,4 @@
-// Gingham: the main app (screens, recipes, planner, shopping, pantry).
+// Whole Kitchen: the main app (screens, recipes, planner, shopping, pantry).
 // Loaded after units/groups/planner/family/cooking/shop.js; sync, storage and the rest load after it.
 // V9: apply only to ingredients that still exactly match the user's exported snapshot.
 async function loadScriptOnce(src){window.loadedScripts??={};return window.loadedScripts[src]??=new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=()=>{delete window.loadedScripts[src];rej(new Error('Could not load '+src))};document.head.appendChild(el)})}
@@ -131,7 +131,7 @@ function storageFullWarning(){
  if(document.getElementById('storageFull'))return;
  const shared=typeof syncActive==='function'&&syncActive();
  const el=document.createElement('div');el.id='storageFull';el.className='storage-full';el.setAttribute('role','alert');
- el.innerHTML=`<b>Your phone's storage for Gingham is full.</b> ${shared?'Changes still reach your family, but this phone can\'t keep them if the app closes.':'Your last change couldn\'t be saved on this phone.'} Download a backup now (⚙️ Settings → Backup files), then free up space on the phone. <button class="btn secondary" onclick="exportData()">Download backup</button>`;
+ el.innerHTML=`<b>Your phone's storage for Whole Kitchen is full.</b> ${shared?'Changes still reach your family, but this phone can\'t keep them if the app closes.':'Your last change couldn\'t be saved on this phone.'} Download a backup now (⚙️ Settings → Backup files), then free up space on the phone. <button class="btn secondary" onclick="exportData()">Download backup</button>`;
  document.querySelector('main')?.prepend(el);
 }
 function refreshSavedViews(){
@@ -269,7 +269,7 @@ function openRecipe(name){
   <h2>Ingredients</h2><div id="detailSummary"></div><div id="detailIngredients"></div><div class="actions" style="margin-top:4px"><button class="btn ghost small-btn" onclick="loadScriptOnce('shop-extras.js?v=35').then(()=>openOutOf(decodeURIComponent('${encId(name)}')))">🛒 Out of something?</button></div><div id="detailNutrition"></div>
   ${r.notes?`<h2>Notes</h2><div class="card recipe-notes" style="white-space:pre-line">${esc(r.notes)}</div>`:''}
   ${r.directions.length?`<h2>Instructions</h2><div class="card">${r.directions.flatMap(d=>String(d).split(/\n+/)).map(d=>d.trim()).filter(Boolean).map(d=>`<div class="ingredient">${esc(d)}</div>`).join('')}</div>`:''}
-  <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(name)}'))">👩‍🍳 Cook mode</button><button class="btn secondary" onclick="toggleRecipeSelection(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${state.selected[name]?'✓ Remove from shopping':'＋ Add to shopping'}</button><button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encId(name)}'))">Edit recipe</button><button class="btn secondary" onclick="openRecipePhoto(decodeURIComponent('${encId(name)}'))">📷 Photo</button><button class="btn secondary" onclick="openRecipeGroups(decodeURIComponent('${encId(name)}'))">📁 Groups</button><button class="btn secondary" onclick="loadScriptOnce('sharing.js?v=33').then(()=>openShareRecipe(decodeURIComponent('${encId(name)}')))">📤 Share</button><button class="btn secondary" onclick="toggleFavorite(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
+  <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(name)}'))">👩‍🍳 Cook mode</button><button class="btn secondary" onclick="toggleRecipeSelection(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${state.selected[name]?'✓ Remove from shopping':'＋ Add to shopping'}</button><button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encId(name)}'))">Edit recipe</button><button class="btn secondary" onclick="openRecipePhoto(decodeURIComponent('${encId(name)}'))">📷 Photo</button><button class="btn secondary" onclick="openRecipeGroups(decodeURIComponent('${encId(name)}'))">📁 Groups</button><button class="btn secondary" onclick="loadScriptOnce('sharing.js?v=39').then(()=>openShareRecipe(decodeURIComponent('${encId(name)}')))">📤 Share</button><button class="btn secondary" onclick="toggleFavorite(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
   renderDetailIngredients(name);
 }
 function changeDetailServings(delta){const el=document.getElementById('detailServings');el.value=Math.max(1,(num(el.value)||1)+delta);renderDetailIngredients(currentModalRecipe())}
@@ -484,7 +484,7 @@ async function deleteRecipe(name){
   save();closeModal();toast('Recipe deleted')
 }
 function exportData(){
-  downloadBackupFile({...state,photos:{...(window.photoCache||{})}},'gingham-backup-'+localDate()+'.json');
+  downloadBackupFile({...state,photos:{...(window.photoCache||{})}},'whole-kitchen-backup-'+localDate()+'.json');
   noteExport();if(document.getElementById('home')?.classList.contains('active'))renderHome();
 }
 function importData(ev){
@@ -633,12 +633,12 @@ window.addEventListener('load',()=>setTimeout(()=>loadScriptOnce('ingredient-pic
 function maybeWelcome(){if(/[?&]r=|#recipe=|#access_token=/.test(location.href))return;if(state.welcome&&!(typeof syncActive==='function'&&syncActive()))setTimeout(openWelcome,350)}
 function openWelcome(){
  const n=Object.keys(STARTER_RECIPES).length;
- openModal(`<div class="welcome"><div class="welcome-mark" aria-hidden="true">🍽️</div><h2>Welcome to Gingham</h2>
+ openModal(`<div class="welcome"><img class="welcome-logo" src="icon-192.png" alt="" width="64" height="64"><h2>Welcome to Whole Kitchen</h2>
   <p class="muted">Plan meals, build the shopping list and keep your family's recipes in one place. How would you like to start?</p>
   <button class="welcome-choice" onclick="startKitchen('examples')"><b>📖 Start with ${n} example recipes</b><span>Weeknight family favorites you can edit or delete. Good for trying things out.</span></button>
   <button class="welcome-choice" onclick="startKitchen('empty')"><b>✨ Start with an empty recipe box</b><span>Add your own recipes, import from websites, or snap a photo of a recipe card.</span></button>
-  <button class="welcome-choice" onclick="startKitchen('join')"><b>👨‍👩‍👧 Join my family's kitchen</b><span>Someone already uses Gingham? Sign in and enter their join code to share everything.</span></button>
-  <button class="welcome-choice" onclick="startKitchen('restore')"><b>📂 Restore a backup file</b><span>Moving from another phone with a Gingham backup.</span></button></div>`);
+  <button class="welcome-choice" onclick="startKitchen('join')"><b>👨‍👩‍👧 Join my family's kitchen</b><span>Someone already uses Whole Kitchen? Sign in and enter their join code to share everything.</span></button>
+  <button class="welcome-choice" onclick="startKitchen('restore')"><b>📂 Restore a backup file</b><span>Moving from another phone with a Whole Kitchen backup.</span></button></div>`);
 }
 function startKitchen(how){
  delete state.welcome;
@@ -648,6 +648,6 @@ function startKitchen(how){
  else if(how==='restore'){showScreen('settings');setTimeout(()=>document.getElementById('importFile')?.click(),250)}
  else if(how==='empty'){showScreen('recipes');toast('Tap ＋ Add or 🔗 Import to add your first recipe')}
  else {showScreen('recipes');toast('Added '+Object.keys(STARTER_RECIPES).length+' example recipes')}
- if(how==='empty'||how==='examples')loadScriptOnce('onboarding.js?v=33').then(()=>startOnboarding()).catch(()=>{})
+ if(how==='empty'||how==='examples')loadScriptOnce('onboarding.js?v=39').then(()=>startOnboarding()).catch(()=>{})
 }
 window.addEventListener('load',()=>maybeWelcome());

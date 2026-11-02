@@ -1,4 +1,4 @@
-// Community recipes (v25): a public library any Gingham user can browse; families can share their own
+// Community recipes (v25): a public library any Whole Kitchen user can browse; families can share their own
 // recipes and save others' into their recipe box. Imported recipes keep credit to where they came from.
 'use strict';
 
@@ -18,7 +18,7 @@ async function communityRest(method, path, body, prefer) {
 }
 function communityAuthorName() {
   const n = (typeof syncInfo !== 'undefined' && (syncInfo?.familyName || syncInfo?.displayName)) || '';
-  return n ? n.slice(0, 60) : 'A Gingham kitchen';
+  return n ? n.slice(0, 60) : 'A Whole Kitchen family';
 }
 function sourceLabel(url, fallback) { try { return new URL(url).hostname.replace(/^www\./, '') } catch (_) { return fallback || '' } }
 
@@ -30,7 +30,7 @@ async function renderCommunity() {
   const list = document.getElementById('recipeList'), head = document.getElementById('recipeViewHead'), filters = document.getElementById('recipeFilters');
   if (filters) filters.hidden = true;
   const q = (document.getElementById('recipeSearch')?.value || '').trim();
-  if (head) head.innerHTML = `<div class="view-head"><button class="btn ghost back-groups" onclick="closeRecipeView()">← Groups</button><h2>🌍 Community recipes</h2><p class="small muted">Shared by Gingham families. Save one to add it to your recipes; then it's yours to change.</p></div>`;
+  if (head) head.innerHTML = `<div class="view-head"><button class="btn ghost back-groups" onclick="closeRecipeView()">← Groups</button><h2>🌍 Community recipes</h2><p class="small muted">Shared by Whole Kitchen families. Save one to add it to your recipes; then it's yours to change.</p></div>`;
   if (communityCache.q === q && Date.now() - communityCache.at < 60000) return paintCommunity(list, communityCache.rows);
   if (!communityCache.rows.length || communityCache.q !== q) list.innerHTML = '<div class="empty">Loading community recipes…</div>';
   // wait for typing to pause before searching
@@ -123,7 +123,7 @@ function openShareCommunity(id) {
   if (!signedInForCommunity()) return alert('Sign in under ⚙️ Family sync to share recipes with the community.');
   const imported = !!r.sourceUrl, credit = imported ? sourceLabel(r.sourceUrl, r.sourceType) : '';
   openModal(`<div class="row between"><h2>${r.publicId ? 'Shared with the community' : 'Share with the community'}</h2><button class="iconbtn" aria-label="Close" onclick="openRecipe(decodeURIComponent('${encId(id)}'))">✕</button></div>
-    <p>${r.publicId ? `“${esc(r.name)}” is in the community library.` : `Anyone using Gingham will be able to see “${esc(r.name)}” and save a copy.`}</p>
+    <p>${r.publicId ? `“${esc(r.name)}” is in the community library.` : `Anyone using Whole Kitchen will be able to see “${esc(r.name)}” and save a copy.`}</p>
     <ul class="small muted share-facts"><li>Shown as by <b>${esc(communityAuthorName())}</b>.</li><li>Shared: name, servings, times, ingredients, steps${typeof recipePhotoSrc === 'function' && recipePhotoSrc(r) ? ', photo' : ''}. Not shared: your plan, prices, pantry or notes about your family.</li>${imported ? `<li>Credit and a link to the original at <b>${esc(credit)}</b> are always shown.</li>` : ''}<li>Changes you make later aren't shared until you tap Update.</li></ul>
     <div class="actions">${r.publicId ? `<button class="btn" onclick="shareCommunity(decodeURIComponent('${encId(id)}'))">Update the shared copy</button><button class="btn danger" onclick="unshareCommunity(null,decodeURIComponent('${encId(id)}'))">Stop sharing</button>` : `<button class="btn" onclick="shareCommunity(decodeURIComponent('${encId(id)}'))">🌍 Share</button><button class="btn secondary" onclick="openRecipe(decodeURIComponent('${encId(id)}'))">Cancel</button>`}</div>
     <div id="shareMsg" class="small muted" role="status"></div>`);

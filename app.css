@@ -2025,3 +2025,5 @@ div.share-choice { cursor: default }
 #shoppingList .shop-buy strong { overflow-wrap: normal; word-break: normal; hyphens: none }
 #shoppingList .shop-buy strong.buy-long { font-size: .98rem; line-height: 1.15 }
 @media (max-width: 365px) { #shoppingList .shop-buy strong.buy-long { font-size: .88rem } }
+/* v39: the app's logo on the welcome sheet */
+.welcome-logo { display: block; width: 64px; height: 64px; border-radius: 16px; margin: 0 0 10px; box-shadow: 0 4px 12px var(--shadow-c) }

@@ -1,6 +1,6 @@
 # Photo storage setup (one time)
 
-Gingham v23 keeps recipe and ingredient photos in Supabase **Storage** instead of inside your family's shared data. That keeps the database small (it's what the free plan limits), makes syncing faster, and means a phone joining the family doesn't download every photo at once.
+Whole Kitchen v23 keeps recipe and ingredient photos in Supabase **Storage** instead of inside your family's shared data. That keeps the database small (it's what the free plan limits), makes syncing faster, and means a phone joining the family doesn't download every photo at once.
 
 ## Steps
 
@@ -9,7 +9,7 @@ Gingham v23 keeps recipe and ingredient photos in Supabase **Storage** instead o
 3. Open `photo-storage-setup.sql`, copy everything in it, and paste it into the editor.
 4. Click **Run**. You should see "Success. No rows returned". If Supabase warns about a destructive query, it's safe to continue: the script only adds a photo folder and its privacy rules.
 
-That's it. The next time each phone opens Gingham and syncs, it moves its photos into storage by itself. To check, go to **Storage** in Supabase: there's a **photos** bucket with one folder for your family.
+That's it. The next time each phone opens Whole Kitchen and syncs, it moves its photos into storage by itself. To check, go to **Storage** in Supabase: there's a **photos** bucket with one folder for your family.
 
 ## Good to know
 

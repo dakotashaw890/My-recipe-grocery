@@ -11,4 +11,4 @@ That's all. The **🌍 Community** tile appears on the Recipes screen.
   - Fine? Set `hidden` to false and `reports` to 0.
   - Not fine? Delete the row.
 - People can only change or remove recipes they shared themselves.
-- Anyone using Gingham can browse, even without an account. Sharing and reporting need an account.
+- Anyone using Whole Kitchen can browse, even without an account. Sharing and reporting need an account.

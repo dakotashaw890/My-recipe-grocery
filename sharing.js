@@ -1,4 +1,4 @@
-// Share a recipe: a link anyone can open, straight to another family's Gingham, or the community.
+// Share a recipe: a link anyone can open, straight to another family's Whole Kitchen, or the community.
 // Opening a shared link shows the recipe with "Save to my recipes". Families' inbox for recipes sent to them.
 const firstOf = j => Array.isArray(j) ? j[0] : j;
 const sharingSignedIn = () => typeof syncAuth !== 'undefined' && !!syncAuth && typeof syncConfigured !== 'undefined' && syncConfigured;
@@ -12,14 +12,14 @@ async function openShareRecipe(rid) {
   const fam = typeof syncActive === 'function' && syncActive();
   const contacts = Object.values(state.shareContacts || {}).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 8);
   openModal(`<div class="row between"><h2>Share “${esc(r.name)}”</h2><button class="iconbtn" aria-label="Close" onclick="openRecipe(decodeURIComponent('${encId(rid)}'))">✕</button></div>
-    <button class="share-choice" onclick="shareRecipeLink(decodeURIComponent('${encId(rid)}'))"><span class="share-icon" aria-hidden="true">🔗</span><span><b>Send a link</b><small>Text, email or post it. Anyone can open it, and Gingham users can save it in one tap.</small></span></button>
-    <div class="share-choice ${fam ? '' : 'off'}"><span class="share-icon" aria-hidden="true">👪</span><span class="grow"><b>Send to another family on Gingham</b>
-      ${fam ? `<small>It lands in their Gingham, ready to save. Ask them for their family's <b>share code</b> (Settings → Help → Share code).</small>
+    <button class="share-choice" onclick="shareRecipeLink(decodeURIComponent('${encId(rid)}'))"><span class="share-icon" aria-hidden="true">🔗</span><span><b>Send a link</b><small>Text, email or post it. Anyone can open it, and Whole Kitchen users can save it in one tap.</small></span></button>
+    <div class="share-choice ${fam ? '' : 'off'}"><span class="share-icon" aria-hidden="true">👪</span><span class="grow"><b>Send to another family on Whole Kitchen</b>
+      ${fam ? `<small>It lands in their Whole Kitchen, ready to save. Ask them for their family's <b>share code</b> (Settings → Help → Share code).</small>
         ${contacts.length ? `<div class="ingredient-suggestions" style="margin-top:8px">${contacts.map(c => `<button class="btn secondary" onclick="sendToFamily(decodeURIComponent('${encId(rid)}'),decodeURIComponent('${encId(c.code)}'))">${esc(c.name)}</button>`).join('')}</div>` : ''}
         <div class="share-send"><input id="shareCode" autocapitalize="characters" autocomplete="off" placeholder="Share code, e.g. K7QM-2XPA"><button class="btn" onclick="sendToFamily(decodeURIComponent('${encId(rid)}'))">Send</button></div>
         <input id="shareNote" maxlength="300" placeholder="Add a note (optional)">`
       : `<small>Turn on family sync in Settings first, then you can send recipes to other families.</small>`}</span></div>
-    ${typeof openShareCommunity === 'function' && !(r.communityId && !r.publicId) ? `<button class="share-choice" onclick="openShareCommunity(decodeURIComponent('${encId(rid)}'))"><span class="share-icon" aria-hidden="true">🌍</span><span><b>${r.publicId ? 'Shared with the community' : 'Share with the community'}</b><small>${r.publicId ? 'Update it or stop sharing.' : 'Anyone using Gingham can find it in Community recipes.'}</small></span></button>` : ''}
+    ${typeof openShareCommunity === 'function' && !(r.communityId && !r.publicId) ? `<button class="share-choice" onclick="openShareCommunity(decodeURIComponent('${encId(rid)}'))"><span class="share-icon" aria-hidden="true">🌍</span><span><b>${r.publicId ? 'Shared with the community' : 'Share with the community'}</b><small>${r.publicId ? 'Update it or stop sharing.' : 'Anyone using Whole Kitchen can find it in Community recipes.'}</small></span></button>` : ''}
     <div id="shareMsg" class="small" role="status"></div>`);
 }
 function shareMsg(t, bad) { const m = document.getElementById('shareMsg'); if (m) { m.className = 'small ' + (bad ? 'warning' : 'muted'); m.innerHTML = t } }
@@ -53,7 +53,7 @@ async function shareRecipeLink(rid) {
     url = appBaseUrl() + '#recipe=' + await packRecipe({ n: r.name, f: from, p: photo, r: payload });
   }
   window.lastShareUrl = url;
-  const text = `${r.name}${from ? ' — from ' + from : ''}. Open it in Gingham:`;
+  const text = `${r.name}${from ? ' — from ' + from : ''}. Open it in Whole Kitchen:`;
   try { if (navigator.share) { await navigator.share({ title: r.name, text, url }); shareMsg('✓ Shared'); return } } catch (e) { if (e?.name === 'AbortError') return shareMsg('') }
   try { await navigator.clipboard.writeText(url); shareMsg('✓ Link copied. Paste it in a text or email.') }
   catch (_) { shareMsg(`Copy this link: <input readonly value="${esc(url)}" onclick="this.select()">`) }
@@ -82,7 +82,7 @@ async function sendToFamily(rid, code) {
     const to = firstOf(await rpc('rg_send_recipe', { p_code: code, p_from_family: syncInfo.familyId, p_from_name: sharerName(), p_name: r.name.slice(0, 120), p_recipe: recipePayloadFor(r), p_photo: photo || '', p_note: document.getElementById('shareNote')?.value.trim() || '' }));
     state.shareContacts ??= {}; const key = code.replace(/[^A-Z0-9]/g, '');
     state.shareContacts[key] = { code, name: to || name, at: Date.now() }; save();
-    shareMsg(`✓ Sent to ${esc(to || name)}. It's waiting in their Gingham.`);
+    shareMsg(`✓ Sent to ${esc(to || name)}. It's waiting in their Whole Kitchen.`);
     toast('✓ Sent to ' + (to || name));
   } catch (e) { shareMsg(sharingMissing(e) ? 'Sending to families isn\'t set up yet. Run sharing-setup.sql in Supabase (SHARING-SETUP.md).' : e instanceof TypeError ? 'Couldn\'t connect. Check your internet.' : esc(e.message), true) }
 }
@@ -129,7 +129,7 @@ async function openSharedFromAddress() {
 function saveOpenedShare() {
   const rid = saveSharedRecipe(openedShare, 'Shared' + (openedShare.from_name ? ' by ' + openedShare.from_name : ''));
   closeModal(); toast('✓ Saved to your recipes');
-  if (state.welcome) { delete state.welcome; save(); showScreen('recipes'); loadScriptOnce('onboarding.js?v=33').then(() => startOnboarding()).catch(() => {}) }
+  if (state.welcome) { delete state.welcome; save(); showScreen('recipes'); loadScriptOnce('onboarding.js?v=39').then(() => startOnboarding()).catch(() => {}) }
   else openRecipe(rid);
 }
 function afterSharedClosed() { if (state.welcome && typeof openWelcome === 'function') openWelcome() }

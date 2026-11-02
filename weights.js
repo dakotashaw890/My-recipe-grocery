@@ -83,7 +83,7 @@ function openWeights() {
     <div id="wtMsg" class="small muted" role="status"></div>
     <input class="search" id="wtSearch" placeholder="Find an ingredient" value="${esc(weightFilter)}" oninput="weightFilter=this.value;renderWeights()">
     <div id="wtList"></div>
-    <p class="tiny muted">USDA = measured by the USDA. Typical = Gingham's built-in estimate. Yours = typed by your family, never replaced automatically.</p>`);
+    <p class="tiny muted">USDA = measured by the USDA. Typical = Whole Kitchen's built-in estimate. Yours = typed by your family, never replaced automatically.</p>`);
   renderWeights();
 }
 function renderWeights() {

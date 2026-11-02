@@ -1,4 +1,4 @@
-// Gingham: recipe import helper (Supabase Edge Function "recipe-import").
+// Whole Kitchen: recipe import helper (Supabase Edge Function "recipe-import").
 // Paste this whole file into Supabase → Edge Functions → Deploy a new function → Via Editor.
 // It fetches a recipe web page and returns the recipe that most recipe sites publish
 // inside the page (schema.org "Recipe" data). For TikTok, Instagram, YouTube, Pinterest and
@@ -253,7 +253,7 @@ export async function overLimit(user: string | undefined, action: string): Promi
   const name = LIMIT_NAMES[action] || action, h = hoursToReset();
   if (Number(row.mine) > max) return { error: `You've used today's ${max} ${name}. More are available in about ${h} hour${h === 1 ? '' : 's'}.`, limit: true };
   const total = action === 'read-card' ? Number(Deno.env.get('READ_CARD_DAILY_TOTAL') || 300) : 0;
-  if (total && Number(row.everyone) > total) return { error: `Gingham's photo reader is at its daily limit for everyone. Try again in about ${h} hour${h === 1 ? '' : 's'}, or use Paste recipe text.`, limit: true };
+  if (total && Number(row.everyone) > total) return { error: `Whole Kitchen's photo reader is at its daily limit for everyone. Try again in about ${h} hour${h === 1 ? '' : 's'}, or use Paste recipe text.`, limit: true };
   return null;
 }
 async function usageToday(user: string | undefined) {
@@ -331,7 +331,7 @@ async function handle(req: Request): Promise<Response> {
   // Social posts: read the caption (TikTok, Instagram, YouTube, Pinterest, Facebook)
   const social = await socialRecipe(url).catch(() => null);
   if (social) return reply(200, social);
-  if (social === null && /pinterest\.|pin\.it/i.test(url.hostname)) return reply(422, { error: 'That pin doesn\'t link to a recipe page Gingham can read. Open the pin, tap its picture or "Visit" to go to the recipe\'s website, and share that page to Gingham instead. Or save the pin\'s picture and use Choose photos.' });
+  if (social === null && /pinterest\.|pin\.it/i.test(url.hostname)) return reply(422, { error: 'That pin doesn\'t link to a recipe page Whole Kitchen can read. Open the pin, tap its picture or "Visit" to go to the recipe\'s website, and share that page to Whole Kitchen instead. Or save the pin\'s picture and use Choose photos.' });
   if (social === null) return reply(422, { error: 'Couldn\'t read that post. It may be private, or the site didn\'t share its text. Open the post, copy the caption, and use Paste recipe text.' });
 
   let res: Response;
@@ -623,7 +623,7 @@ async function pushAction(body: any, fnName: string): Promise<[number, unknown]>
   if (body.action === 'push-test') {
     const s = body.subscription || {};
     const res = await sendPush({ endpoint: String(s.endpoint || ''), p256dh: String(s.keys?.p256dh || ''), auth: String(s.keys?.auth || '') },
-      { title: '🔔 Gingham reminders are on', body: 'This is how prep reminders will look, like “Thaw the chicken tonight”.', tag: 'prep-test', url: './index.html?from=reminder' });
+      { title: '🔔 Whole Kitchen reminders are on', body: 'This is how prep reminders will look, like “Thaw the chicken tonight”.', tag: 'prep-test', url: './index.html?from=reminder' });
     return res.ok ? [200, { sent: true }] : [502, { error: res.gone ? 'This phone\'s notification address didn\'t work. Turn reminders off and on again.' : 'The notification service didn\'t accept it (' + res.status + '). Try again in a minute.' }];
   }
   return [400, { error: 'Unknown reminder action.' }];

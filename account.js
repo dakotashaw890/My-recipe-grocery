@@ -53,7 +53,7 @@ function renderAccountCard() {
   const box = document.getElementById('accountCard'); if (!box) return;
   const signedIn = typeof syncAuth !== 'undefined' && !!syncAuth && typeof syncConfigured !== 'undefined' && syncConfigured;
   box.innerHTML = `<h3>Account & privacy</h3>
-    <p class="small muted">Gingham keeps your recipes on this phone${signedIn ? ' and, because you use family sync, in your family\'s private Supabase storage' : ''}. No ads, no tracking, and your data is never sold.</p>
+    <p class="small muted">Whole Kitchen keeps your recipes on this phone${signedIn ? ' and, because you use family sync, in your family\'s private Supabase storage' : ''}. No ads, no tracking, and your data is never sold.</p>
     <div class="actions"><a class="btn secondary" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a></div>
     <div class="adv-block danger-zone"><b>Delete data</b>
       ${signedIn ? `<p class="small muted">Signed in as ${esc(syncAuth?.user?.email || 'your account')}. Deleting your account removes your sign-in and your data from Supabase. This can't be undone.</p><div class="actions"><button class="btn danger" onclick="openDeleteAccount()">Delete my account…</button></div>` : '<p class="small muted">You\'re not signed in, so nothing is stored outside this phone.</p>'}

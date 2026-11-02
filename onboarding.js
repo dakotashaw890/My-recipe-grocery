@@ -28,7 +28,7 @@ function renderTour() {
   let body = '';
   if (step === 'people') {
     body = `<div class="tour-icon" aria-hidden="true">👪</div><h2>Who's eating?</h2>
-      <p class="small muted">Add everyone at your table. Each person can rate recipes, and Gingham steers around foods someone won't eat.</p>
+      <p class="small muted">Add everyone at your table. Each person can rate recipes, and Whole Kitchen steers around foods someone won't eat.</p>
       <div id="tourPeople">${tour.people.map((p, i) => `<div class="tour-person">
         <select aria-label="Picture" class="emoji-select" onchange="tour.people[${i}].emoji=this.value">${PERSON_EMOJI.map(e => `<option ${e === p.emoji ? 'selected' : ''}>${e}</option>`).join('')}</select>
         <div class="grow"><input aria-label="Name" placeholder="Name" maxlength="24" value="${esc(p.name)}" oninput="tour.people[${i}].name=this.value">
@@ -39,7 +39,7 @@ function renderTour() {
     const opt = (v, cur) => `<option value="${v ?? ''}" ${v === cur ? 'selected' : ''}>${v ? 'Up to ' + formatMinutes(v) : 'No limit'}</option>`;
     const times = [null, 20, 30, 45, 60, 90];
     body = `<div class="tour-icon" aria-hidden="true">📅</div><h2>How do you like to cook and shop?</h2>
-      <p class="small muted">Used when Gingham suggests meals for your week. Change any of it later in Plan → Preferences.</p>
+      <p class="small muted">Used when Whole Kitchen suggests meals for your week. Change any of it later in Plan → Preferences.</p>
       <div class="formrow"><div><label for="tourWeekday">Weeknight dinners</label><select id="tourWeekday" onchange="tour.prefs.weekdayMax=Number(this.value)||null">${times.map(v => opt(v, tour.prefs.weekdayMax)).join('')}</select></div>
       <div><label for="tourWeekend">Weekends</label><select id="tourWeekend" onchange="tour.prefs.weekendMax=Number(this.value)||null">${times.map(v => opt(v, tour.prefs.weekendMax)).join('')}</select></div></div>
       <label for="tourBudget">Weekly grocery budget <span class="muted">(optional)</span></label><input id="tourBudget" type="number" min="0" step="5" inputmode="decimal" placeholder="No budget" value="${esc(tour.prefs.weeklyBudget ?? '')}" oninput="tour.prefs.weeklyBudget=Number(this.value)>0?Number(this.value):null">
@@ -55,15 +55,15 @@ function renderTour() {
       <div class="actions"><button class="btn secondary" onclick="finishTour(false,'family')">Set up sharing now</button>${typeof googleSignIn === 'function' && typeof syncConfigured !== 'undefined' && syncConfigured ? '<button class="btn secondary" onclick="finishTour(false,\'google\')">Continue with Google</button>' : ''}</div>`}`;
   } else {
     const items = [
-      ['📖', 'Recipes', 'Add your own, tap 🔗 Import for websites, or snap a recipe card (handwriting too). From TikTok or Instagram, tap Share → Gingham.'],
+      ['📖', 'Recipes', 'Add your own, tap 🔗 Import for websites, or snap a recipe card (handwriting too). From TikTok or Instagram, tap Share → Whole Kitchen.'],
       ['📅', 'Plan', 'Tap a day to add a meal, or ✨ Suggest empty meals to fill the week using your preferences.'],
       ['🛒', 'Shop', 'The list builds itself from your plan. Check things off, ＋ Add extras, and ⇄ Swap when the store is out.'],
       ['🧂', 'Check you have', 'Seasonings and staples wait in a folded section. Tap “I\'m out” there, or “Out?” while cooking, to put them on the list.'],
       ['🍳', 'Cook', 'Open a recipe and tap Cook for big step-by-step text and timers. The screen stays on.'],
-      ['⭐', 'Ratings', 'After a meal, each person rates it. Favorites come up more often when Gingham suggests meals.'],
+      ['⭐', 'Ratings', 'After a meal, each person rates it. Favorites come up more often when Whole Kitchen suggests meals.'],
       ['⚙️', 'Settings', 'Family sharing, backups, setup check and this guide (App guide) live here.'],
     ];
-    body = `<div class="tour-icon" aria-hidden="true">🧭</div><h2>${tour.only === 'guide' ? 'How Gingham works' : 'You\'re all set. Here\'s the quick tour'}</h2>
+    body = `<div class="tour-icon" aria-hidden="true">🧭</div><h2>${tour.only === 'guide' ? 'How Whole Kitchen works' : 'You\'re all set. Here\'s the quick tour'}</h2>
       <div class="tour-guide">${items.map(([e, t, d]) => `<div class="tour-item"><span class="tour-emoji" aria-hidden="true">${e}</span><div><b>${t}</b><p>${d}</p></div></div>`).join('')}</div>`;
   }
   openModal(`<div class="tour">${tourDots()}${body}${tourNav(step === 'guide' ? (tour.only === 'guide' ? 'Got it' : 'Let\'s cook!') : step === 'family' && !(typeof syncActive === 'function' && syncActive()) ? 'Maybe later' : 'Next')}</div>`);
@@ -91,7 +91,7 @@ function finishTour(skipped, then) {
   const only = tour?.only; tour = null; closeModal(); renderTourCard();
   if (then === 'google') return googleSignIn('settings');
   if (then === 'family') { showScreen('settings'); setTimeout(() => document.getElementById('familyCard')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 200); return }
-  if (!only) { if (!skipped) showScreen('home'); toast(skipped ? 'You can finish setup any time in Settings → Help' : 'Welcome to Gingham!') }
+  if (!only) { if (!skipped) showScreen('home'); toast(skipped ? 'You can finish setup any time in Settings → Help' : 'Welcome to Whole Kitchen!') }
 }
 // Home: offer the tour once to people who started before it existed
 function renderTourCard() {
@@ -107,6 +107,6 @@ function renderGuideCard() {
   const host = document.getElementById('settings'); if (!host) return;
   let card = document.getElementById('guideCard');
   if (!card) { card = document.createElement('div'); card.id = 'guideCard'; card.className = 'card'; const before = document.getElementById('accountCard'); before ? host.insertBefore(card, before) : host.appendChild(card) }
-  card.innerHTML = `<h3>🧭 Help</h3><p class="small muted">A quick guide to every part of Gingham, or redo the setup questions.</p>
+  card.innerHTML = `<h3>🧭 Help</h3><p class="small muted">A quick guide to every part of Whole Kitchen, or redo the setup questions.</p>
     <div class="actions"><button class="btn secondary" onclick="startOnboarding('guide')">App guide</button><button class="btn secondary" onclick="startOnboarding()">Redo setup</button></div>`;
 }

@@ -126,7 +126,7 @@ async function restoreSnapshot(id) {
 }
 async function downloadSnapshot(id) {
   const snap = (await listSnapshots()).find(s => s.id === id);
-  if (snap) downloadBackupFile({ ...snap.state, photos: snap.photos }, 'gingham-backup-' + snap.at.slice(0, 10) + '.json');
+  if (snap) downloadBackupFile({ ...snap.state, photos: snap.photos }, 'whole-kitchen-backup-' + snap.at.slice(0, 10) + '.json');
 }
 
 // ---------- Backup files ----------
@@ -137,12 +137,12 @@ function downloadBackupFile(data, name) {
 }
 // Android's share sheet lets the file go straight to Google Drive, Gmail or Files; otherwise it downloads.
 async function shareBackupFile() {
-  const name = 'gingham-backup-' + localDate() + '.json';
+  const name = 'whole-kitchen-backup-' + localDate() + '.json';
   const data = JSON.stringify({ ...state, photos: { ...(window.photoCache || {}) } });
   try {
     const file = new File([data], name, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Gingham backup', text: 'Gingham backup from ' + new Date().toLocaleDateString() });
+      await navigator.share({ files: [file], title: 'Whole Kitchen backup', text: 'Whole Kitchen backup from ' + new Date().toLocaleDateString() });
       noteExport(); toast('✓ Backup saved'); if (document.getElementById('home')?.classList.contains('active')) renderHome(); return;
     }
   } catch (e) { if (e?.name === 'AbortError') return; console.warn('Share unavailable, downloading instead', e) }
@@ -187,6 +187,6 @@ window.photosReady = (async () => {
   maybeAutoSnapshot();
 })();
 
-// Ask the browser to keep Gingham's data even when the phone runs low on space (Chrome grants this
+// Ask the browser to keep Whole Kitchen's data even when the phone runs low on space (Chrome grants this
 // automatically to apps added to the home screen; it never asks the person).
 try { navigator.storage?.persist?.().then(ok => { window.storagePersisted = ok }).catch(() => {}) } catch (_) {}

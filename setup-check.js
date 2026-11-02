@@ -153,5 +153,5 @@ function renderSetupCheck() {
   }).join('');
   const done = saved && SETUP_CHECKS.every(c => saved[c.id]), allOk = done && SETUP_CHECKS.every(c => saved[c.id].state === 'ok');
   const when = !setupRunning && !setupResults && box.dataset.at ? `<span class="tiny muted"> · last checked ${esc(new Date(Number(box.dataset.at)).toLocaleDateString())}</span>` : '';
-  box.innerHTML = `<h3>Setup check</h3><p class="muted small">Tests each Supabase piece Gingham uses and tells you exactly what to fix.${when}</p>${allOk && !setupRunning ? '<p class="small" style="color:var(--olive-text)"><b>✓ Everything is set up.</b></p>' : ''}${rows}<div class="actions"><button class="btn secondary" onclick="runSetupCheck()" ${setupRunning ? 'disabled' : ''}>${setupRunning ? 'Checking…' : saved ? 'Check again' : 'Run setup check'}</button></div>`;
+  box.innerHTML = `<h3>Setup check</h3><p class="muted small">Tests each Supabase piece Whole Kitchen uses and tells you exactly what to fix.${when}</p>${allOk && !setupRunning ? '<p class="small" style="color:var(--olive-text)"><b>✓ Everything is set up.</b></p>' : ''}${rows}<div class="actions"><button class="btn secondary" onclick="runSetupCheck()" ${setupRunning ? 'disabled' : ''}>${setupRunning ? 'Checking…' : saved ? 'Check again' : 'Run setup check'}</button></div>`;
 }

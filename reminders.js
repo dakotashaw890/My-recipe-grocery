@@ -133,7 +133,7 @@ async function renderRemindersCard() {
   const opt = (k, label, hint) => `<label class="check-row"><input type="checkbox" ${p[k] ? 'checked' : ''} onchange="setRemindPrefs({${k}:this.checked});renderRemindersCard();renderPrepCard?.()"> <span>${label}${hint ? `<small class="muted"> ${hint}</small>` : ''}</span></label>`;
   const status = !pushSupported() ? '<p class="small muted">This browser can\'t show notifications. Reminders still show on the Home screen.</p>'
     : !canSyncReminders() ? '<p class="small muted">Phone notifications need family sync (⚙️ above). Reminders already show on the Home screen.</p>'
-    : here ? `<p class="small ing-ok">✓ This phone gets reminders${p.on ? '' : ' (paused for the family)'}.</p>` : Notification.permission === 'denied' ? '<p class="small warning">Notifications are blocked for Gingham. Turn them on in your phone\'s settings (Apps → Gingham → Notifications), then try again.</p>' : '';
+    : here ? `<p class="small ing-ok">✓ This phone gets reminders${p.on ? '' : ' (paused for the family)'}.</p>` : Notification.permission === 'denied' ? '<p class="small warning">Notifications are blocked for Whole Kitchen. Turn them on in your phone\'s settings (Apps → Whole Kitchen → Notifications), then try again.</p>' : '';
   box.innerHTML = `<h3>⏰ Prep reminders</h3>
     <p class="muted small">A heads-up for planned meals: thaw the chicken the night before, start the slow cooker, marinate or soak ahead. They show on Home, and can pop up as phone notifications.</p>
     ${status}
@@ -154,7 +154,7 @@ async function turnOnReminders() {
   try {
     msg('Asking to show notifications…');
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return warn('Notifications weren\'t allowed. You can allow them in your phone\'s settings for Gingham.');
+    if (perm !== 'granted') return warn('Notifications weren\'t allowed. You can allow them in your phone\'s settings for Whole Kitchen.');
     msg('Setting up…');
     const { publicKey } = await callHelper({ action: 'push-key' });
     const reg = await navigator.serviceWorker.ready;
@@ -187,5 +187,5 @@ async function turnOffReminders() {
 }
 // first load: catch up (the plan may have changed on another phone)
 setTimeout(() => { try { syncReminders() } catch (_) {} }, 4000);
-// tapping a reminder notification while Gingham is open: show Home, where the prep card is
+// tapping a reminder notification while Whole Kitchen is open: show Home, where the prep card is
 try { navigator.serviceWorker?.addEventListener('message', e => { if (e.data?.type === 'reminder-open') showScreen('home') }) } catch (_) {}

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Delete your Gingham account</title>
-<meta name="description" content="Permanently delete your Gingham account and the data stored with it.">
+<title>Delete your Whole Kitchen account</title>
+<meta name="description" content="Permanently delete your Whole Kitchen account and the data stored with it.">
 <link rel="icon" href="icon-192.png">
 <style>
   :root { --paper: #FBF6EC; --card: #FFFDF8; --ink: #2B2420; --muted: #7A6B5E; --line: #E8DCC8; --tomato: #C8412F; --tomato-text: #9C2F21; --tomato-tint: #F8E1DA; --olive-text: #4E5A27; --olive-tint: #ECEFD9 }
@@ -28,9 +28,9 @@
 </style>
 </head>
 <body>
-<header><b>Gingham</b></header>
+<header><b>Whole Kitchen</b></header>
 <main>
-  <h1>Delete your Gingham account</h1>
+  <h1>Delete your Whole Kitchen account</h1>
   <p>You can delete your account here or in the app (Settings → Account &amp; privacy → Delete my account). Deleting permanently removes:</p>
   <ul>
     <li>your sign-in (email and password)</li>
@@ -50,7 +50,7 @@
   <p class="muted">Forgot your password, or can't sign in? Email the address in the <a href="privacy.html#contact">privacy policy</a> from your account's email address and we'll delete it within 30 days.</p>
 </main>
 <script src="sync-config.js"></script>
-<script src="account.js?v=27"></script>
+<script src="account.js?v=39"></script>
 <script>
   const cfg = window.RG_SYNC_CONFIG || {}, URL_ = String(cfg.url || '').replace(/\/+$/, ''), KEY_ = String(cfg.anonKey || '');
   const msg = (t, cls = '') => { const m = document.getElementById('msg'); m.textContent = t; m.className = 'msg ' + cls };
@@ -69,12 +69,12 @@
     document.querySelectorAll('#form button').forEach(b => b.disabled = true);
     try {
       await deleteGinghamAccount({ url: URL_, key: KEY_, token: h.get('access_token'), progress: t => msg(t) });
-      document.getElementById('form').innerHTML = '<div class="ok"><b>✓ Your account has been deleted.</b><br>If Gingham is still installed, open it and choose “Erase everything on this phone” in Settings, or uninstall it, to remove the copy on your phone.</div>';
+      document.getElementById('form').innerHTML = '<div class="ok"><b>✓ Your account has been deleted.</b><br>If Whole Kitchen is still installed, open it and choose “Erase everything on this phone” in Settings, or uninstall it, to remove the copy on your phone.</div>';
     } catch (e) { document.querySelectorAll('#form button').forEach(b => b.disabled = false); msg(e.message, 'bad') }
   })();
   async function go() {
     const email = document.getElementById('email').value.trim(), password = document.getElementById('password').value;
-    if (!email || !password) return msg('Enter the email and password you use in Gingham.', 'bad');
+    if (!email || !password) return msg('Enter the email and password you use in Whole Kitchen.', 'bad');
     if (document.getElementById('confirm').value.trim().toUpperCase() !== 'DELETE') return msg('Type DELETE to confirm.', 'bad');
     const btn = document.getElementById('go'); btn.disabled = true; msg('Signing in…');
     try {
@@ -82,7 +82,7 @@
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.access_token) { btn.disabled = false; return msg(/confirm/i.test(j.msg || j.error_description || '') ? 'Confirm your email first (check your inbox), then try again.' : 'That email and password didn\'t match. Check them and try again.', 'bad') }
       await deleteGinghamAccount({ url: URL_, key: KEY_, token: j.access_token, progress: t => msg(t) });
-      document.getElementById('form').innerHTML = '<div class="ok"><b>✓ Your account has been deleted.</b><br>If Gingham is still installed, open it and choose “Erase everything on this phone” in Settings, or uninstall it, to remove the copy on your phone.</div>';
+      document.getElementById('form').innerHTML = '<div class="ok"><b>✓ Your account has been deleted.</b><br>If Whole Kitchen is still installed, open it and choose “Erase everything on this phone” in Settings, or uninstall it, to remove the copy on your phone.</div>';
     } catch (e) { btn.disabled = false; msg(e instanceof TypeError ? 'Couldn\'t connect. Check your internet connection and try again.' : e.message, 'bad') }
   }
 </script>
