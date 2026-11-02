@@ -220,6 +220,49 @@ async function pinterestRecipe(u: URL): Promise<any | null> {
   }
   return null;
 }
+// ---------- daily limits ----------
+// Every account gets a daily allowance of each helper action, so one person (or a bot that signs up) can't run up
+// the Claude, Kroger or USDA bills. Counted in the table rg_helper_usage (launch-setup.sql), which only this helper can
+// touch: it uses the service-role key that Supabase gives every Edge Function automatically (never put it in the app).
+// Change a limit without editing code: add a secret HELPER_LIMITS, e.g. {"read-card":40,"url":100}.
+// Photo reads also have a total for everyone together (READ_CARD_DAILY_TOTAL, default 300 ≈ $3 a day at most).
+const DEFAULT_LIMITS: Record<string, number> = { 'read-card': 25, url: 60, image: 120, nutrition: 150, portions: 60, 'kroger-stores': 40, 'kroger-prices': 300 };
+const LIMIT_NAMES: Record<string, string> = { 'read-card': 'photo recipe reads', url: 'link imports', image: 'picture downloads', nutrition: 'nutrition lookups', portions: 'weight lookups', 'kroger-stores': 'store searches', 'kroger-prices': 'price lookups' };
+function limits(): Record<string, number> {
+  let extra: Record<string, number> = {};
+  try { extra = JSON.parse(Deno.env.get('HELPER_LIMITS') || '{}') } catch (_) {}
+  return { ...DEFAULT_LIMITS, ...extra };
+}
+function hoursToReset() { const n = new Date(), next = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1); return Math.max(1, Math.ceil((next - n.getTime()) / 3600000)) }
+async function usageRpc(fn: string, args: Record<string, unknown>): Promise<any | null> {
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), url = Deno.env.get('SUPABASE_URL');
+  if (!key || !url) return null;
+  const r = await fetch(`${url}/rest/v1/rpc/${fn}`, { method: 'POST', signal: AbortSignal.timeout(5000),
+    headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(args) }).catch(() => null);
+  if (!r || !r.ok) return null;
+  return r.json().catch(() => null);
+}
+// null = allowed. If limits aren't set up yet (launch-setup.sql not run) everything is allowed, and the app's
+// setup check says so.
+export async function overLimit(user: string | undefined, action: string): Promise<{ error: string, limit: true } | null> {
+  const max = limits()[action];
+  if (!user || !max) return null;
+  const rows = await usageRpc('rg_helper_use', { p_user: user, p_action: action });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  if (!row) return null;
+  const name = LIMIT_NAMES[action] || action, h = hoursToReset();
+  if (Number(row.mine) > max) return { error: `You've used today's ${max} ${name}. More are available in about ${h} hour${h === 1 ? '' : 's'}.`, limit: true };
+  const total = action === 'read-card' ? Number(Deno.env.get('READ_CARD_DAILY_TOTAL') || 300) : 0;
+  if (total && Number(row.everyone) > total) return { error: `Gingham's photo reader is at its daily limit for everyone. Try again in about ${h} hour${h === 1 ? '' : 's'}, or use Paste recipe text.`, limit: true };
+  return null;
+}
+async function usageToday(user: string | undefined) {
+  const rows = user ? await usageRpc('rg_helper_usage_today', { p_user: user }) : null;
+  const used: Record<string, number> = {};
+  for (const r of Array.isArray(rows) ? rows : []) used[r.action] = Number(r.n) || 0;
+  return { ready: Array.isArray(rows), limits: limits(), used, names: LIMIT_NAMES, resetsInHours: hoursToReset() };
+}
+
 // ---------- safety checks ----------
 export function allowedUrl(raw: string): URL | null {
   let u: URL;
@@ -263,9 +306,13 @@ async function handle(req: Request): Promise<Response> {
   const apikey = req.headers.get('apikey') || Deno.env.get('SUPABASE_ANON_KEY') || '';
   const check = await fetch(Deno.env.get('SUPABASE_URL') + '/auth/v1/user', { headers: { Authorization: auth, apikey } }).catch(() => null);
   if (!check || !check.ok) return reply(401, { error: 'Sign in under Family sync to import recipes from links.' });
+  const who: any = await check.json().catch(() => ({}));
 
   let body: any = {};
   try { body = await req.json() } catch (_) {}
+  if (body.action === 'limits') return reply(200, await usageToday(who?.id));
+  const over = await overLimit(who?.id, body.action ? String(body.action) : 'url');
+  if (over) return reply(429, over);
   if (body.action === 'kroger-stores') return reply(...await krogerStores(body));
   if (body.action === 'kroger-prices') return reply(...await krogerPrices(body));
   if (body.action === 'nutrition') return reply(...await nutritionFacts(body));

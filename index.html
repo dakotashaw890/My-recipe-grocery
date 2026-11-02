@@ -12,7 +12,7 @@
 <meta name="description" content="Gingham: family recipes, meal planning, pantry and a shared shopping list.">
 <link rel="icon" href="icon-192.png" type="image/png"><link rel="manifest" href="manifest.json?v=17b">
 <style>html{background:#FBF6EC}@media (prefers-color-scheme:dark){html{background:#1E1A17}}</style>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=35">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap"><link rel="stylesheet" href="app.css?v=37">
 </head>
 <body>
 <header><div class="header-row"><div><div class="brand">Gingham</div><div class="sub">Family meals, pantry &amp; shopping</div></div><div class="row" style="gap:4px"><button id="syncBadge" class="sync-badge" hidden onclick="showSettings()"></button><button class="iconbtn" aria-label="Settings" onclick="showSettings()">⚙️</button></div></div></header>
@@ -70,6 +70,7 @@
 </div>
 </div>
 <div class="card"><h3>Automatic backups</h3><p class="muted small">This phone saves a copy of your data every day, plus a weekly copy, and before any big change (joining a family, importing, resetting). The last 10 daily copies and 8 weekly copies are kept, so you can go back about two months.</p><div id="snapshotList"></div></div>
+<div class="card" id="helpCard"><h3>Help &amp; feedback</h3><p class="muted small">Something not working? Send a report straight to Gingham's maker. You'll see exactly what's included before it's sent.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('report.js?v=37').then(()=>openProblemReport())">🐞 Send a problem report</button><button class="btn ghost" onclick="loadScriptOnce('report.js?v=37').then(()=>openUsageToday())">Today's usage</button></div></div>
 <div class="card" id="accountCard"></div>
 <details class="card advanced" id="advancedCard"><summary><span><b class="adv-title">Advanced</b><span class="small muted">Package sizes, prices, start over</span></span></summary>
 <div class="adv-block"><b>Ingredient package sizes</b><p class="small muted">The usual package each ingredient is bought in. Shopping amounts are worked out from these.</p><div id="packageEditor"></div><div class="actions"><button class="btn secondary" onclick="openIngredientInspector()">🔎 Ingredient inspector</button><button class="btn secondary" onclick="openPackageEditor()">Edit package sizes</button></div></div>
@@ -86,6 +87,13 @@
 <div id="modal" class="modal"><div class="sheet" id="sheet"></div></div>
 <div id="toast" class="toast"></div>
 
+<script>// Remembers the last few app errors on this phone (no recipes or personal details) for Settings → Send a problem report.
+(function(){var K='gingham-errors',list=[];try{list=JSON.parse(localStorage.getItem(K)||'[]')}catch(_){}
+function clean(t){return String(t||'').replace(/https?:\/\/[^\s)'"]*\/([\w.-]+\.(?:js|html|css))(?:\?[^\s)'":]*)?/g,'$1').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'[email]').replace(/https?:\/\/\S+/g,'[link]').slice(0,300)}
+function note(msg,stack){var e={at:new Date().toISOString(),msg:clean(msg),stack:clean(String(stack||'').split('\n').slice(0,4).join(' | ')),screen:(document.querySelector('.screen.active')||{}).id||''};var last=list[list.length-1];if(last&&last.msg===e.msg){last.n=(last.n||1)+1;last.at=e.at}else list.push(e);list=list.slice(-15);try{localStorage.setItem(K,JSON.stringify(list))}catch(_){}}
+window.addEventListener('error',function(ev){if(ev.message)note(ev.message,ev.error&&ev.error.stack||(ev.filename?ev.filename+':'+ev.lineno+':'+ev.colno:''))});
+window.addEventListener('unhandledrejection',function(ev){var r=ev.reason;if(r&&(r.signin||r.name==='AbortError'))return;note(r&&r.message||String(r),r&&r.stack)});
+window.recentAppErrors=function(){return list.slice()};window.clearAppErrors=function(){list=[];try{localStorage.removeItem(K)}catch(_){}}})();</script>
 <script src="ui.js?v=24"></script>
 <script src="units.js?v=35"></script>
 <script src="groups.js?v=25"></script>
@@ -94,7 +102,7 @@
 <script src="cooking.js?v=24"></script>
 <script src="shop.js?v=32"></script>
 <script src="starter-recipes.js?v=25"></script>
-<script src="week.js?v=34"></script>
+<script src="week.js?v=37"></script>
 <script src="core.js?v=35"></script>
 <script src="catalog.js?v=29"></script>
 <script src="sync-config.js?v=17"></script>
@@ -107,5 +115,5 @@
 <script src="prices.js?v=25"></script>
 <script src="community.js?v=25"></script>
 <script>// features that aren't needed for the first screen load just after it
-window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['nutrition.js?v=35','shop-extras.js?v=35','onboarding.js?v=33','sharing.js?v=33','substitutions.js?v=27','account.js?v=27','setup-check.js?v=33','import-apps.js?v=27']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(document.getElementById('recipes')?.classList.contains('active')&&typeof renderRecipes==='function')renderRecipes();if(document.getElementById('plan')?.classList.contains('active')&&typeof renderPlanner==='function')renderPlanner();if(typeof renderTourCard==='function')renderTourCard();if(typeof renderShareCodeLine==='function'&&document.getElementById('settings')?.classList.contains('active'))renderShareCodeLine()},300));</script>
+window.addEventListener('load',()=>setTimeout(async()=>{for(const f of ['nutrition.js?v=37','shop-extras.js?v=35','onboarding.js?v=33','sharing.js?v=33','substitutions.js?v=27','account.js?v=27','setup-check.js?v=37','import-apps.js?v=27']){try{await loadScriptOnce(f)}catch(e){console.warn(e)}}if(document.getElementById('settings')?.classList.contains('active')&&typeof renderSettingsExtras==='function')renderSettingsExtras();if(document.getElementById('shopping')?.classList.contains('active'))renderShopping();if(document.getElementById('recipes')?.classList.contains('active')&&typeof renderRecipes==='function')renderRecipes();if(document.getElementById('plan')?.classList.contains('active')&&typeof renderPlanner==='function')renderPlanner();if(typeof renderTourCard==='function')renderTourCard();if(typeof renderShareCodeLine==='function'&&document.getElementById('settings')?.classList.contains('active'))renderShareCodeLine()},300));</script>
 <script>window.addEventListener('load',()=>{setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},450)});setTimeout(()=>{const b=document.getElementById('launchBrand');if(b){b.classList.add('off');setTimeout(()=>b.remove(),350)}},2500);</script><script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Offline support unavailable',e)));</script></body></html>

@@ -1938,3 +1938,51 @@ div.share-choice { cursor: default }
 .nf-macro { cursor: pointer }
 .nf-tip { margin: 2px 0 0 }
 .scale-note { margin-top: 2px; line-height: 1.3 }
+/* v37: recipe search when planning a meal */
+.meal-list { display: grid; gap: 6px; max-height: 56vh; overflow-y: auto; margin-top: 8px; padding: 2px; overscroll-behavior: contain }
+.meal-list-head { font: 600 .78rem system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 8px 2px 0 }
+.meal-pick { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; text-align: left; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: inherit; cursor: pointer }
+.meal-pick b { display: block; font-weight: 600 }
+.meal-pick small { display: block; color: var(--muted); font-size: .8rem; margin-top: 1px }
+.meal-pick.on { border-color: var(--tomato); background: var(--tomato-tint) }
+.meal-pick .cal-pill { flex: 0 0 auto; font-size: .75rem }
+.meal-none { padding: 12px 4px }
+.meal-chosen { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin: 6px 0 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--card-2) }
+.meal-chosen small { display: block }
+.meal-chosen b { font-size: 1.05rem }
+#mealPicker .search { margin: 6px 0 0 }
+/* v37: week nutrition */
+.week-tools { display: flex; justify-content: flex-end; margin: 0 0 8px }
+.week-nf-btn { min-height: 40px; padding: 6px 14px; font-size: .9rem }
+.wk-card { margin: 10px 0 }
+.wk-card .nf-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px }
+.wk-card h3 { margin: 0 }
+.wk-chart { width: 100%; height: auto; display: block; overflow: visible }
+.wk-bar { cursor: pointer; outline: none }
+.wk-bar:focus-visible rect:first-child { fill: var(--soft) }
+.wk-val { font: 600 10px system-ui, sans-serif; fill: var(--ink-2) }
+.wk-day { font: 600 11px system-ui, sans-serif; fill: var(--muted) }
+.wk-day.today { fill: var(--tomato-text) }
+.wk-goal { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 4; opacity: .55 }
+.wk-goal-label { font: 10px system-ui, sans-serif; fill: var(--muted) }
+.wk-rows { display: grid; gap: 10px }
+.wk-row { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 5px; column-gap: 8px; align-items: baseline }
+.wk-row .nf-bar { height: 5px; margin-top: 4px }
+.wk-name { font-size: .93rem }
+.wk-num { font-variant-numeric: tabular-nums; text-align: right }
+.wk-num small { color: var(--muted); font-size: .76rem }
+.wk-flag { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--butter-tint); color: var(--butter-text); font: 700 .68rem system-ui, sans-serif; vertical-align: 1px }
+.wk-top { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 2px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font: inherit; cursor: pointer }
+.wk-top:first-of-type { border-top: 0 }
+.wk-top small { display: block; color: var(--muted); font-size: .8rem }
+.wk-share { font-weight: 700; color: var(--tomato-text); font-variant-numeric: tabular-nums }
+/* v37: help & feedback */
+.check-row { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; font-weight: 400 }
+.check-row input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto }
+.rep-preview { margin: 12px 0 4px }
+.rep-preview pre { white-space: pre-wrap; word-break: break-word; background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 6px 0; max-height: 220px; overflow: auto }
+.usage-row { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 5px; column-gap: 8px; margin: 10px 0 }
+.usage-row b { font-variant-numeric: tabular-nums }
+.usage-bar { grid-column: 1 / -1; height: 5px; border-radius: 4px; background: var(--nf-track); overflow: hidden; margin-top: 4px }
+.usage-bar span { display: block; height: 100%; background: var(--olive, #6B8E3A); border-radius: 4px }
+.usage-bar span.hot { background: var(--nf-warn) }

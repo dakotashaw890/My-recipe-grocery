@@ -73,6 +73,7 @@ function renderPlanner() {
   const nav = `<div class="week-nav"><button class="iconbtn" aria-label="Previous week" onclick="movePlanWeek(-1)">‹</button>
     <div class="week-label"><b>${esc(planWeekLabel())}</b><span class="small muted">${planned} meal${planned === 1 ? '' : 's'} planned</span></div>
     <button class="iconbtn" aria-label="Next week" onclick="movePlanWeek(1)">›</button></div>
+    ${planned ? `<div class="week-tools"><button type="button" class="btn secondary week-nf-btn" onclick="loadScriptOnce('nutrition.js?v=37').then(()=>openWeekNutrition())">📊 Week nutrition</button></div>` : ''}
     ${planWeekOffset !== 0 ? `<div class="week-today"><button class="btn ghost" onclick="movePlanWeek(0)">Back to this week</button></div>` : ''}`;
   host.innerHTML = nav + dates.map(date => {
     const past = date < today, isToday = date === today;
@@ -93,18 +94,80 @@ function openPlanned(key) {
     <button class="btn secondary" onclick="closeModal();openRecipe(decodeURIComponent('${encId(v.recipe)}'))">View recipe</button>
     <button class="btn secondary" onclick="chooseMeal('${date}','${meal}',decodeURIComponent('${encId(key)}'))">Change recipe or servings</button></div>`);
 }
+// Choosing a recipe for a meal: search by name or ingredient; recipes for this meal come first.
 function chooseMeal(date, meal, existingKey = '') {
   const key = existingKey || '', current = key ? state.plan[key] || {} : {};
-  const options = recipeIdsSorted().filter(n => !key || true).map(n => `<option value="${esc(n)}" ${n === current.recipe ? 'selected' : ''}>${esc(recipeName(n))}</option>`).join('');
   window.editPlanTarget = { date, meal, key };
+  window.mealPickTyped = !!key;
   openModal(`<div class="row between"><h2>${esc(dayTitle(date))} · ${meal}</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
-    <label for="mealRecipe">Recipe</label><select id="mealRecipe"><option value="">— Choose recipe —</option>${options}</select>
-    <label for="mealServings">Servings</label><input id="mealServings" type="number" min="0.25" step="0.25" value="${current.servings || 4}">
-    <div class="actions"><button class="btn" onclick="saveMeal()">${key ? 'Save changes' : 'Add to plan'}</button>${key ? '<button class="btn danger" onclick="deleteMeal()">Remove</button>' : ''}<button class="btn secondary" onclick="closeModal()">Cancel</button></div>`);
-  // servings follow the recipe chosen, unless typed
-  const sel = document.getElementById('mealRecipe'), sv = document.getElementById('mealServings');
-  let typed = !!key; sv.addEventListener('input', () => { typed = true });
-  sel.addEventListener('change', () => { if (!typed && state.data.recipes[sel.value]) sv.value = state.data.recipes[sel.value].baseServings || 4 });
+    <input type="hidden" id="mealRecipe" value="${esc(current.recipe || '')}">
+    <div id="mealChosen"></div>
+    <div id="mealPicker" ${current.recipe ? 'hidden' : ''}>
+      <input id="mealSearch" class="search" type="search" autocomplete="off" aria-label="Search recipes" placeholder="Search recipes or ingredients" oninput="renderMealList()">
+      <div id="mealList" class="meal-list" role="listbox" aria-label="Recipes"></div>
+    </div>
+    <div id="mealConfirm" ${current.recipe ? '' : 'hidden'}>
+      <label for="mealServings">Servings</label><input id="mealServings" type="number" min="0.25" step="0.25" value="${current.servings || 4}" oninput="window.mealPickTyped=true">
+      <div class="actions"><button class="btn" onclick="saveMeal()">${key ? 'Save changes' : 'Add to plan'}</button>${key ? '<button class="btn danger" onclick="deleteMeal()">Remove</button>' : ''}<button class="btn secondary" onclick="closeModal()">Cancel</button></div>
+    </div>`);
+  renderMealChosen(); renderMealList();
+}
+function lastPlannedDates() {
+  const today = todayISO(), out = {};
+  for (const [k, v] of Object.entries(state.plan || {})) { const d = planDateOf(k); if (isDateKey(k) && v?.recipe && d < today && (!out[v.recipe] || d > out[v.recipe])) out[v.recipe] = d }
+  return out;
+}
+function agoText(iso) {
+  const days = Math.round((dateOf(todayISO()) - dateOf(iso)) / 864e5);
+  return days <= 1 ? 'yesterday' : days < 14 ? days + ' days ago' : days < 60 ? Math.round(days / 7) + ' weeks ago' : Math.round(days / 30) + ' months ago';
+}
+function mealPickRow(id, last, why) {
+  const r = state.data.recipes[id], chosen = document.getElementById('mealRecipe')?.value === id;
+  const bits = [why ? 'uses ' + why : '', last[id] ? 'had ' + agoText(last[id]) : '', r.prepMinutes || r.cookMinutes ? ((Number(r.prepMinutes) || 0) + (Number(r.cookMinutes) || 0)) + ' min' : ''].filter(Boolean);
+  return `<button type="button" class="meal-pick ${chosen ? 'on' : ''}" role="option" aria-selected="${chosen}" onclick="pickMealRecipe(decodeURIComponent('${encId(id)}'))"><span class="grow"><b>${esc(r.name || id)}</b>${bits.length ? `<small>${esc(bits.join(' · '))}</small>` : ''}</span>${typeof recipeCaloriePill === 'function' ? recipeCaloriePill(id) : ''}</button>`;
+}
+function renderMealList() {
+  const box = document.getElementById('mealList'), t = window.editPlanTarget; if (!box || !t) return;
+  const q = (document.getElementById('mealSearch')?.value || '').trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean), last = lastPlannedDates();
+  const ids = recipeIdsSorted();
+  if (words.length) {
+    const named = [], byIngredient = [];
+    for (const id of ids) {
+      const r = state.data.recipes[id], name = (r.name || '').toLowerCase();
+      if (words.every(w => name.includes(w))) { named.push(id); continue }
+      const hit = (r.ingredients || []).find(i => words.every(w => String(i.name || '').toLowerCase().includes(w)));
+      if (hit) byIngredient.push([id, hit.name]);
+    }
+    // names that start with the search come first
+    named.sort((a, b) => (recipeName(b).toLowerCase().startsWith(q) - recipeName(a).toLowerCase().startsWith(q)));
+    box.innerHTML = named.length || byIngredient.length
+      ? named.map(id => mealPickRow(id, last)).join('') + (byIngredient.length ? `<div class="meal-list-head">Recipes with “${esc(q)}”</div>` + byIngredient.map(([id, ing]) => mealPickRow(id, last, ing)).join('') : '')
+      : `<p class="small muted meal-none">No recipes match “${esc(q)}”.</p>`;
+    return;
+  }
+  const fits = ids.filter(id => recipeMealTypes(id).includes(t.meal)), others = ids.filter(id => !fits.includes(id));
+  box.innerHTML = (fits.length ? `<div class="meal-list-head">${esc(t.meal)} recipes</div>` + fits.map(id => mealPickRow(id, last)).join('') : '')
+    + (others.length ? `<div class="meal-list-head">${fits.length ? 'Other recipes' : 'All recipes'}</div>` + others.map(id => mealPickRow(id, last)).join('') : '')
+    || '<p class="small muted meal-none">No recipes yet. Add some on the Recipes screen.</p>';
+}
+function renderMealChosen() {
+  const box = document.getElementById('mealChosen'), id = document.getElementById('mealRecipe')?.value; if (!box) return;
+  const r = id && state.data.recipes[id];
+  box.innerHTML = r ? `<div class="meal-chosen"><span class="grow"><small class="muted">Recipe</small><b>${esc(r.name)}</b></span><button type="button" class="btn ghost" onclick="changeMealRecipe()">Change</button></div>` : '';
+}
+function pickMealRecipe(id) {
+  if (!state.data.recipes[id]) return;
+  document.getElementById('mealRecipe').value = id;
+  const sv = document.getElementById('mealServings');
+  if (sv && !window.mealPickTyped) sv.value = state.data.recipes[id].baseServings || 4;
+  document.getElementById('mealPicker').hidden = true;
+  document.getElementById('mealConfirm').hidden = false;
+  renderMealChosen();
+}
+function changeMealRecipe() {
+  document.getElementById('mealPicker').hidden = false;
+  document.getElementById('mealConfirm').hidden = true;
+  const s = document.getElementById('mealSearch'); renderMealList(); if (s) { s.value = ''; renderMealList(); s.focus() }
 }
 function saveMeal() {
   const target = window.editPlanTarget; if (!target) return;

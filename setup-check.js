@@ -10,6 +10,8 @@ const SETUP_CHECKS = [
   { id: 'deletion', title: 'Account deletion', run: checkDeletion },
   { id: 'sharing', title: 'Sharing recipes', run: checkSharing },
   { id: 'google', title: 'Sign in with Google', run: checkGoogle },
+  { id: 'limits', title: 'Daily limits', run: checkLimits },
+  { id: 'reports', title: 'Problem reports', run: checkReports },
 ];
 let setupResults = null, setupRunning = false;
 
@@ -101,6 +103,23 @@ async function checkDeletion() {
     const r = await fetch(SYNC_URL + '/rest/v1/rpc/rg_family_size', { method: 'POST', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' }, body: JSON.stringify({ fid: '00000000-0000-0000-0000-000000000000' }) });
     if (r.ok) return setupOk('People can delete their account (required by Google Play).');
     return setupBad('Account deletion isn\'t set up.', 'In Supabase → SQL Editor, run account-deletion.sql once.');
+  } catch (e) { return offline() }
+}
+async function checkLimits() {
+  const { j, e } = await helperProbe({ action: 'limits' });
+  if (j?.ready) return setupOk(`Each account gets ${j.limits?.['read-card'] || '?'} photo reads and ${j.limits?.url || '?'} link imports a day.`);
+  if (j) return setupBad('Daily limits are off, so one account could run up your Claude and Kroger bills.', 'In Supabase → SQL Editor, run launch-setup.sql once.');
+  if (e && /web address/i.test(e.message)) return setupBad('Your helper is an older version.', 'Paste the newest recipe-import.ts into the recipe-imports Edge Function and press Deploy.');
+  return helperProblem(e) || setupBad('The helper answered with an error: ' + e.message, 'Check the recipe-imports function\'s Logs in Supabase.');
+}
+// A report that's too long is refused by the table's size rule: that proves the table is there without saving anything.
+async function checkReports() {
+  if (typeof syncConfigured === 'undefined' || !syncConfigured) return setupWarn('Needs the Supabase connection.', 'Set up family sync first.');
+  try {
+    const r = await fetch(SYNC_URL + '/rest/v1/rg_problem_reports', { method: 'POST', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + SYNC_KEY_ANON, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ message: 'x'.repeat(2001) }) });
+    const j = r.ok ? null : await readJSON(r);
+    if (j?.code === '23514' || /check constraint/i.test(j?.message || '')) return setupOk('People can send you problem reports (read them in Table Editor → rg_problem_reports).');
+    return setupBad('Problem reports aren\'t set up.', 'In Supabase → SQL Editor, run launch-setup.sql once.');
   } catch (e) { return offline() }
 }
 async function runSetupCheck() {
