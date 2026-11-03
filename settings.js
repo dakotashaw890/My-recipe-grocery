@@ -1,7 +1,7 @@
 // Settings (v44): a list of grouped rows, like most phone apps. Each row opens its own page inside the
 // Settings screen; the cards on those pages (#familyCard, #remindersCard, ...) are the same ones as before.
 let settingsPage = null;
-const APP_VERSION = '45';
+const APP_VERSION = '46';
 
 function openSettingsPage(name) {
   showScreen('settings');   // draws every card fresh (signed in or not, reminders on or off) and resets to the list

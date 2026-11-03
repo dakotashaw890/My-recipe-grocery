@@ -34,6 +34,10 @@ function restoreTimers() {
   for (const t of cookTimers) if (!t.done && t.end <= now) t.done = true;   // ended while the app was closed: show it, no beeping
   if (cookTimers.length) { ensureTimerTick(); renderTimers() }
   saveTimers();
+  // a Stop or +1 min tapped on the notification while the app was closed
+  const q = new URLSearchParams(location.search), act = q.get('timerAction'), tid = q.get('timer');
+  if (act && tid) { timerAction(act, tid); q.delete('timerAction'); q.delete('timer'); try { history.replaceState(history.state, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash) } catch (_) {} }
+  for (const t of cookTimers) if (!t.done) timerNotice(t);
 }
 function phoneTimersPossible() { return typeof syncConfigured !== 'undefined' && syncConfigured && typeof syncAuth !== 'undefined' && !!syncAuth && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window }
 async function sendTimerToServer(t) {
@@ -47,23 +51,42 @@ async function sendTimerToServer(t) {
     return true;
   } catch (e) { console.warn('Timer stays on this phone only:', e.message); return false }
 }
+// v45: while a timer runs, a quiet notification stays on the phone ("Simmer · ends at 5:32 PM") with Stop and +1 min.
+// When the timer ends it turns into the "Time's up" alert (same tag), from this phone or from Supabase.
+function endsAt(t) { return new Date(t.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }
+async function timerNotice(t) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || t.done) return;
+    const reg = await navigator.serviceWorker?.getRegistration(); if (!reg) return;
+    await reg.showNotification('⏱ ' + (t.label || 'Cooking timer'), { body: `Ends at ${endsAt(t)}${t.phone ? '' : ' · keep Whole Kitchen open to hear it'}`, tag: 'timer-' + t.id, silent: true, renotify: false, requireInteraction: true, timestamp: t.end, icon: 'icon-192.png', badge: 'badge-96.png', data: { url: './index.html', timer: String(t.id) }, actions: [{ action: 'timer-stop', title: 'Stop' }, { action: 'timer-add', title: '+1 min' }] });
+  } catch (_) {}
+}
+async function closeTimerNotice(id) {
+  try { const reg = await navigator.serviceWorker?.getRegistration(); (await reg?.getNotifications({ tag: 'timer-' + id }) || []).forEach(n => n.close()) } catch (_) {}
+}
+function timerAction(action, id) {
+  const t = cookTimers.find(x => String(x.id) === String(id)); if (!t) { closeTimerNotice(id); return }
+  if (action === 'timer-stop') stopTimer(t.id); else if (action === 'timer-add') addTimerMinute(t.id);
+}
+navigator.serviceWorker?.addEventListener('message', e => { if (e.data?.type === 'timer-action') timerAction(e.data.action, e.data.id) });
 async function startTimer(secs, label) {
   const t = { id: Date.now() + Math.floor(Math.random() * 1000) / 1000, label, secs, end: Date.now() + secs * 1000, done: false, phone: false };
   cookTimers.push(t); saveTimers();
   ensureTimerTick(); renderTimers();
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission() } catch (_) {} }
-  t.phone = await sendTimerToServer(t); saveTimers(); renderTimers(true);
+  t.phone = await sendTimerToServer(t); saveTimers(); renderTimers(true); timerNotice(t);
   toast(t.phone ? `Timer started: ${formatTimer(secs)}. It will ring even if your phone sleeps.` : `Timer started: ${formatTimer(secs)}`);
 }
 function stopTimer(id) {
   const t = cookTimers.find(x => x.id === id);
-  cookTimers = cookTimers.filter(x => x.id !== id); saveTimers(); stopAlarmIfQuiet(); renderTimers();
+  cookTimers = cookTimers.filter(x => x.id !== id); saveTimers(); stopAlarmIfQuiet(); renderTimers(); closeTimerNotice(id);
   if (t?.phone && !t.done && typeof remindRpc === 'function') remindRpc('rg_timer_cancel', { p_id: String(t.id) }).catch(() => {});
 }
 async function addTimerMinute(id) {
   const t = cookTimers.find(x => x.id === id); if (!t) return;
   t.end = Math.max(Date.now(), t.end) + 60000; t.done = false; saveTimers(); stopAlarmIfQuiet(); ensureTimerTick(); renderTimers();
   if (t.phone || phoneTimersPossible()) { t.phone = await sendTimerToServer(t); saveTimers(); renderTimers(true) }
+  timerNotice(t);
 }
 function formatTimer(s) { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}` }
 function ensureTimerTick() { if (!timerTick) timerTick = setInterval(timerStep, 500) }
@@ -78,7 +101,8 @@ function timerDone(t) {
   try { navigator.vibrate?.([400, 200, 400, 200, 400]) } catch (_) {}
   try {
     if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible')
-      navigator.serviceWorker?.getRegistration().then(reg => reg?.showNotification('⏱ Time\'s up', { body: t.label, tag: 'timer-' + t.id, renotify: true, requireInteraction: true, vibrate: [400, 200, 400], icon: 'icon-192.png', badge: 'badge-96.png' }));
+      navigator.serviceWorker?.getRegistration().then(reg => reg?.showNotification('⏱ Time\'s up', { body: t.label, tag: 'timer-' + t.id, renotify: true, requireInteraction: true, vibrate: [400, 200, 400], icon: 'icon-192.png', badge: 'badge-96.png', data: { url: './index.html', timer: String(t.id) }, actions: [{ action: 'timer-stop', title: 'Stop' }] }));
+    else closeTimerNotice(t.id);   // on screen: the app is beeping, the "ends at" note can go
   } catch (_) {}
   if (!alarmLoop) { beep(); alarmLoop = setInterval(beep, 1600) }
 }
