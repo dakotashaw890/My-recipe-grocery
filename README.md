@@ -10,7 +10,7 @@ Data lives on the phone (localStorage, photos in IndexedDB). Family sync, sign-i
 | What | Files |
 |---|---|
 | Page, styles, offline cache | `index.html`, `app.css`, `sw.js`, `manifest.json`, icons, `badge-96.png` |
-| Main app | `core.js`, `ui.js`, `units.js`, `groups.js`, `planner.js`, `week.js`, `family.js`, `cooking.js`, `shop.js`, `kitchen.js` |
+| Main app | `core.js`, `settings.js`, `ui.js`, `units.js`, `groups.js`, `planner.js`, `week.js`, `family.js`, `cooking.js`, `shop.js`, `kitchen.js` |
 | Loaded when needed | `shop-extras.js`, `extras.js`, `handsfree.js`, `reminders.js`, `nutrition.js`, `weights.js`, `prices.js`, `pictures.js`, `imports.js`, `import-apps.js`, `substitutions.js`, `sharing.js`, `community.js`, `onboarding.js`, `report.js`, `setup-check.js`, `catalog.js`, `ingredient-catalog.js`, `ingredient-pictures.js`, `cropper.min.*` |
 | Sync, backups, account | `sync.js`, `sync-config.js`, `storage.js`, `account.js` |
 | Public pages | `privacy.html`, `delete-account.html` |
@@ -29,7 +29,7 @@ Data lives on the phone (localStorage, photos in IndexedDB). Family sync, sign-i
 In the app, **Settings → Setup check** shows what's working.
 
 ## Keys
-`sync-config.js` holds only the public anon key. Secret keys (Kroger, USDA, Anthropic) go in Supabase Edge Function secrets, never in this repository.
+`sync-config.js` holds only the public anon key. Secret keys (Kroger, USDA, Anthropic, and optionally Brave Search for web recipe search: `BRAVE_API_KEY`) go in Supabase Edge Function secrets, never in this repository.
 
 ## Updating
 Upload the changed files over the old ones. Each changed script gets a new `?v=` number in `index.html` and `sw.js`, and `sw.js` gets a new `CACHE` name, so installed apps pick up the update.

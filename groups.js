@@ -56,25 +56,25 @@ function groupCover(ids) {
 function groupTile(view, title, ids, emoji, hue) {
   const cover = groupCover(ids);
   return `<button class="group-tile" onclick="openRecipeView(decodeURIComponent('${encId(view)}'))" aria-label="${esc(title)}, ${ids.length} recipe${ids.length === 1 ? '' : 's'}">
-    <span class="group-cover ${cover ? 'has-photo' : ''}" style="--hue:${hue}">${cover ? `<img src="${esc(cover)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span class="group-emoji">${esc(emoji || '📁')}</span></span>
+    <span class="group-cover ${cover ? 'has-photo' : ''}" style="--hue:${hue}">${cover ? `<img src="${esc(cover)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span class="group-emoji">${!emoji || emoji === '📁' ? '<svg class="ico" aria-hidden="true"><use href="#i-folder"/></svg>' : emoji === 'BOOK' ? '<svg class="ico" aria-hidden="true"><use href="#i-book"/></svg>' : emoji === 'STAR' ? '<svg class="ico" aria-hidden="true"><use href="#i-star"/></svg>' : esc(emoji)}</span></span>
     <span class="group-name">${esc(title)}</span><span class="group-count">${ids.length} recipe${ids.length === 1 ? '' : 's'}</span></button>`;
 }
 function hueFor(text) { let h = 0; for (const c of String(text)) h = (h * 31 + c.charCodeAt(0)) % 360; return h }
 function renderGroupTiles() {
   const groups = groupList(), all = recipeViewIds('all'), fav = recipeViewIds('favorites');
-  const tiles = [groupTile('all', 'All recipes', all, '📖', 18), groupTile('favorites', 'Favorites', fav, '★', 42)];
+  const tiles = [groupTile('all', 'All recipes', all, 'BOOK', 18), groupTile('favorites', 'Favorites', fav, 'STAR', 42)];
   if (typeof communityTileHTML === 'function' && (() => { try { return syncConfigured } catch (_) { return false } })()) tiles.push(communityTileHTML());
   for (const g of groups) tiles.push(groupTile(g.id, g.name, groupRecipeIds(g.id), g.emoji, hueFor(g.name)));
-  tiles.push(`<button class="group-tile new-group" onclick="openGroupEditor()"><span class="group-cover"><span class="group-emoji">＋</span></span><span class="group-name">New group</span><span class="group-count">Your own collection</span></button>`);
+  tiles.push(`<button class="group-tile new-group" onclick="openGroupEditor()"><span class="group-cover"><span class="group-emoji"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></span></span><span class="group-name">New group</span><span class="group-count">Your own collection</span></button>`);
   return `${groups.length ? '' : `<div class="card small muted group-hint">Make groups for the way your family cooks, like <b>Weeknight dinners</b>, <b>Holidays</b> or <b>Grandma's recipes</b>. A recipe can be in as many groups as you like.</div>`}
     <div class="group-grid">${tiles.join('')}</div>
     ${groups.length > 1 ? `<div class="actions"><button class="btn ghost" onclick="openArrangeGroups()">↕ Arrange groups</button></div>` : ''}`;
 }
 function recipeViewHeader(view, count) {
   const real = state.recipeGroups?.[view];
-  return `<div class="view-head"><button class="btn ghost back-groups" onclick="closeRecipeView()" aria-label="Back to groups">← Groups</button>
-    <h2>${esc(viewTitle(view))} <span class="muted small">${count}</span></h2>
-    ${real ? `<div class="actions"><button class="btn secondary" onclick="openGroupRecipesPicker('${encId(view)}')">＋ Add recipes</button><button class="btn secondary" onclick="openGroupEditor('${encId(view)}')">✏️ Edit group</button></div>` : ''}</div>`;
+  return `<div class="view-head"><div class="set-head"><button class="iconbtn set-back back-groups" onclick="closeRecipeView()" aria-label="Back to groups"><svg class="ico" aria-hidden="true"><use href="#i-back"/></svg></button>
+    <h2>${esc(viewTitle(view).replace(/^[^\p{L}\p{N}]+/u, ''))} <span class="muted small">${count}</span></h2></div>
+    ${real ? `<div class="actions"><button class="btn secondary" onclick="openGroupRecipesPicker('${encId(view)}')">＋ Add recipes</button><button class="btn secondary" onclick="openGroupEditor('${encId(view)}')">Edit group</button></div>` : ''}</div>`;
 }
 
 // ---------- New / edit a group ----------

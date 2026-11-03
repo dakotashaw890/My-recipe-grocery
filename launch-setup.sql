@@ -195,3 +195,81 @@ grant execute on function public.rg_setting(text, text) to service_role;
 grant execute on function public.rg_reminders_due(text) to service_role;
 grant execute on function public.rg_push_result(text, boolean) to service_role;
 grant execute on function public.rg_schedule_reminders(text) to service_role;
+
+-- ========== Cooking timers that ring while the phone sleeps (v44) ==========
+-- When a timer starts on a signed-in phone, the app saves when it ends. Every 10 seconds the database checks for timers
+-- that are due (a quick query) and only then asks the helper to send the "Time's up" notification.
+create table if not exists public.rg_timers (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null,
+  p256dh text not null,
+  auth text not null,
+  due_at timestamptz not null,
+  label text not null default '',
+  sent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table public.rg_timers enable row level security;
+revoke all on public.rg_timers from anon, authenticated;
+create index if not exists rg_timers_due on public.rg_timers (due_at) where sent_at is null;
+
+create or replace function public.rg_timer_set(p_id text, p_due timestamptz, p_label text, p_endpoint text, p_p256dh text, p_auth text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  if p_id is null or length(p_id) > 80 or p_due < now() - interval '1 minute' or p_due > now() + interval '24 hours' then raise exception 'bad timer'; end if;
+  if p_endpoint !~ '^https://' or length(p_endpoint) > 1000 then raise exception 'bad endpoint'; end if;
+  delete from rg_timers where user_id = auth.uid() and (sent_at is not null or due_at < now() - interval '1 hour');
+  if (select count(*) from rg_timers where user_id = auth.uid() and id <> p_id) >= 20 then raise exception 'too many timers'; end if;
+  insert into rg_timers (id, user_id, endpoint, p256dh, auth, due_at, label)
+    values (p_id, auth.uid(), p_endpoint, left(p_p256dh, 200), left(p_auth, 100), p_due, left(coalesce(p_label, ''), 120))
+  on conflict (id) do update set due_at = excluded.due_at, label = excluded.label, endpoint = excluded.endpoint,
+    p256dh = excluded.p256dh, auth = excluded.auth, sent_at = null
+    where rg_timers.user_id = auth.uid();
+  return true;
+end $$;
+create or replace function public.rg_timer_cancel(p_id text)
+returns boolean language sql security definer set search_path = public as $$
+  delete from rg_timers where id = p_id and user_id = auth.uid() returning true
+$$;
+-- used only by the helper: due timers, marked sent so each rings once
+create or replace function public.rg_timers_due(p_key text)
+returns table (id text, label text, endpoint text, p256dh text, auth text)
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_key is null or p_key <> (select value from rg_private_settings where rg_private_settings.key = 'cron_key') then raise exception 'wrong key' using errcode = '42501'; end if;
+  return query
+    update rg_timers t set sent_at = now()
+    where t.sent_at is null and t.due_at <= now() + interval '3 seconds' and t.due_at > now() - interval '30 minutes'
+    returning t.id, t.label, t.endpoint, t.p256dh, t.auth;
+end $$;
+-- run by the scheduler every 10 seconds: calls the helper only when a timer is due
+create or replace function public.rg_fire_timers()
+returns void language plpgsql security definer set search_path = public as $$
+declare u text; k text;
+begin
+  if not exists (select 1 from rg_timers where sent_at is null and due_at <= now() + interval '3 seconds' and due_at > now() - interval '30 minutes') then return; end if;
+  select value into u from rg_private_settings where key = 'helper_url';
+  select value into k from rg_private_settings where key = 'cron_key';
+  if u is null then return; end if;
+  execute 'select net.http_post(url := $1, body := $2, headers := $3)' using u, json_build_object('action', 'send-timers', 'key', k)::jsonb, '{"Content-Type": "application/json"}'::jsonb;
+end $$;
+-- the helper calls this (with its own web address) to start the every-10-seconds check
+create or replace function public.rg_schedule_timers(p_url text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if p_url !~ '^https://[a-z0-9.-]+/functions/v1/[A-Za-z0-9_-]+$' then raise exception 'bad url'; end if;
+  insert into rg_private_settings (key, value) values ('helper_url', p_url) on conflict (key) do update set value = excluded.value;
+  execute format('select cron.schedule(%L, %L, %L)', 'gingham-timers', '10 seconds', 'select public.rg_fire_timers()');
+  return true;
+end $$;
+revoke all on function public.rg_timer_set(text, timestamptz, text, text, text, text) from public, anon;
+revoke all on function public.rg_timer_cancel(text) from public, anon;
+grant execute on function public.rg_timer_set(text, timestamptz, text, text, text, text) to authenticated;
+grant execute on function public.rg_timer_cancel(text) to authenticated;
+revoke all on function public.rg_timers_due(text) from public, anon, authenticated;
+revoke all on function public.rg_fire_timers() from public, anon, authenticated;
+revoke all on function public.rg_schedule_timers(text) from public, anon, authenticated;
+grant execute on function public.rg_timers_due(text) to service_role;
+grant execute on function public.rg_schedule_timers(text) to service_role;

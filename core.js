@@ -136,7 +136,7 @@ function showScreen(id){
   if(typeof noteScreen==='function')noteScreen(id);
   if(id==='settings'&&typeof resetSettingsPage==='function')resetSettingsPage();
   document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));
-  document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.screen===(['ingredients','spending','online','settings','pantry'].includes(id)?'more':id)));
+  document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.screen===(['ingredients','spending','settings','pantry'].includes(id)?'more':id==='online'?'recipes':id)));
   if(id==='home')renderHome(); if(id==='recipes')renderRecipes(); if(id==='plan')renderPlanner(); if(id==='shopping')renderShopping();if(id==='ingredients')renderIngredients();if(id==='spending')renderSpending();if(id==='pantry')renderPantry();if(id==='settings'&&typeof renderSettingsExtras==='function')renderSettingsExtras();
   window.scrollTo(0,0);
 }
@@ -145,11 +145,18 @@ function closeModal(){if(packageReturn){returnToPackageEditor();return}document.
 function openModal(html){document.getElementById('sheet').innerHTML=html;document.getElementById('modal').classList.add('show')}
 
 function recipeCard(name){
-  const r=state.data.recipes[name], fav=state.favorites.includes(name);
-  return `<div class="card recipe-card ${state.selected[name]?'is-selected':''}">
-    ${typeof recipePhotoHTML==='function'?recipePhotoHTML(r):''}<div class="row between"><div class="grow"><h3>${esc(r.name)}</h3><span class="pill">${r.ingredients.length} ingredients</span><span class="pill">base ${r.baseServings} servings</span>${typeof recipeTimes==='function'&&recipeTimes(r).total?`<span class="pill">⏱ ${formatMinutes(recipeTimes(r).total)}</span>`:''}${typeof recipeCaloriePill==='function'?recipeCaloriePill(name):''}${typeof readinessPill==='function'?readinessPill(name):''}${typeof ratingPill==='function'?ratingPill(name):''}${(r.tags||[]).filter(Boolean).slice(0,2).map(t=>`<span class="pill">${esc(t)}</span>`).join("")}</div>
-    <button class="iconbtn favorite" aria-label="${fav?'Remove from favorites':'Add to favorites'}" onclick="toggleFavorite(decodeURIComponent('${encId(name)}'))">${fav?'★':'☆'}</button></div>
-    <div class="actions"><button class="btn" onclick="openRecipe(decodeURIComponent('${encId(name)}'))">View recipe</button><button class="shopping-toggle ${state.selected[name]?'on':'off'}" role="switch" aria-checked="${!!state.selected[name]}" aria-label="${state.selected[name]?'Remove':'Add'} ${esc(r.name)} ${state.selected[name]?'from':'to'} shopping" onclick="toggleRecipeSelection(decodeURIComponent('${encId(name)}'))"><span>${state.selected[name]?'Added':'Not added'}</span><span class="toggle-track"><span class="toggle-knob"></span></span></button></div>
+  const r=state.data.recipes[name], fav=state.favorites.includes(name), on=!!state.selected[name], id=encId(name);
+  const src=typeof recipePhotoSrc==='function'?recipePhotoSrc(r):'', t=typeof recipeTimes==='function'?recipeTimes(r).total:0;
+  const meta=[t?formatMinutes(t):'',`${r.ingredients.length} ingredient${r.ingredients.length===1?'':'s'}`,`serves ${r.baseServings}`].filter(Boolean).join(' · ');
+  const pills=[typeof readinessPill==='function'?readinessPill(name):'',typeof recipeCaloriePill==='function'?recipeCaloriePill(name):'',typeof ratingPill==='function'?ratingPill(name):''].join('');
+  return `<div class="card recipe-card recipe-row ${on?'is-selected':''}">
+    <button type="button" class="rc-main" onclick="openRecipe(decodeURIComponent('${id}'))" aria-label="View recipe: ${esc(r.name)}">
+      <span class="rc-thumb">${src?`<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">`:''}<svg class="ico" aria-hidden="true"><use href="#i-book"/></svg></span>
+      <span class="rc-txt"><h3>${esc(r.name)}</h3><small>${esc(meta)}</small>${pills?`<span class="rc-pills">${pills}</span>`:''}</span></button>
+    <div class="rc-side">
+      <button class="iconbtn favorite ${fav?'on':''}" aria-label="${fav?'Remove from favorites':'Add to favorites'}" onclick="toggleFavorite(decodeURIComponent('${id}'))">${fav?'★':'☆'}</button>
+      <button class="shopping-toggle rc-cart ${on?'on':'off'}" role="switch" aria-checked="${on}" aria-label="${on?'Remove':'Add'} ${esc(r.name)} ${on?'from':'to'} shopping" title="${on?'On the shopping list':'Add to the shopping list'}" onclick="toggleRecipeSelection(decodeURIComponent('${id}'))"><svg class="ico" aria-hidden="true"><use href="#i-cart"/></svg><span class="rc-check" aria-hidden="true">✓</span></button>
+    </div>
   </div>`
 }
 function renderHome(){
@@ -164,7 +171,7 @@ function renderHome(){
     const meals=todaysMeals(),hour=new Date().getHours(),next=meals.find(m=>MEALS.indexOf(m.meal)>=(hour<10?0:hour<15?1:2))||meals[meals.length-1];
     if(next){const [key,v]=next.entries[0],r=state.data.recipes[v.recipe],more=meals.reduce((n,m)=>n+m.entries.length,0)-1;
       today.innerHTML=`<div class="card today-card">${typeof recipePhotoHTML==='function'?recipePhotoHTML(r):''}<div class="small muted">${next.meal==='Dinner'?'Tonight':esc(next.meal)+' today'}</div><h2>${esc(r.name)}</h2>${typeof timeSummaryHTML==='function'?timeSummaryHTML(r):''}
-        <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(v.recipe)}'))">👩‍🍳 Start cooking</button><button class="btn secondary" onclick="openRecipe(decodeURIComponent('${encId(v.recipe)}'))">View recipe</button></div>
+        <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(v.recipe)}'))">Start cooking</button><button class="btn secondary" onclick="openRecipe(decodeURIComponent('${encId(v.recipe)}'))">View recipe</button></div>
         ${more>0?`<button class="linkish" onclick="showScreen('plan')">+${more} more planned today</button>`:''}</div>`}
     else{const planned=Object.keys(state.plan||{}).filter(k=>typeof planDateOf==='function'&&planDateOf(k)>=todayISO()).length;
       today.innerHTML=`<div class="card today-card empty-today"><div class="small muted">Tonight</div><h2>Nothing planned yet</h2><p class="small muted">${planned?`${planned} meal${planned===1?'':'s'} planned later this week.`:'Plan the week and the shopping list builds itself.'}</p><div class="actions"><button class="btn" onclick="showScreen('plan')">Plan meals</button>${Object.keys(state.data.recipes).length?`<button class="btn secondary" onclick="showScreen('plan');fillPlan()">✨ Suggest meals</button>`:''}</div></div>`}
@@ -172,7 +179,7 @@ function renderHome(){
   // Shopping: how much is left to buy
   const shop=document.getElementById('homeShop');
   if(shop){try{renderShopping()}catch(_){}const rows=(window.lastShoppingRows||[]).filter(r=>r.qty>1e-8),left=rows.filter(r=>!state.checks[r.name.toLowerCase()]).length;
-    shop.innerHTML=rows.length?`<button class="card home-shop" onclick="showScreen('shopping')"><span class="home-shop-icon" aria-hidden="true">🛒</span><span><b>${left?`${left} thing${left===1?'':'s'} to buy`:'All bought ✓'}</b><small>${rows.length-left?`${rows.length-left} checked off · `:''}${typeof shoppingRangeText==='function'?shoppingRangeText():''}</small></span><span aria-hidden="true">›</span></button>`:''}
+    shop.innerHTML=rows.length?`<button class="card home-shop" onclick="showScreen('shopping')"><span class="home-shop-icon set-ico t-olive" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-cart"/></svg></span><span><b>${left?`${left} thing${left===1?'':'s'} to buy`:'All bought ✓'}</b><small>${rows.length-left?`${rows.length-left} checked off · `:''}${typeof shoppingRangeText==='function'?shoppingRangeText():''}</small></span><span aria-hidden="true">›</span></button>`:''}
   const ready=document.getElementById('readyCard');if(ready&&typeof readyHomeCardHTML==='function')ready.innerHTML=readyHomeCardHTML();
   const fav=state.favorites.filter(n=>state.data.recipes[n]);
   document.getElementById('homeFavorites').innerHTML=fav.length?fav.slice(0,4).map(recipeCard).join(''):`<div class="card" style="grid-column:1/-1"><div class="empty">No favorites yet. Tap ☆ on a recipe to add one.</div></div>`;
@@ -251,7 +258,7 @@ function openRecipe(name){
   <h2>Ingredients</h2><div id="detailSummary"></div><div id="detailIngredients"></div><div class="actions" style="margin-top:4px"><button class="btn ghost small-btn" onclick="loadScriptOnce('shop-extras.js?v=35').then(()=>openOutOf(decodeURIComponent('${encId(name)}')))">🛒 Out of something?</button></div><div id="detailNutrition"></div>
   ${r.notes?`<h2>Notes</h2><div class="card recipe-notes" style="white-space:pre-line">${esc(r.notes)}</div>`:''}
   ${r.directions.length?`<h2>Instructions</h2><div class="card">${r.directions.flatMap(d=>String(d).split(/\n+/)).map(d=>d.trim()).filter(Boolean).map(d=>`<div class="ingredient">${esc(d)}</div>`).join('')}</div>`:''}
-  <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(name)}'))">👩‍🍳 Cook mode</button><button class="btn secondary" onclick="toggleRecipeSelection(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${state.selected[name]?'✓ Remove from shopping':'＋ Add to shopping'}</button><button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encId(name)}'))">Edit recipe</button><button class="btn secondary" onclick="openRecipePhoto(decodeURIComponent('${encId(name)}'))">📷 Photo</button><button class="btn secondary" onclick="openRecipeGroups(decodeURIComponent('${encId(name)}'))">📁 Groups</button><button class="btn secondary" onclick="loadScriptOnce('sharing.js?v=39').then(()=>openShareRecipe(decodeURIComponent('${encId(name)}')))">📤 Share</button><button class="btn secondary" onclick="toggleFavorite(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
+  <div class="actions"><button class="btn" onclick="openCookMode(decodeURIComponent('${encId(name)}'))">👩‍🍳 Cook mode</button><button class="btn secondary" onclick="toggleRecipeSelection(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${state.selected[name]?'✓ Remove from shopping':'＋ Add to shopping'}</button><button class="btn secondary" onclick="openRecipeEditor(decodeURIComponent('${encId(name)}'))">Edit recipe</button><button class="btn secondary" onclick="openRecipePhoto(decodeURIComponent('${encId(name)}'))">📷 Photo</button><button class="btn secondary" onclick="openRecipeGroups(decodeURIComponent('${encId(name)}'))">📁 Groups</button><button class="btn secondary" onclick="loadScriptOnce('sharing.js?v=39').then(()=>openShareRecipe(decodeURIComponent('${encId(name)}')))"><svg class="ico ico-in" aria-hidden="true"><use href="#i-share"/></svg>Share</button><button class="btn secondary" onclick="toggleFavorite(decodeURIComponent('${encId(name)}'));openRecipe(decodeURIComponent('${encId(name)}'))">${fav?'★ Favorite':'☆ Favorite'}</button></div>`);
   renderDetailIngredients(name);
 }
 function changeDetailServings(delta){const el=document.getElementById('detailServings');el.value=Math.max(1,(num(el.value)||1)+delta);renderDetailIngredients(currentModalRecipe())}

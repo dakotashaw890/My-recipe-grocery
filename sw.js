@@ -1,5 +1,5 @@
-const CACHE='gingham-v44';
-const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./badge-96.png','./ui.js?v=24','./units.js?v=38','./groups.js?v=25','./planner.js?v=44','./family.js?v=44','./cooking.js?v=40','./shop.js?v=32','./week.js?v=42','./core.js?v=44','./settings.js?v=44','./shop-extras.js?v=35','./onboarding.js?v=44','./sharing.js?v=39','./ingredient-catalog.js?v=39','./catalog.js?v=39','./sync-config.js?v=17','./storage.js?v=39','./sync.js?v=44','./extras.js?v=44','./kitchen.js?v=44','./pictures.js?v=24','./imports.js?v=44','./weights.js?v=44','./report.js?v=44','./handsfree.js?v=39','./reminders.js?v=44','./prices.js?v=44','./nutrition.js?v=44','./community.js?v=44','./setup-check.js?v=44','./import-apps.js?v=39','./substitutions.js?v=27','./account.js?v=44','./app.css?v=44','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
+const CACHE='gingham-v45';
+const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./badge-96.png','./ui.js?v=24','./units.js?v=38','./groups.js?v=45','./planner.js?v=44','./family.js?v=44','./cooking.js?v=45','./shop.js?v=32','./week.js?v=42','./core.js?v=45','./settings.js?v=45','./shop-extras.js?v=35','./onboarding.js?v=44','./sharing.js?v=39','./ingredient-catalog.js?v=39','./catalog.js?v=39','./sync-config.js?v=17','./storage.js?v=39','./sync.js?v=44','./extras.js?v=45','./kitchen.js?v=45','./pictures.js?v=24','./imports.js?v=44','./weights.js?v=44','./report.js?v=44','./handsfree.js?v=39','./reminders.js?v=45','./prices.js?v=45','./nutrition.js?v=44','./community.js?v=44','./setup-check.js?v=44','./import-apps.js?v=39','./substitutions.js?v=27','./account.js?v=44','./app.css?v=45','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
 const IMAGES=[];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(async c=>{
   await c.addAll(CORE);
@@ -29,7 +29,9 @@ self.addEventListener('fetch',e=>{
 // Prep reminders (v38): the family's Supabase helper sends them; show them, and open Whole Kitchen when tapped
 self.addEventListener('push',e=>{
   let m={};try{m=e.data?e.data.json():{}}catch(_){m={title:'Whole Kitchen',body:e.data?e.data.text():''}}
-  e.waitUntil(self.registration.showNotification(m.title||'Whole Kitchen',{body:m.body||'',tag:m.tag||'gingham',icon:'icon-192.png',badge:'badge-96.png',data:{url:m.url||'./index.html'},renotify:!!m.tag}));
+  // a cooking timer while the app is open on screen: the app is already beeping, so no second alert
+  const show=()=>self.registration.showNotification(m.title||'Whole Kitchen',{body:m.body||'',tag:m.tag||'gingham',icon:'icon-192.png',badge:'badge-96.png',data:{url:m.url||'./index.html'},renotify:!!m.tag,...(m.timer?{requireInteraction:true,vibrate:[500,250,500,250,500,250,500]}:{})});
+  e.waitUntil(m.timer?self.clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>list.some(c=>c.visibilityState==='visible')?null:show()):show());
 });
 self.addEventListener('notificationclick',e=>{
   e.notification.close();

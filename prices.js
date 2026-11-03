@@ -11,7 +11,7 @@ async function callHelper(body) {
     method: 'POST', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' }, body: JSON.stringify(body)
   });
   const j = await readJSON(r);
-  if (!r.ok) throw Object.assign(new Error(j?.error || (r.status === 404 ? 'The Supabase helper needs updating: paste the new recipe-import.ts into your recipe-imports function and deploy it.' : 'Couldn\'t reach your Supabase helper (' + r.status + ').')), { setup: !!j?.setup || r.status === 404 });
+  if (!r.ok) throw Object.assign(new Error(j?.error || (r.status === 404 ? 'The Supabase helper needs updating: paste the new recipe-import.ts into your recipe-imports function and deploy it.' : 'Couldn\'t reach your Supabase helper (' + r.status + ').')), { setup: !!j?.setup || r.status === 404, limit: !!j?.limit, everyone: !!j?.everyone });
   return j;
 }
 

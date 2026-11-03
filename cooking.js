@@ -20,21 +20,56 @@ function stepTimers(text) {
   }
   return out;
 }
-let cookTimers = [];   // {id, label, end, secs, done}
+// v44: timers are kept on the phone (so closing the app doesn't lose them), and on a signed-in phone the end time is
+// also sent to Supabase, which sends the "Time's up" notification even while the phone sleeps or the app is closed.
+let cookTimers = [];   // {id, label, end, secs, done, phone}
 let timerTick = null;
-function startTimer(secs, label) {
-  cookTimers.push({ id: Date.now() + Math.random(), label, secs, end: Date.now() + secs * 1000, done: false });
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
-  ensureTimerTick(); renderTimers();
-  toast(`Timer started: ${formatTimer(secs)}`);
+const timerKey = () => KEY + '-timers';   // KEY comes from core.js, which loads after this file
+function saveTimers() { try { localStorage.setItem(timerKey(), JSON.stringify(cookTimers.map(({ id, label, end, secs, done, phone }) => ({ id, label, end, secs, done, phone })))) } catch (_) {} }
+function restoreTimers() {
+  let saved = []; try { saved = JSON.parse(localStorage.getItem(timerKey()) || '[]') } catch (_) {}
+  const now = Date.now();
+  // a timer that ended more than 10 minutes ago has had its notification; let it go
+  cookTimers = (Array.isArray(saved) ? saved : []).filter(t => t && t.end > now - 10 * 60000);
+  for (const t of cookTimers) if (!t.done && t.end <= now) t.done = true;   // ended while the app was closed: show it, no beeping
+  if (cookTimers.length) { ensureTimerTick(); renderTimers() }
+  saveTimers();
 }
-function stopTimer(id) { cookTimers = cookTimers.filter(t => t.id !== id); stopAlarmIfQuiet(); renderTimers() }
-function addTimerMinute(id) { const t = cookTimers.find(x => x.id === id); if (!t) return; t.end = Math.max(Date.now(), t.end) + 60000; t.done = false; stopAlarmIfQuiet(); ensureTimerTick(); renderTimers() }
+function phoneTimersPossible() { return typeof syncConfigured !== 'undefined' && syncConfigured && typeof syncAuth !== 'undefined' && !!syncAuth && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window }
+async function sendTimerToServer(t) {
+  if (!phoneTimersPossible() || Notification.permission !== 'granted') return false;
+  try {
+    await loadScriptOnce('reminders.js?v=45');
+    const sub = await ensurePushSub(); if (!sub) return false;
+    await remindRpc('rg_timer_set', { p_id: String(t.id), p_due: new Date(t.end).toISOString(), p_label: String(t.label || '').slice(0, 120), p_endpoint: sub.endpoint, p_p256dh: sub.keys.p256dh, p_auth: sub.keys.auth });
+    let ready = ''; try { ready = localStorage.getItem(KEY + '-timerSchedule') || '' } catch (_) {}
+    if (!ready) { await callHelper({ action: 'push-setup', timers: true }); try { localStorage.setItem(KEY + '-timerSchedule', '1') } catch (_) {} }
+    return true;
+  } catch (e) { console.warn('Timer stays on this phone only:', e.message); return false }
+}
+async function startTimer(secs, label) {
+  const t = { id: Date.now() + Math.floor(Math.random() * 1000) / 1000, label, secs, end: Date.now() + secs * 1000, done: false, phone: false };
+  cookTimers.push(t); saveTimers();
+  ensureTimerTick(); renderTimers();
+  if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission() } catch (_) {} }
+  t.phone = await sendTimerToServer(t); saveTimers(); renderTimers(true);
+  toast(t.phone ? `Timer started: ${formatTimer(secs)}. It will ring even if your phone sleeps.` : `Timer started: ${formatTimer(secs)}`);
+}
+function stopTimer(id) {
+  const t = cookTimers.find(x => x.id === id);
+  cookTimers = cookTimers.filter(x => x.id !== id); saveTimers(); stopAlarmIfQuiet(); renderTimers();
+  if (t?.phone && !t.done && typeof remindRpc === 'function') remindRpc('rg_timer_cancel', { p_id: String(t.id) }).catch(() => {});
+}
+async function addTimerMinute(id) {
+  const t = cookTimers.find(x => x.id === id); if (!t) return;
+  t.end = Math.max(Date.now(), t.end) + 60000; t.done = false; saveTimers(); stopAlarmIfQuiet(); ensureTimerTick(); renderTimers();
+  if (t.phone || phoneTimersPossible()) { t.phone = await sendTimerToServer(t); saveTimers(); renderTimers(true) }
+}
 function formatTimer(s) { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}` }
 function ensureTimerTick() { if (!timerTick) timerTick = setInterval(timerStep, 500) }
 function timerStep() {
   if (!cookTimers.length) { clearInterval(timerTick); timerTick = null; renderTimers(); return }
-  for (const t of cookTimers) if (!t.done && Date.now() >= t.end) { t.done = true; timerDone(t) }
+  for (const t of cookTimers) if (!t.done && Date.now() >= t.end) { t.done = true; saveTimers(); timerDone(t) }
   renderTimers();
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && cookTimers.length) timerStep() });
@@ -43,7 +78,7 @@ function timerDone(t) {
   try { navigator.vibrate?.([400, 200, 400, 200, 400]) } catch (_) {}
   try {
     if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible')
-      navigator.serviceWorker?.getRegistration().then(reg => reg?.showNotification('⏱ Time\'s up', { body: t.label, tag: 'gingham-timer', renotify: true, vibrate: [400, 200, 400], icon: 'icon-192.png', badge: 'badge-96.png' }));
+      navigator.serviceWorker?.getRegistration().then(reg => reg?.showNotification('⏱ Time\'s up', { body: t.label, tag: 'timer-' + t.id, renotify: true, requireInteraction: true, vibrate: [400, 200, 400], icon: 'icon-192.png', badge: 'badge-96.png' }));
   } catch (_) {}
   if (!alarmLoop) { beep(); alarmLoop = setInterval(beep, 1600) }
 }
@@ -63,14 +98,14 @@ function stopAlarmIfQuiet() { if (!cookTimers.some(t => t.done) && alarmLoop) { 
 function timersHTML() {
   if (!cookTimers.length) return '';
   return cookTimers.map(t => { const left = (t.end - Date.now()) / 1000; return `<div class="timer-chip ${t.done ? 'ringing' : ''}" role="timer" data-timer="${t.id}">
-    <span class="timer-label">${esc(t.label)}</span><b>${t.done ? 'Time\'s up!' : formatTimer(left)}</b>
+    <span class="timer-label">${t.phone ? '<svg class="ico timer-phone" role="img" aria-label="Rings even if the phone sleeps"><title>Rings even if the phone sleeps</title><use href="#i-bell"/></svg>' : ''}${esc(t.label)}</span><b>${t.done ? 'Time\'s up!' : formatTimer(left)}</b>
     <button type="button" aria-label="Add a minute" onclick="addTimerMinute(${t.id})">+1</button><button type="button" aria-label="${t.done ? 'Stop alarm' : 'Cancel timer'}" onclick="stopTimer(${t.id})">${t.done ? 'Stop' : '✕'}</button></div>` }).join('');
 }
 // timers show inside cook mode, and in a small dock everywhere else so they're never lost
 // Only the numbers change each tick; the buttons are rebuilt only when a timer starts, ends or is removed,
 // so a tap on Stop or +1 never lands on a button that's being replaced.
 function renderTimers() {
-  const sig = cookTimers.map(t => t.id + (t.done ? 'd' : '')).join(',');
+  const sig = cookTimers.map(t => t.id + (t.done ? 'd' : '') + (t.phone ? 'p' : '')).join(',');
   const paint = host => {
     if (!host) return;
     if (host.dataset.sig !== sig) { host.innerHTML = timersHTML(); host.dataset.sig = sig; return }
@@ -122,3 +157,5 @@ function cookAmountHTML(i, scale) {
   const conv = q !== null ? amountIn(sys, q * scale, i.unit) : null;
   return conv ? `${esc(fmt(conv.qty))} ${esc(conv.unit)}` : `${displayQty(i, scale)} ${esc(i.unit || '')}`;
 }
+
+window.addEventListener('load', () => { try { restoreTimers() } catch (e) { console.warn('Timers not restored', e) } });

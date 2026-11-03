@@ -241,7 +241,10 @@ function openRecipeImport(opts = {}) {
   closeModal();
   window.importContext = opts.sourceUrl || opts.photoUrl || opts.sourceType ? { photoUrl: opts.photoUrl || '', sourceUrl: opts.sourceUrl || '', sourceType: opts.sourceType || '' } : null;
   const signedIn = typeof syncAuth !== 'undefined' && !!syncAuth && syncConfigured;
-  openModal(`<div class="row between"><h2>Import a recipe</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="row between"><h2>Add a recipe</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
+    <div class="card import-search"><h3>Search for a recipe</h3>
+      <form class="search-row" onsubmit="event.preventDefault();searchRecipesOnline()" role="search"><input id="webSearch" type="search" enterkeyhint="search" autocomplete="off" aria-label="Search for a recipe" placeholder="Slow cooker chili, chicken enchiladas…" value="${esc(opts.search || '')}"><button class="btn" type="submit">Search</button></form>
+      <div id="webResults" aria-live="polite"></div></div>
     <div class="card"><h3>From a website</h3>
       ${signedIn ? '' : '<p class="small warning">Sign in under ⚙️ Settings → Family sharing to import from links. Pasting text works without signing in.</p>'}
       <label for="importUrl">Recipe or post link</label><input id="importUrl" type="url" inputmode="url" placeholder="https://www.allrecipes.com/recipe/…" value="${esc(opts.url || '')}" ${signedIn ? '' : 'disabled'}>
@@ -260,6 +263,7 @@ function openRecipeImport(opts = {}) {
       <div class="actions"><button class="btn secondary" onclick="importFromText()">Read recipe text</button></div></div>
     <div class="card"><h3>From another recipe app</h3><p class="small muted">Paprika, Plan to Eat, Mela, Mealie and more: bring all your recipes over at once.</p><div class="actions"><button class="btn secondary" onclick="loadScriptOnce('import-apps.js?v=39').then(()=>openAppImport())">📦 Choose export file</button></div></div>
     <div id="importMsg" class="small" role="status"></div>`);
+  if (opts.findOnline) setTimeout(() => document.getElementById('webSearch')?.focus(), 80);
 }
 function importMessage(text, bad) { const el = document.getElementById('importMsg'); if (el) { el.textContent = text; el.className = 'small ' + (bad ? 'warning' : 'muted') } }
 
@@ -354,7 +358,7 @@ function readyHomeCardHTML() {
   const names = readyRecipeNames(0);
   const almost = readyRecipeNames(1).length - names.length;
   if (!names.length && !almost) return '';
-  return `<div class="card ready-card"><div class="row between"><div><b>${names.length ? `🍳 ${names.length} recipe${names.length === 1 ? '' : 's'} ready to cook` : '🍳 Almost ready to cook'}</b><div class="small muted">${names.length ? esc(names.slice(0, 3).map(recipeName).join(' · ')) + (names.length > 3 ? ' …' : '') : ''}${almost ? (names.length ? ' · ' : '') + almost + ' more need just 1 item' : ''}</div></div><button class="btn secondary" onclick="showScreen('recipes');setRecipeFilter('ready')">See them</button></div></div>`;
+  return `<div class="card ready-card"><div class="row between"><div><b class="h-ico"><span class="set-ico t-olive"><svg class="ico" aria-hidden="true"><use href="#i-checkc"/></svg></span>${names.length ? `${names.length} recipe${names.length === 1 ? '' : 's'} ready to cook` : 'Almost ready to cook'}</b><div class="small muted">${names.length ? esc(names.slice(0, 3).map(recipeName).join(' · ')) + (names.length > 3 ? ' …' : '') : ''}${almost ? (names.length ? ' · ' : '') + almost + ' more need just 1 item' : ''}</div></div><button class="btn secondary" onclick="showScreen('recipes');setRecipeFilter('ready')">See them</button></div></div>`;
 }
 
 // =====================================================================
@@ -570,3 +574,58 @@ async function keepImportedPictures() {
   for (const [id, r] of Object.entries(state?.data?.recipes || {})) if (r?.photoUrl && !r.photoId && EXPIRING_PICTURES.test(r.photoUrl)) await keepRecipePhoto(id);
 }
 window.addEventListener('load', () => setTimeout(keepImportedPictures, 4000));
+
+// ---------- Search for a recipe (v44) ----------
+// Signed in, with web search set up: recipe pages from across the web (Brave Search), imported with the link importer.
+// Otherwise: TheMealDB's free recipe collection, like before.
+let webSearchState = { q: '', page: 0, results: [] };
+async function searchRecipesOnline(more) {
+  const box = document.getElementById('webResults'), q = (document.getElementById('webSearch')?.value || '').trim();
+  if (!box) return;
+  if (q.length < 2) { box.innerHTML = '<p class="small warning">Type what you\'d like to cook.</p>'; return }
+  if (!more) webSearchState = { q, page: 0, results: [] };
+  box.querySelector('.web-more')?.remove();
+  if (!more) box.innerHTML = '<p class="small muted">Searching…</p>';
+  const signedIn = typeof syncAuth !== 'undefined' && !!syncAuth && syncConfigured;
+  let note = '';
+  if (signedIn) {
+    try {
+      const j = await callHelper({ action: 'recipe-search', q: webSearchState.q, page: webSearchState.page });
+      webSearchState.results.push(...(j.results || []));
+      return paintWebResults(box, j.more);
+    } catch (e) {
+      if (e.limit && !e.everyone) { box.innerHTML = `<p class="small warning">${esc(e.message)}</p>`; return }
+      if (!e.setup && !e.everyone) note = 'Web search didn\'t answer, so these are from TheMealDB. ';
+      else if (e.everyone) note = 'Web search is resting for today, so these are from TheMealDB. ';
+    }
+  }
+  await searchMealDB(box, webSearchState.q, note);
+}
+function paintWebResults(box, more) {
+  const list = webSearchState.results;
+  if (!list.length) { box.innerHTML = '<p class="small muted">No recipes found. Try different words, like "baked ziti" or "chicken and rice".</p>'; return }
+  box.innerHTML = `<div class="result-list">${list.map((r, i) => `<button type="button" class="result-row" onclick="importWebResult(${i})">
+      ${r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'result-thumb'}))">` : '<span class="result-thumb"></span>'}
+      <span class="result-txt"><b>${esc(r.title)}</b><small>${esc(r.site)}</small></span><svg class="ico chev" aria-hidden="true"><use href="#i-chev"/></svg></button>`).join('')}</div>
+    ${more ? '<div class="actions"><button type="button" class="btn ghost web-more" onclick="webSearchState.page++;searchRecipesOnline(true)">More results</button></div>' : ''}
+    <p class="tiny muted">Tap one to bring it in. You can check everything before it's saved. Search results by Brave Search.</p>`;
+}
+function importWebResult(i) {
+  const r = webSearchState.results[i]; if (!r) return;
+  const input = document.getElementById('importUrl'); if (!input) return;
+  input.value = r.url; window.importContext = null;   // the page itself gives the photo and source
+  document.getElementById('webResults').innerHTML = `<p class="small muted">Bringing in “${esc(r.title)}” from ${esc(r.site)}…</p>`;
+  importFromLink();
+}
+async function searchMealDB(box, q, note = '') {
+  try {
+    const r = await fetch('https://www.themealdb.com/api/json/v1/1/search.php?s=' + encodeURIComponent(q), { cache: 'no-store' });
+    if (!r.ok) throw new Error(String(r.status));
+    const meals = (await r.json()).meals || [];
+    onlineMeals = Object.fromEntries(meals.map(m => [m.idMeal, m]));
+    box.innerHTML = (meals.length ? `<div class="result-list">${meals.slice(0, 20).map(m => `<button type="button" class="result-row" onclick="previewOnline('${esc(m.idMeal)}')">
+        <img src="${esc(m.strMealThumb ? m.strMealThumb + '/preview' : '')}" alt="" loading="lazy"><span class="result-txt"><b>${esc(m.strMeal)}</b><small>${esc([m.strCategory, m.strArea].filter(Boolean).join(' · '))}</small></span><svg class="ico chev" aria-hidden="true"><use href="#i-chev"/></svg></button>`).join('')}</div>`
+      : '<p class="small muted">No recipes found. Try one main ingredient, like "chicken" or "pasta".</p>')
+      + `<p class="tiny muted">${esc(note)}Recipes and photos from TheMealDB. <button type="button" class="linkish" onclick="closeModal();showScreen('online')">Browse by category</button></p>`;
+  } catch (_) { box.innerHTML = '<p class="small warning">Couldn\'t search right now. Check your internet connection and try again.</p>' }
+}

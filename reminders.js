@@ -90,7 +90,7 @@ function renderPrepCard() {
   const list = computeReminders(2).filter(x => x.at <= endTomorrow && x.kind !== 'start').slice(0, 4);
   if (!list.length) { box.innerHTML = ''; return }
   const p = remindPrefs();
-  box.innerHTML = `<div class="card prep-card"><div class="row between"><h3>⏰ Prep ahead</h3>${!p.on ? '<button class="linkish small" onclick="openSettingsPage(\'reminders\')">Get reminders</button>' : ''}</div>
+  box.innerHTML = `<div class="card prep-card"><div class="row between"><h3 class="h-ico"><span class="set-ico t-butter"><svg class="ico" aria-hidden="true"><use href="#i-bell"/></svg></span>Prep ahead</h3>${!p.on ? '<button class="linkish small" onclick="openSettingsPage(\'reminders\')">Get reminders</button>' : ''}</div>
     ${list.map(x => `<div class="prep-item ${x.at <= now ? 'due' : ''}"><div class="grow"><small>${x.at <= now ? 'Now' : esc(whenWords(x.at))} · ${{ thaw: 'Thaw', slow: 'Slow cooker', start: 'Start cooking' }[x.kind] || 'Prep ahead'}</small><b>${esc(x.title.replace(/^[^:]+: /, ''))}</b><span class="small">${esc(x.body.replace(/ “.*$/, ''))}</span></div>
       <button class="btn secondary prep-done" aria-label="Done: ${esc(x.title)}" onclick="markPrepDone(decodeURIComponent('${encId(x.planKey)}'),'${x.kind}')">✓ Done</button></div>`).join('')}</div>`;
 }
@@ -123,6 +123,17 @@ async function syncReminders(force) {
 }
 
 // ---------- Settings: turning notifications on for this phone ----------
+// This phone's notification address (asks the helper for the server's key the first time). Used by reminders and timers.
+async function ensurePushSub() {
+  if (!pushSupported() || Notification.permission !== 'granted') return null;
+  const { publicKey } = await callHelper({ action: 'push-key' });
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  const key = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((publicKey.length + 3) % 4)), c => c.charCodeAt(0));
+  if (sub && btoa(String.fromCharCode(...new Uint8Array(sub.options?.applicationServerKey || []))) !== btoa(String.fromCharCode(...key))) { await sub.unsubscribe(); sub = null }
+  sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+  return sub.toJSON();
+}
 async function pushSubscription() { try { const reg = await navigator.serviceWorker?.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null } catch (_) { return null } }
 function pushSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window }
 async function renderRemindersCard() {
@@ -156,13 +167,7 @@ async function turnOnReminders() {
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') return warn('Notifications weren\'t allowed. You can allow them in your phone\'s settings for Whole Kitchen.');
     msg('Setting up…');
-    const { publicKey } = await callHelper({ action: 'push-key' });
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    const key = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((publicKey.length + 3) % 4)), c => c.charCodeAt(0));
-    if (sub && btoa(String.fromCharCode(...new Uint8Array(sub.options?.applicationServerKey || []))) !== btoa(String.fromCharCode(...key))) { await sub.unsubscribe(); sub = null }
-    sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-    const j = sub.toJSON();
+    const j = await ensurePushSub();
     await remindRpc('rg_push_subscribe', { p_family: syncInfo.familyId, p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
     await callHelper({ action: 'push-setup' });
     setRemindPrefs({ on: true });

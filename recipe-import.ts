@@ -226,8 +226,8 @@ async function pinterestRecipe(u: URL): Promise<any | null> {
 // touch: it uses the service-role key that Supabase gives every Edge Function automatically (never put it in the app).
 // Change a limit without editing code: add a secret HELPER_LIMITS, e.g. {"read-card":40,"url":100}.
 // Photo reads also have a total for everyone together (READ_CARD_DAILY_TOTAL, default 300 ≈ $3 a day at most).
-const DEFAULT_LIMITS: Record<string, number> = { 'read-card': 25, url: 60, image: 120, nutrition: 150, portions: 60, 'kroger-stores': 40, 'kroger-prices': 300, 'push-test': 10, 'push-setup': 20 };
-const LIMIT_NAMES: Record<string, string> = { 'read-card': 'photo recipe reads', url: 'link imports', image: 'picture downloads', nutrition: 'nutrition lookups', portions: 'weight lookups', 'kroger-stores': 'store searches', 'kroger-prices': 'price lookups', 'push-test': 'test notifications', 'push-setup': 'reminder setups' };
+const DEFAULT_LIMITS: Record<string, number> = { 'read-card': 25, url: 60, image: 120, nutrition: 150, portions: 60, 'kroger-stores': 40, 'kroger-prices': 300, 'push-test': 10, 'push-setup': 20, 'recipe-search': 40 };
+const LIMIT_NAMES: Record<string, string> = { 'read-card': 'photo recipe reads', url: 'link imports', image: 'picture downloads', nutrition: 'nutrition lookups', portions: 'weight lookups', 'kroger-stores': 'store searches', 'kroger-prices': 'price lookups', 'push-test': 'test notifications', 'push-setup': 'reminder setups', 'recipe-search': 'recipe searches' };
 function limits(): Record<string, number> {
   let extra: Record<string, number> = {};
   try { extra = JSON.parse(Deno.env.get('HELPER_LIMITS') || '{}') } catch (_) {}
@@ -252,8 +252,10 @@ export async function overLimit(user: string | undefined, action: string): Promi
   if (!row) return null;
   const name = LIMIT_NAMES[action] || action, h = hoursToReset();
   if (Number(row.mine) > max) return { error: `You've used today's ${max} ${name}. More are available in about ${h} hour${h === 1 ? '' : 's'}.`, limit: true };
-  const total = action === 'read-card' ? Number(Deno.env.get('READ_CARD_DAILY_TOTAL') || 300) : 0;
-  if (total && Number(row.everyone) > total) return { error: `Whole Kitchen's photo reader is at its daily limit for everyone. Try again in about ${h} hour${h === 1 ? '' : 's'}, or use Paste recipe text.`, limit: true };
+  const total = action === 'read-card' ? Number(Deno.env.get('READ_CARD_DAILY_TOTAL') || 300) : action === 'recipe-search' ? Number(Deno.env.get('RECIPE_SEARCH_DAILY_TOTAL') || 30) : 0;
+  if (total && Number(row.everyone) > total) return action === 'recipe-search'
+    ? { error: 'Web recipe search is at its daily limit for everyone.', limit: true, everyone: true }
+    : { error: `Whole Kitchen's photo reader is at its daily limit for everyone. Try again in about ${h} hour${h === 1 ? '' : 's'}, or use Paste recipe text.`, limit: true };
   return null;
 }
 async function usageToday(user: string | undefined) {
@@ -304,18 +306,20 @@ async function handle(req: Request): Promise<Response> {
   if (req.headers.get('content-type')?.includes('json')) {
     const peek = await req.clone().json().catch(() => null);
     if (peek?.action === 'send-reminders') return reply(...await sendDueReminders(peek));
+    if (peek?.action === 'send-timers') return reply(...await sendDueTimers(peek));
   }
 
   // Only people signed in to this Supabase project (your family) may use the helper.
   const auth = req.headers.get('Authorization') || '';
   const apikey = req.headers.get('apikey') || Deno.env.get('SUPABASE_ANON_KEY') || '';
   const check = await fetch(Deno.env.get('SUPABASE_URL') + '/auth/v1/user', { headers: { Authorization: auth, apikey } }).catch(() => null);
-  if (!check || !check.ok) return reply(401, { error: 'Sign in under Family sync to import recipes from links.' });
+  if (!check || !check.ok) return reply(401, { error: 'Sign in under Settings → Family sharing to import recipes from links.' });
   const who: any = await check.json().catch(() => ({}));
 
   let body: any = {};
   try { body = await req.json() } catch (_) {}
   if (body.action === 'limits') return reply(200, await usageToday(who?.id));
+  if (body.action === 'recipe-search' && !Deno.env.get('BRAVE_API_KEY')) return reply(503, { error: 'Web recipe search isn\'t set up on this copy of the app.', setup: true });   // not counted
   const over = await overLimit(who?.id, body.action ? String(body.action) : 'url');
   if (over) return reply(429, over);
   if (body.action === 'kroger-stores') return reply(...await krogerStores(body));
@@ -324,6 +328,7 @@ async function handle(req: Request): Promise<Response> {
   if (body.action === 'portions') return reply(...await foodPortions(body));
   if (body.action === 'image') return reply(...await fetchImage(body));
   if (body.action === 'read-card') return reply(...await readRecipeCard(body));
+  if (body.action === 'recipe-search') return reply(...await recipeSearch(body));
   if (/^push-(key|setup|test)$/.test(String(body.action))) return reply(...await pushAction(body, functionName(req)));
   const url = allowedUrl(body.url);
   if (!url) return reply(400, { error: 'That doesn\'t look like a web address. Copy the full link starting with https://' });
@@ -353,6 +358,42 @@ async function handle(req: Request): Promise<Response> {
     return reply(422, { error: 'No recipe found on that page. Use Paste recipe text instead.' });
   }
   return reply(200, recipe);
+}
+
+// =====================================================================
+// Recipe search on the web (v44): Brave Search finds recipe pages; tapping one imports it with the link importer above.
+// Needs a Supabase secret BRAVE_API_KEY (api-dashboard.search.brave.com). Brave gives $5 of searches free each month
+// (about 1,000); RECIPE_SEARCH_DAILY_TOTAL (default 30 a day for everyone together) keeps use inside that.
+// Without the key the app searches TheMealDB instead.
+// =====================================================================
+const SEARCH_SKIP = /(^|\.)(youtube\.com|youtu\.be|tiktok\.com|facebook\.com|instagram\.com|pinterest\.[a-z.]+|reddit\.com|quora\.com|wikipedia\.org|amazon\.[a-z.]+|walmart\.com|target\.com|x\.com|twitter\.com)$/i;
+const plain = (t: unknown) => String(t || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+export async function recipeSearch(body: any): Promise<[number, unknown]> {
+  const key = Deno.env.get('BRAVE_API_KEY');
+  if (!key) return [503, { error: 'Web recipe search isn\'t set up on this copy of the app.', setup: true }];
+  const q = String(body.q || '').replace(/\s+/g, ' ').trim().slice(0, 100);
+  if (q.length < 2) return [400, { error: 'Type what you\'d like to cook.' }];
+  const page = Math.max(0, Math.min(4, Math.floor(Number(body.page) || 0)));
+  const u = new URL('https://api.search.brave.com/res/v1/web/search');
+  u.searchParams.set('q', /recipe/i.test(q) ? q : q + ' recipe');
+  u.searchParams.set('count', '20'); u.searchParams.set('offset', String(page));
+  u.searchParams.set('country', 'US'); u.searchParams.set('safesearch', 'strict'); u.searchParams.set('result_filter', 'web');
+  let r: Response;
+  try { r = await fetch(u.href, { headers: { Accept: 'application/json', 'X-Subscription-Token': key }, signal: AbortSignal.timeout(8000) }) }
+  catch (_) { return [502, { error: 'The recipe search didn\'t respond. Try again.' }] }
+  if (r.status === 401 || r.status === 403) return [503, { error: 'The recipe search key isn\'t working.', setup: true }];
+  if (r.status === 429) return [503, { error: 'Web recipe search is busy or out of searches for now.', limit: true, everyone: true }];
+  if (!r.ok) return [502, { error: 'The recipe search had a problem (' + r.status + '). Try again.' }];
+  const j: any = await r.json().catch(() => ({}));
+  const seen = new Set<string>();
+  const results = (j?.web?.results || []).map((x: any) => {
+    const url = allowedUrl(x?.url); if (!url || SEARCH_SKIP.test(url.hostname) || seen.has(url.href)) return null;
+    seen.add(url.href);
+    const site = plain(x?.profile?.name) || url.hostname.replace(/^www\./, '');
+    return { title: plain(x?.title).replace(/\s*[|\-–—]\s*[^|\-–—]{2,40}$/, '').slice(0, 120), url: url.href, site: site.slice(0, 60),
+      image: /^https:\/\//.test(x?.thumbnail?.src || '') ? x.thumbnail.src : '', snippet: plain(x?.description).slice(0, 180) };
+  }).filter(Boolean);
+  return [200, { results, more: page < 4 && (j?.query?.more_results_available ?? results.length >= 10), source: 'brave' }];
 }
 
 // =====================================================================
@@ -609,6 +650,17 @@ export async function sendDueReminders(body: any): Promise<[number, unknown]> {
   }
   return [200, { sent, failed }];
 }
+// Cooking timers (v44): the database's 10-second check calls this when a timer is due, so it rings while the phone sleeps.
+export async function sendDueTimers(body: any): Promise<[number, unknown]> {
+  const rows = await usageRpc('rg_timers_due', { p_key: String(body.key || '') });
+  if (!Array.isArray(rows)) return [403, { error: 'Not allowed.' }];
+  let sent = 0;
+  for (const r of rows) {
+    const res = await sendPush(r, { title: '⏱ Time\'s up', body: r.label || 'Your cooking timer is done', tag: 'timer-' + r.id, url: './index.html?from=timer', timer: true });
+    if (res.ok) sent++; else if (res.gone) await usageRpc('rg_push_result', { p_endpoint: r.endpoint, p_gone: true });
+  }
+  return [200, { sent }];
+}
 async function pushAction(body: any, fnName: string): Promise<[number, unknown]> {
   if (!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) return [503, { error: 'Reminders need the helper\'s service key, which Supabase normally adds by itself. Redeploy the helper.', setup: true }];
   if (body.action === 'push-key') {
@@ -618,6 +670,8 @@ async function pushAction(body: any, fnName: string): Promise<[number, unknown]>
   if (body.action === 'push-setup') {
     const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/${fnName}`;
     const ok = rpcScalar(await usageRpc('rg_schedule_reminders', { p_url: url }));
+    const timers = rpcScalar(await usageRpc('rg_schedule_timers', { p_url: url }));   // null until launch-setup.sql v44 is run
+    if (body.timers) return timers === true ? [200, { scheduled: true }] : [503, { error: 'Timers that ring while the phone sleeps need launch-setup.sql run again in Supabase.', setup: true }];
     return ok === true ? [200, { scheduled: true }] : [503, { error: 'Couldn\'t start the reminder schedule. In Supabase → Database → Extensions, turn on pg_cron and pg_net, then run launch-setup.sql again.', setup: true }];
   }
   if (body.action === 'push-test') {

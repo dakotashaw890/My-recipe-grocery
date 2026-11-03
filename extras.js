@@ -105,11 +105,11 @@ function renderSettingsExtras() {
 // Android's back gesture.
 (() => {
   const ORDER = ['home', 'recipes', 'plan', 'shopping', 'more'];
-  const UNDER_MORE = ['ingredients', 'spending', 'pantry', 'online', 'settings'];
+  const UNDER_MORE = ['ingredients', 'spending', 'pantry', 'settings'];
   const EDGE = 24, LOCK = 10;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let s = null, suppressClick = false;
-  const position = id => ORDER.indexOf(UNDER_MORE.includes(id) ? 'more' : id);
+  const position = id => ORDER.indexOf(UNDER_MORE.includes(id) ? 'more' : id === 'online' ? 'recipes' : id);
   const ignore = t => t.closest('input, textarea, select, [contenteditable], nav, header, .edit-inline, .shop-expand[open], .trip-row');
   const reset = el => { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; el.style.willChange = '' };
 
