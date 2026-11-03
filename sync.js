@@ -62,7 +62,8 @@ function googleSignIn(after) {
   if (!h.get('access_token') && !err) return;
   history.replaceState(null, '', location.pathname + location.search);
   let after = 'settings'; try { after = sessionStorage.getItem('gingham-oauth-after') || 'settings'; sessionStorage.removeItem('gingham-oauth-after') } catch (_) {}
-  if (err) { window.addEventListener('load', () => setTimeout(() => alert('Google sign-in didn\'t finish: ' + err.replace(/\+/g, ' ')), 600)); return }
+  const kind = h.get('type') || '';   // "recovery" = password reset link, "signup" = email confirmation link, none = Google
+  if (err) { window.addEventListener('load', () => setTimeout(() => alert((kind || /email|link|otp/i.test(err) ? 'That email link didn\'t work: ' : 'Google sign-in didn\'t finish: ') + err.replace(/\+/g, ' ') + (/expired|invalid/i.test(err) ? '\n\nLinks expire after a while. Ask for a new one under Settings → Family sync.' : '')), 600)); return }
   keepSession({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token'), expires_in: Number(h.get('expires_in')) || 3600, expires_at: Number(h.get('expires_at')) || 0, user: {} });
   fetch(SYNC_URL + '/auth/v1/user', { headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + syncAuth.access_token } }).then(r => r.ok ? r.json() : null).then(u => {
     if (u?.id && syncAuth) { syncAuth.user = { id: u.id, email: u.email, name: u.user_metadata?.full_name || u.user_metadata?.name || '' }; writeStore(AUTH_STORE, syncAuth) }
@@ -70,10 +71,12 @@ function googleSignIn(after) {
   }).catch(() => {});
   window.addEventListener('load', () => setTimeout(() => {
     try { closeModal() } catch (_) {}
-    if (syncInfo?.familyId) { runSync(); toast('✓ Signed in with Google'); return }
+    if (kind === 'recovery') { showScreen('settings'); openNewPassword(true); if (syncInfo?.familyId) runSync(); return }
+    const how = kind === 'signup' ? 'Email confirmed, you\'re signed in' : kind === 'magiclink' ? 'Signed in' : 'Signed in with Google';
+    if (syncInfo?.familyId) { runSync(); toast('✓ ' + how); return }
     showScreen(after === 'home' ? 'home' : 'settings');
     setTimeout(() => document.getElementById('familyCard')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
-    toast('✓ Signed in with Google. Now create your family or join one.');
+    toast('✓ ' + how + '. Now create your family or join one.');
   }, 400));
 })();
 let refreshing = null;
@@ -448,6 +451,38 @@ function familySignIn(create) {
     if (syncInfo?.familyId) runSync();
   });
 }
+// Forgot password: Supabase emails a link; it opens the app signed in, and the app asks for a new password.
+function familyForgotPassword() {
+  return withBusy(async () => {
+    const email = familyField('familyEmail');
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) throw new SyncError('Type your email in the Email box above, then tap "Forgot your password?" again.');
+    const back = location.origin + location.pathname;
+    await authCall('recover?redirect_to=' + encodeURIComponent(back), { email });
+    return `If ${email} has an account, a reset link is on its way. Open it on this phone (check spam too). It works for about an hour.`;
+  });
+}
+function openNewPassword(fromEmail) {
+  openModal(`<div class="row between"><h2>${fromEmail ? 'Set a new password' : 'Change password'}</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
+    <p class="small muted">${fromEmail ? 'You\'re signed in from the reset link. Choose a new password for ' + esc(syncAuth?.user?.email || 'your account') + '.' : 'Choose a new password for ' + esc(syncAuth?.user?.email || 'your account') + '.'}</p>
+    <label for="newPw1">New password</label><input id="newPw1" type="password" autocomplete="new-password" minlength="8">
+    <label for="newPw2">Type it again</label><input id="newPw2" type="password" autocomplete="new-password" minlength="8">
+    <div id="newPwMsg" class="small" role="status"></div>
+    <div class="actions"><button class="btn" id="newPwSave" onclick="saveNewPassword()">Save password</button><button class="btn secondary" onclick="closeModal()">${fromEmail ? 'Later' : 'Cancel'}</button></div>`);
+  setTimeout(() => document.getElementById('newPw1')?.focus(), 50);
+}
+async function saveNewPassword() {
+  const a = document.getElementById('newPw1').value, b = document.getElementById('newPw2').value, msg = document.getElementById('newPwMsg'), btn = document.getElementById('newPwSave');
+  const say = (t, bad) => { msg.className = 'small ' + (bad ? 'warning' : 'muted'); msg.textContent = t };
+  if (a.length < 8) return say('Use at least 8 characters.', true);
+  if (a !== b) return say('The two passwords don\'t match.', true);
+  btn.disabled = true; say('Saving…');
+  try {
+    const r = await fetch(SYNC_URL + '/auth/v1/user', { method: 'PUT', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' }, body: JSON.stringify({ password: a }) });
+    const j = await readJSON(r);
+    if (!r.ok) throw new Error(errorText(j, 'Couldn\'t change it (' + r.status + ').'));
+    closeModal(); toast('✓ Password changed'); renderFamilyCard();
+  } catch (e) { btn.disabled = false; say(e instanceof TypeError ? 'No internet connection. Try again.' : /same|different/i.test(e.message) ? 'That\'s your current password. Choose a different one.' : e.message, true) }
+}
 function familyCreate() {
   return withBusy(async () => {
     const name = familyField('familyName') || 'Our kitchen', displayName = familyField('familyDisplayName');
@@ -529,6 +564,7 @@ async function renderFamilyCard() {
       <label for="familyEmail">Email</label><input id="familyEmail" type="email" autocomplete="email" value="${esc(syncAuth?.user?.email || '')}">
       <label for="familyPassword">Password</label><input id="familyPassword" type="password" autocomplete="current-password">
       <div class="actions"><button class="btn" onclick="familySignIn(false)">Sign in</button><button class="btn secondary" onclick="familySignIn(true)">Create account</button></div>
+      <p class="forgot-line"><button class="linkish small" onclick="familyForgotPassword()">Forgot your password?</button></p>
 `;
   } else if (!syncInfo?.familyId) {
     body = `<p class="small muted">Signed in as ${esc(syncAuth.user?.email || '')}.</p>
@@ -547,7 +583,7 @@ async function renderFamilyCard() {
       <div id="familyMembers" class="small muted"></div>
       <div class="actions"><button class="btn secondary" onclick="runSync()">Sync now</button><button class="btn secondary" onclick="shareJoinCode()">Share join code</button>
       ${syncInfo.paused ? '<button class="btn" onclick="familyResume()">Resume sync</button><button class="btn secondary" onclick="familyUseShared()">Use family\'s copy</button>' : ''}
-      <button class="btn ghost" onclick="familyStop()">Stop syncing on this phone</button></div>`;
+      <button class="btn ghost" onclick="familyStop()">Stop syncing on this phone</button><button class="btn ghost" onclick="openNewPassword(false)">Change password</button></div>`;
   }
   card.innerHTML = `<h3>👨‍👩‍👧 Family sync</h3>${body}<div id="familyMsg" class="small muted" role="status">${esc(keepMsg)}</div>`;
   if (syncActive()) {

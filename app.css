@@ -2027,3 +2027,6 @@ div.share-choice { cursor: default }
 @media (max-width: 365px) { #shoppingList .shop-buy strong.buy-long { font-size: .88rem } }
 /* v39: the app's logo on the welcome sheet */
 .welcome-logo { display: block; width: 64px; height: 64px; border-radius: 16px; margin: 0 0 10px; box-shadow: 0 4px 12px var(--shadow-c) }
+/* v40: forgot password */
+.forgot-line { margin: 6px 0 0 }
+.forgot-line .linkish { padding: 8px 2px }
