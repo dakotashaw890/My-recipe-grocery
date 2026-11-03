@@ -5,7 +5,7 @@
 
 const KROGER_FRESH_DAYS = 7;
 async function callHelper(body) {
-  if (typeof syncAuth === 'undefined' || !syncAuth || !syncConfigured) throw Object.assign(new Error('Sign in under ⚙️ Family sync to use store prices and nutrition facts.'), { signin: true });
+  if (typeof syncAuth === 'undefined' || !syncAuth || !syncConfigured) throw Object.assign(new Error('Sign in under ⚙️ Settings → Family sharing to use store prices and nutrition facts.'), { signin: true });
   const fn = String(SYNC_CFG.importFunction || 'recipe-import').trim();
   const r = await fetch(SYNC_URL + '/functions/v1/' + encodeURIComponent(fn), {
     method: 'POST', headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' }, body: JSON.stringify(body)

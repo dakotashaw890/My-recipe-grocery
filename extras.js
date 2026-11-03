@@ -96,7 +96,7 @@ function renderSettingsExtras() {
   if (typeof renderAccountCard === 'function') renderAccountCard();
   if (typeof renderGuideCard === 'function') renderGuideCard();
   if (typeof renderShareCodeLine === 'function') renderShareCodeLine();
-  const v9 = document.getElementById('v9Block'); if (v9) v9.hidden = (state.auditVersion || 0) >= 9 || !Object.keys(state.data.recipes).length;
+  if (typeof renderSettingsHome === 'function') renderSettingsHome();
 }
 
 // ---------- Swipe between the main screens ----------
@@ -192,6 +192,8 @@ function closeTopLayer() {
   const toastBar = document.getElementById('actionToast');
   if (document.getElementById('modal')?.classList.contains('show')) { closeModal(); return true }
   if (toastBar) { toastBar.remove(); return true }
+  // a page inside Settings: back returns to the Settings list
+  if (typeof settingsPage !== 'undefined' && settingsPage && document.getElementById('settings')?.classList.contains('active')) { closeSettingsPage(); return true }
   // inside a recipe group: back returns to the group tiles
   if (typeof recipeView !== 'undefined' && recipeView !== null && document.getElementById('recipes')?.classList.contains('active')) { closeRecipeView(); return true }
   return false;

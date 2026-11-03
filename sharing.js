@@ -129,7 +129,7 @@ async function openSharedFromAddress() {
 function saveOpenedShare() {
   const rid = saveSharedRecipe(openedShare, 'Shared' + (openedShare.from_name ? ' by ' + openedShare.from_name : ''));
   closeModal(); toast('✓ Saved to your recipes');
-  if (state.welcome) { delete state.welcome; save(); showScreen('recipes'); loadScriptOnce('onboarding.js?v=42').then(() => startOnboarding()).catch(() => {}) }
+  if (state.welcome) { delete state.welcome; save(); showScreen('recipes'); loadScriptOnce('onboarding.js?v=44').then(() => startOnboarding()).catch(() => {}) }
   else openRecipe(rid);
 }
 function afterSharedClosed() { if (state.welcome && typeof openWelcome === 'function') openWelcome() }

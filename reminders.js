@@ -90,7 +90,7 @@ function renderPrepCard() {
   const list = computeReminders(2).filter(x => x.at <= endTomorrow && x.kind !== 'start').slice(0, 4);
   if (!list.length) { box.innerHTML = ''; return }
   const p = remindPrefs();
-  box.innerHTML = `<div class="card prep-card"><div class="row between"><h3>⏰ Prep ahead</h3>${!p.on ? '<button class="linkish small" onclick="showScreen(\'settings\');setTimeout(()=>document.getElementById(\'remindersCard\')?.scrollIntoView({block:\'center\'}),200)">Get reminders</button>' : ''}</div>
+  box.innerHTML = `<div class="card prep-card"><div class="row between"><h3>⏰ Prep ahead</h3>${!p.on ? '<button class="linkish small" onclick="openSettingsPage(\'reminders\')">Get reminders</button>' : ''}</div>
     ${list.map(x => `<div class="prep-item ${x.at <= now ? 'due' : ''}"><div class="grow"><small>${x.at <= now ? 'Now' : esc(whenWords(x.at))} · ${{ thaw: 'Thaw', slow: 'Slow cooker', start: 'Start cooking' }[x.kind] || 'Prep ahead'}</small><b>${esc(x.title.replace(/^[^:]+: /, ''))}</b><span class="small">${esc(x.body.replace(/ “.*$/, ''))}</span></div>
       <button class="btn secondary prep-done" aria-label="Done: ${esc(x.title)}" onclick="markPrepDone(decodeURIComponent('${encId(x.planKey)}'),'${x.kind}')">✓ Done</button></div>`).join('')}</div>`;
 }
@@ -132,7 +132,7 @@ async function renderRemindersCard() {
   const next = upcoming[0];
   const opt = (k, label, hint) => `<label class="check-row"><input type="checkbox" ${p[k] ? 'checked' : ''} onchange="setRemindPrefs({${k}:this.checked});renderRemindersCard();renderPrepCard?.()"> <span>${label}${hint ? `<small class="muted"> ${hint}</small>` : ''}</span></label>`;
   const status = !pushSupported() ? '<p class="small muted">This browser can\'t show notifications. Reminders still show on the Home screen.</p>'
-    : !canSyncReminders() ? '<p class="small muted">Phone notifications need family sync (⚙️ above). Reminders already show on the Home screen.</p>'
+    : !canSyncReminders() ? '<p class="small muted">Phone notifications need family sharing (Settings → Family sharing). Reminders already show on the Home screen.</p>'
     : here ? `<p class="small ing-ok">✓ This phone gets reminders${p.on ? '' : ' (paused for the family)'}.</p>` : Notification.permission === 'denied' ? '<p class="small warning">Notifications are blocked for Whole Kitchen. Turn them on in your phone\'s settings (Apps → Whole Kitchen → Notifications), then try again.</p>' : '';
   box.innerHTML = `<h3>⏰ Prep reminders</h3>
     <p class="muted small">A heads-up for planned meals: thaw the chicken the night before, start the slow cooker, marinate or soak ahead. They show on Home, and can pop up as phone notifications.</p>
@@ -171,7 +171,7 @@ async function turnOnReminders() {
     msg('✓ Reminders are on. Sending a test…');
     await sendTestReminder();
   } catch (e) {
-    warn(e.missing ? 'Reminders aren\'t set up in Supabase yet: run launch-setup.sql in the SQL Editor.' : e.signin ? 'Sign in under Family sync first.' : /web address|Unknown reminder/i.test(e.message) ? 'Your Supabase helper is an older version: paste the newest recipe-import.ts into recipe-imports and Deploy.' : e.message);
+    warn(e.missing ? 'Reminders aren\'t set up in Supabase yet: run launch-setup.sql in the SQL Editor.' : e.signin ? 'Sign in under Settings → Family sharing first.' : /web address|Unknown reminder/i.test(e.message) ? 'Your Supabase helper is an older version: paste the newest recipe-import.ts into recipe-imports and Deploy.' : e.message);
   }
 }
 async function sendTestReminder() {

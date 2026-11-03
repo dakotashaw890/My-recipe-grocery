@@ -20,12 +20,12 @@ const setupOk = (msg) => ({ state: 'ok', msg });
 const setupBad = (msg, fix) => ({ state: 'bad', msg, fix });
 const setupWarn = (msg, fix) => ({ state: 'warn', msg, fix });
 const offline = () => setupWarn('Couldn\'t reach Supabase.', 'Check your internet connection and run the check again.');
-const needsFamily = () => setupWarn('Needs family sync first.', 'Create or join a family in Family sync above, then run the check again.');
+const needsFamily = () => setupWarn('Needs family sync first.', 'Create or join a family in Settings → Family sharing, then run the check again.');
 
 async function checkSync() {
   if (typeof syncConfigured === 'undefined' || !syncConfigured) return setupBad('Not connected to Supabase.', 'sync-config.js needs your Supabase web address and publishable key (SYNC-SETUP.md).');
-  if (!syncAuth || !syncInfo?.familyId) return setupWarn('This phone isn\'t in a family yet.', 'Use Family sync above to create a family or join with a code.');
-  try { await accessToken() } catch (e) { return e instanceof TypeError ? offline() : setupBad('Signed out.', 'Sign in again in Family sync above.') }
+  if (!syncAuth || !syncInfo?.familyId) return setupWarn('This phone isn\'t in a family yet.', 'Use Settings → Family sharing to create a family or join with a code.');
+  try { await accessToken() } catch (e) { return e instanceof TypeError ? offline() : setupBad('Signed out.', 'Sign in again in Settings → Family sharing.') }
   const last = syncInfo.lastSyncAt ? ' Last synced ' + new Date(syncInfo.lastSyncAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) + '.' : '';
   return setupOk(`Signed in to “${syncInfo.familyName || 'your family'}”.` + last);
 }

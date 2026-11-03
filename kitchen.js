@@ -243,7 +243,7 @@ function openRecipeImport(opts = {}) {
   const signedIn = typeof syncAuth !== 'undefined' && !!syncAuth && syncConfigured;
   openModal(`<div class="row between"><h2>Import a recipe</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
     <div class="card"><h3>From a website</h3>
-      ${signedIn ? '' : '<p class="small warning">Sign in under ⚙️ Family sync to import from links. Pasting text works without signing in.</p>'}
+      ${signedIn ? '' : '<p class="small warning">Sign in under ⚙️ Settings → Family sharing to import from links. Pasting text works without signing in.</p>'}
       <label for="importUrl">Recipe or post link</label><input id="importUrl" type="url" inputmode="url" placeholder="https://www.allrecipes.com/recipe/…" value="${esc(opts.url || '')}" ${signedIn ? '' : 'disabled'}>
       <div class="actions"><button class="btn" onclick="importFromLink()" ${signedIn ? '' : 'disabled'}>Import from link</button></div>
       <p class="tiny muted">Works with recipe websites and TikTok, Instagram, YouTube, Pinterest and Facebook posts. Quickest: in any app tap <b>Share → Whole Kitchen</b>.</p></div>

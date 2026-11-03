@@ -52,7 +52,7 @@ function renderPlanPrefs() {
       <p class="tiny muted">Uses the price estimates on your ingredients. Cheaper recipes are chosen when needed to stay under it.</p></div>
     <div class="card"><h3>👪 Family</h3><p class="small muted">Recipes your family rated 👍 are picked more, 👎 less.</p>
       <label class="check-line"><input id="ppWontEat" type="checkbox" ${p.skipWontEat ? 'checked' : ''}> Skip recipes with something a person won't eat</label>
-      ${typeof peopleList === 'function' && !peopleList().length ? `<p class="tiny muted">Add people and what they won't eat under ⚙️ Settings → Who eats at your table.</p>` : ''}</div>
+      ${typeof peopleList === 'function' && !peopleList().length ? `<p class="tiny muted">Add people and what they won't eat under ⚙️ Settings → People at your table.</p>` : ''}</div>
     <div class="card"><h3>📁 Groups</h3>
       ${groups.length ? `<label>Pick more often</label><div class="chip-row">${groups.map(g => chip('favorGroups', g.id, groupName(g.id))).join('')}</div>
       <label>Never pick automatically</label><div class="chip-row">${groups.map(g => chip('avoidGroups', g.id, groupName(g.id))).join('')}</div>

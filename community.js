@@ -120,7 +120,7 @@ function communityButtonHTML(id) {
 }
 function openShareCommunity(id) {
   const r = state.data.recipes[id]; if (!r) return;
-  if (!signedInForCommunity()) return alert('Sign in under ⚙️ Family sync to share recipes with the community.');
+  if (!signedInForCommunity()) return alert('Sign in under ⚙️ Settings → Family sharing to share recipes with the community.');
   const imported = !!r.sourceUrl, credit = imported ? sourceLabel(r.sourceUrl, r.sourceType) : '';
   openModal(`<div class="row between"><h2>${r.publicId ? 'Shared with the community' : 'Share with the community'}</h2><button class="iconbtn" aria-label="Close" onclick="openRecipe(decodeURIComponent('${encId(id)}'))">✕</button></div>
     <p>${r.publicId ? `“${esc(r.name)}” is in the community library.` : `Anyone using Whole Kitchen will be able to see “${esc(r.name)}” and save a copy.`}</p>

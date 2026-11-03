@@ -62,7 +62,7 @@ async function fillWeightsFromUSDA() {
     const left = usedIngredients().filter(e => (e.needCup && !weightInfo(e.key, 'gramsPerCup').g) || (e.needEach && !weightInfo(e.key, 'gramsPerEach').g)).length;
     const el = document.getElementById('wtMsg'); if (el) { el.className = 'small ing-ok'; el.textContent = `✓ Filled in ${cups} cup weight${cups === 1 ? '' : 's'} and ${eaches} “each” weight${eaches === 1 ? '' : 's'} from USDA.${left ? ` ${left} still need a number: they're marked below.` : ''}` }
   } catch (e) {
-    const el = document.getElementById('wtMsg'); if (el) { el.className = 'small warning'; el.textContent = e.signin ? 'Sign in under ⚙️ Family sync to look up weights.' : /web address/i.test(e.message) ? 'Paste the newest recipe-import.ts into your Supabase helper and Deploy, then try again.' : e.message }
+    const el = document.getElementById('wtMsg'); if (el) { el.className = 'small warning'; el.textContent = e.signin ? 'Sign in under ⚙️ Settings → Family sharing to look up weights.' : /web address/i.test(e.message) ? 'Paste the newest recipe-import.ts into your Supabase helper and Deploy, then try again.' : e.message }
   }
 }
 let weightFilter = '';

@@ -31,13 +31,13 @@
 <header><b>Whole Kitchen</b></header>
 <main>
   <h1>Delete your Whole Kitchen account</h1>
-  <p>You can delete your account here or in the app (Settings → Account &amp; privacy → Delete my account). Deleting permanently removes:</p>
+  <p>You can delete your account here or in the app (Settings → Privacy &amp; your data → Delete my account). Deleting permanently removes:</p>
   <ul>
     <li>your sign-in (email and password)</li>
     <li>your membership in your family. If you're its only member, the family's shared recipes, meal plans, shopping lists, pantry and photos are deleted too. Otherwise the other members keep them.</li>
     <li>any recipes you shared to Community recipes, with their photos</li>
   </ul>
-  <p class="muted">Deletion happens right away and can't be undone. Copies kept on your own phone aren't touched; erase those in the app (Settings → Account &amp; privacy → Erase everything on this phone) or by uninstalling it. See the <a href="privacy.html">privacy policy</a>.</p>
+  <p class="muted">Deletion happens right away and can't be undone. Copies kept on your own phone aren't touched; erase those in the app (Settings → Privacy &amp; your data → Erase everything on this phone) or by uninstalling it. See the <a href="privacy.html">privacy policy</a>.</p>
   <div class="card" id="form">
     <label for="email">Email</label><input id="email" type="email" autocomplete="username">
     <label for="password">Password</label><input id="password" type="password" autocomplete="current-password">
@@ -50,7 +50,7 @@
   <p class="muted">Forgot your password, or can't sign in? Email the address in the <a href="privacy.html#contact">privacy policy</a> from your account's email address and we'll delete it within 30 days.</p>
 </main>
 <script src="sync-config.js"></script>
-<script src="account.js?v=39"></script>
+<script src="account.js?v=44"></script>
 <script>
   const cfg = window.RG_SYNC_CONFIG || {}, URL_ = String(cfg.url || '').replace(/\/+$/, ''), KEY_ = String(cfg.anonKey || '');
   const msg = (t, cls = '') => { const m = document.getElementById('msg'); m.textContent = t; m.className = 'msg ' + cls };

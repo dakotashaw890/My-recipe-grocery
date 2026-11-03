@@ -183,7 +183,7 @@ async function deleteMeal() {
   if (!await ask('Remove this meal from the plan?\n\nThe recipe stays in your recipes.', { ok: 'Remove' })) return;
   delete state.plan[key]; save(); closeModal();
 }
-function openWeekNutritionNow() { loadScriptOnce('nutrition.js?v=37').then(() => openWeekNutrition()) }
+function openWeekNutritionNow() { loadScriptOnce('nutrition.js?v=44').then(() => openWeekNutrition()) }
 // The ⋯ menu beside "Meal Plan": the less-used week actions, in the same style as Shopping options.
 function openPlanMenu() {
   const dates = weekDates(), n = dates.reduce((t, d) => t + MEALS.reduce((m, meal) => m + planEntries(d, meal).length, 0), 0);

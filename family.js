@@ -106,8 +106,8 @@ function closePeopleEditor() {
 }
 function renderPeopleCard() {
   let card = document.getElementById('peopleCard');
-  const host = document.getElementById('settings'); if (!host) return;
-  if (!card) { card = document.createElement('div'); card.id = 'peopleCard'; card.className = 'card'; const first = host.querySelector('.card'); first ? host.insertBefore(card, first) : host.appendChild(card) }
+  const host = document.getElementById('setPage-people') || document.getElementById('settings'); if (!host) return;
+  if (!card) { card = document.createElement('div'); card.id = 'peopleCard'; card.className = 'card'; host.appendChild(card) }
   const list = peopleList();
   card.innerHTML = `<h3>👪 Who eats at your table</h3>
     ${list.length ? `<div class="people-chips">${list.map(p => `<span class="pill">${esc(p.emoji)} ${esc(p.name)}${p.wontEat?.length ? ` · no ${esc(p.wontEat.join(', '))}` : ''}</span>`).join('')}</div>` : '<p class="small muted">Add your family so each person can rate recipes, and list foods anyone won\'t eat.</p>'}

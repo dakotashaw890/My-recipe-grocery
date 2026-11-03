@@ -2042,3 +2042,68 @@ div.share-choice { cursor: default }
 .prefs-line:hover { color: var(--ink); }
 .menu-item.menu-danger b { color: var(--tomato, #C8412F); }
 .plan-main > .btn { white-space: nowrap; }
+
+/* ===== v44: refreshed look: compact header, line icons, grouped-list Settings (like most phone apps) ===== */
+:root { --blue: #2F6FA3; --blue-tint: #E1ECF5; --blue-text: #245A86; --slate-tint: #ECE6DC; --slate-text: #5A4A3F; --row-h: 60px; }
+@media (prefers-color-scheme: dark) { :root { --blue: #7FB3DE; --blue-tint: #1F3140; --blue-text: #A9CDEB; --slate-tint: #3A312A; --slate-text: #D8CBB9; } }
+.ico { width: 22px; height: 22px; display: block; flex: none; }
+
+/* header: one slim bar with the logo */
+header { padding: 10px 14px; border-radius: 0 0 18px 18px; }
+.header-row > div.brand-wrap { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 14px; min-width: 0; }
+.brand-logo { width: 34px; height: 34px; border-radius: 10px; flex: none; }
+.brand-wrap .brand { font-size: 20px; line-height: 1.1; white-space: nowrap; }
+.brand-wrap .sub { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header .iconbtn { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink-2); }
+header .iconbtn .ico { width: 22px; height: 22px; }
+@media (max-width: 359px) { .brand-wrap .sub { display: none; } }
+
+/* bottom bar: line icons, the active one sits in a soft pill (Material style) */
+nav { padding-bottom: env(safe-area-inset-bottom); }
+.navbtn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px 9px !important; font-weight: 600; }
+.navbtn.active { background: transparent; font-weight: 800; }
+.navicon { display: grid; place-items: center; width: 56px; height: 30px; border-radius: 999px; line-height: 1; transition: background .15s; }
+.navicon .ico { width: 23px; height: 23px; }
+.navbtn.active .navicon { background: var(--tomato-tint); color: var(--tomato-text); }
+.navbtn.active .navicon .ico { stroke-width: 2.2; }
+
+/* card titles: clean sans-serif like the big apps; the serif stays for screen titles */
+h3, .recipe-card h3 { font-family: inherit; font-weight: 700; letter-spacing: -0.1px; font-size: 1.04rem; }
+
+/* grouped lists (Settings, More) */
+.set-group-title { font-family: inherit; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 6px 8px; }
+.set-group { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }
+.set-row, .set-profile { display: flex; align-items: center; gap: 14px; width: 100%; min-height: var(--row-h); padding: 10px 12px 10px 14px; border: 0; border-radius: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: none; }
+.set-row + .set-row { border-top: 1px solid var(--line); }
+.set-row:active, .set-profile:active { background: var(--card-2); }
+.set-row:focus-visible, .set-profile:focus-visible { outline: 3px solid var(--tomato); outline-offset: -3px; }
+.set-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 1px; }
+.set-txt b { font-weight: 650; font-size: 1rem; line-height: 1.25; }
+.set-txt small { color: var(--muted); font-size: .84rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.set-txt small:empty { display: none; }
+.set-ico { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; flex: none; }
+.set-ico .ico { width: 21px; height: 21px; }
+.t-red { background: var(--tomato-tint); color: var(--tomato-text); }
+.t-olive { background: var(--olive-tint); color: var(--olive-text); }
+.t-butter { background: var(--butter-tint); color: var(--butter-text); }
+.t-blue { background: var(--blue-tint); color: var(--blue-text); }
+.t-slate { background: var(--slate-tint); color: var(--slate-text); }
+.ico.chev { width: 18px; height: 18px; color: var(--line-strong); }
+.set-row.danger .set-txt b { color: var(--tomato-text); }
+.set-danger { margin-top: 22px; }
+.set-version { text-align: center; margin: 18px 0 8px; }
+.set-profile { margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); min-height: 76px; }
+.set-avatar { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--soft); color: var(--ink-2); font-weight: 800; font-size: 1.3rem; flex: none; }
+.set-avatar.on { background: var(--tomato); color: var(--on-accent); }
+.set-avatar .ico { width: 26px; height: 26px; }
+#more .set-group-title:first-of-type, #setHome .set-profile + .set-group-title { margin-top: 18px; }
+
+/* a page inside Settings */
+.set-head { display: flex; align-items: center; gap: 6px; margin: 4px 0 12px -6px; }
+.set-head h2 { margin: 0; font-size: 1.55rem; }
+.set-back { width: 44px; height: 44px; display: grid; place-items: center; background: none; color: var(--ink); }
+.set-back .ico { width: 26px; height: 26px; }
+.set-page > .card + .card { margin-top: 12px; }
+.set-page #advancedCard .adv-block + .adv-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.set-page #advancedCard .adv-block { border: 0; padding-left: 0; padding-right: 0; background: none; }
+#familyCard > h3:first-child, #remindersCard > h3:first-child, #pictureCard > h3:first-child, #accountCard > h3:first-child, #setupCheckCard > h3:first-child, #peopleCard > h3:first-child { display: none; }

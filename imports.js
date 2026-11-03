@@ -38,7 +38,7 @@ function handleShareLaunch() {
   if (shared.link) {
     openRecipeImport({ url: shared.link });
     if (signedIn) importFromLink();
-    else importMessage('Sign in under ⚙️ Family sync to import from links. Or open the post, copy its text, and paste it below.', true);
+    else importMessage('Sign in under ⚙️ Settings → Family sharing to import from links. Or open the post, copy its text, and paste it below.', true);
     return;
   }
   // shared text with no link (a recipe app sharing the recipe itself, a note, an email)

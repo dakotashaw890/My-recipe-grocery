@@ -63,7 +63,7 @@ function googleSignIn(after) {
   history.replaceState(null, '', location.pathname + location.search);
   let after = 'settings'; try { after = sessionStorage.getItem('gingham-oauth-after') || 'settings'; sessionStorage.removeItem('gingham-oauth-after') } catch (_) {}
   const kind = h.get('type') || '';   // "recovery" = password reset link, "signup" = email confirmation link, none = Google
-  if (err) { window.addEventListener('load', () => setTimeout(() => alert((kind || /email|link|otp/i.test(err) ? 'That email link didn\'t work: ' : 'Google sign-in didn\'t finish: ') + err.replace(/\+/g, ' ') + (/expired|invalid/i.test(err) ? '\n\nLinks expire after a while. Ask for a new one under Settings → Family sync.' : '')), 600)); return }
+  if (err) { window.addEventListener('load', () => setTimeout(() => alert((kind || /email|link|otp/i.test(err) ? 'That email link didn\'t work: ' : 'Google sign-in didn\'t finish: ') + err.replace(/\+/g, ' ') + (/expired|invalid/i.test(err) ? '\n\nLinks expire after a while. Ask for a new one under Settings → Family sharing.' : '')), 600)); return }
   keepSession({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token'), expires_in: Number(h.get('expires_in')) || 3600, expires_at: Number(h.get('expires_at')) || 0, user: {} });
   fetch(SYNC_URL + '/auth/v1/user', { headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + syncAuth.access_token } }).then(r => r.ok ? r.json() : null).then(u => {
     if (u?.id && syncAuth) { syncAuth.user = { id: u.id, email: u.email, name: u.user_metadata?.full_name || u.user_metadata?.name || '' }; writeStore(AUTH_STORE, syncAuth) }
@@ -76,8 +76,7 @@ function googleSignIn(after) {
     if (syncInfo?.familyId) { runSync(); toast('✓ ' + how); return }
     const back = await reconnectFamily().catch(e => { console.warn('Family lookup failed', e); return '' });
     if (back) { showScreen('home'); toast('✓ ' + how + '. Reconnected to ' + back); return }
-    showScreen(after === 'home' ? 'home' : 'settings');
-    setTimeout(() => document.getElementById('familyCard')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
+    if (after === 'home') showScreen('home'); else openSettingsPage('family');
     toast('✓ ' + how + '. Now create your family or join one.');
   }, 400));
 })();
@@ -502,7 +501,7 @@ function familyJoin() {
   return withBusy(async () => {
     const code = familyField('familyCode'), displayName = familyField('familyDisplayName');
     if (!code) throw new SyncError('Enter the join code shown on the other phone.');
-    if (!await ask('Joining replaces the recipes, plan, pantry and lists on this phone with the family\'s shared copy.\n\nA backup of this phone\'s current data is saved first (Settings → Automatic backups).')) return;
+    if (!await ask('Joining replaces the recipes, plan, pantry and lists on this phone with the family\'s shared copy.\n\nA backup of this phone\'s current data is saved first (Settings → Backups).')) return;
     const [fam] = await rpc('rg_join_family', { p_code: code, p_display_name: displayName });
     await loadFamily(fam, displayName);
     toast('Joined ' + fam.name);
@@ -541,7 +540,7 @@ async function reconnectFamily() {
   const fam = Array.isArray(fams) ? fams[0] : null; if (!fam) return '';
   // this phone has its own plans or recipes (not just the examples)? check before replacing them
   const own = Object.keys(state.plan || {}).length || Object.values(state.data?.recipes || {}).some(r => !/example$/i.test(r?.sourceType || ''));
-  if (own && !await ask(`Reconnect to “${fam.name}”?\n\nYour account belongs to this family. Reconnecting replaces the recipes, plan and lists on this phone with the family's copy. A backup of this phone's current data is saved first (Settings → Automatic backups).`, { ok: 'Reconnect' })) return '';
+  if (own && !await ask(`Reconnect to “${fam.name}”?\n\nYour account belongs to this family. Reconnecting replaces the recipes, plan and lists on this phone with the family's copy. A backup of this phone's current data is saved first (Settings → Backups).`, { ok: 'Reconnect' })) return '';
   await loadFamily(fam, m.display_name || '');
   return fam.name;
 }
@@ -569,7 +568,7 @@ async function familyUseShared() {
   });
 }
 async function shareJoinCode() {
-  const text = `Join our family on Whole Kitchen: Settings → Family sync → Join with code ${syncInfo.joinCode}`;
+  const text = `Join our family on Whole Kitchen: Settings → Family sharing → Join with code ${syncInfo.joinCode}`;
   try { if (navigator.share) return await navigator.share({ title: 'Family join code', text }) } catch (e) { if (e.name === 'AbortError') return }
   try { await navigator.clipboard.writeText(syncInfo.joinCode); toast('Join code copied') } catch (_) { prompt('Join code', syncInfo.joinCode) }
 }

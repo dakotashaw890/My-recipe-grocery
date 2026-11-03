@@ -49,7 +49,7 @@ function renderTour() {
   } else if (step === 'family') {
     const shared = typeof syncActive === 'function' && syncActive();
     body = `<div class="tour-icon" aria-hidden="true">🤝</div><h2>Share with your family</h2>
-      ${shared ? `<p>✓ This phone is sharing with <b>${esc(syncInfo.familyName || 'your family')}</b>. Recipes, the plan and the shopping list stay in sync on every phone.</p><p class="small muted">To add someone, share the join code from Settings → Family sync.</p>`
+      ${shared ? `<p>✓ This phone is sharing with <b>${esc(syncInfo.familyName || 'your family')}</b>. Recipes, the plan and the shopping list stay in sync on every phone.</p><p class="small muted">To add someone, share the join code from Settings → Family sharing.</p>`
         : `<p class="small">With a free account, everyone's phone shows the same recipes, meal plan and shopping list, and the list updates live while you shop.</p>
       <ul class="small app-list"><li>Create the family on one phone, then share its join code.</li><li>Others tap <b>Join my family's kitchen</b> and enter the code.</li><li>You can do this any time in Settings.</li></ul>
       <div class="actions"><button class="btn secondary" onclick="finishTour(false,'family')">Set up sharing now</button>${typeof googleSignIn === 'function' && typeof syncConfigured !== 'undefined' && syncConfigured ? '<button class="btn secondary" onclick="finishTour(false,\'google\')">Continue with Google</button>' : ''}</div>`}`;
@@ -90,7 +90,7 @@ function finishTour(skipped, then) {
   try { localStorage.setItem(TOUR_KEY(), 'done') } catch (_) {}
   const only = tour?.only; tour = null; closeModal(); renderTourCard();
   if (then === 'google') return googleSignIn('settings');
-  if (then === 'family') { showScreen('settings'); setTimeout(() => document.getElementById('familyCard')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 200); return }
+  if (then === 'family') { openSettingsPage('family'); return }
   if (!only) { if (!skipped) showScreen('home'); toast(skipped ? 'You can finish setup any time in Settings → Help' : 'Welcome to Whole Kitchen!') }
 }
 // Home: offer the tour once to people who started before it existed
@@ -104,9 +104,9 @@ function renderTourCard() {
 }
 // Settings: reopen
 function renderGuideCard() {
-  const host = document.getElementById('settings'); if (!host) return;
+  const host = document.getElementById('setPage-help') || document.getElementById('settings'); if (!host) return;
   let card = document.getElementById('guideCard');
-  if (!card) { card = document.createElement('div'); card.id = 'guideCard'; card.className = 'card'; const before = document.getElementById('accountCard'); before ? host.insertBefore(card, before) : host.appendChild(card) }
-  card.innerHTML = `<h3>🧭 Help</h3><p class="small muted">A quick guide to every part of Whole Kitchen, or redo the setup questions.</p>
+  if (!card) { card = document.createElement('div'); card.id = 'guideCard'; card.className = 'card'; const before = document.getElementById('helpCard'); before && before.parentNode === host ? host.insertBefore(card, before) : host.appendChild(card) }
+  card.innerHTML = `<h3>🧭 App guide</h3><p class="small muted">A quick guide to every part of Whole Kitchen, or redo the setup questions.</p>
     <div class="actions"><button class="btn secondary" onclick="startOnboarding('guide')">App guide</button><button class="btn secondary" onclick="startOnboarding()">Redo setup</button></div>`;
 }

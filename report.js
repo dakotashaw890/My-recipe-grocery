@@ -98,5 +98,5 @@ async function openUsageToday() {
       order.filter(k => j.limits[k]).map(k => { const max = j.limits[k], used = Math.min(max, j.used?.[k] || 0), pct = Math.min(100, used / max * 100);
         return `<div class="usage-row"><span>${esc((s => s[0].toUpperCase() + s.slice(1))(j.names?.[k] || k))}</span><b>${used} of ${max}</b><span class="usage-bar"><span style="width:${pct}%" class="${pct >= 90 ? 'hot' : ''}"></span></span></div>` }).join('') +
       `<p class="tiny muted">Counts start over in about ${j.resetsInHours} hour${j.resetsInHours === 1 ? '' : 's'}.</p>`;
-  } catch (e) { box.className = 'small warning'; box.textContent = e.signin ? 'Sign in under Family sync to see your usage.' : /web address/i.test(e.message) ? 'Your Supabase helper is an older version: paste the newest recipe-import.ts into recipe-imports and Deploy.' : e.message }
+  } catch (e) { box.className = 'small warning'; box.textContent = e.signin ? 'Sign in under Settings → Family sharing to see your usage.' : /web address/i.test(e.message) ? 'Your Supabase helper is an older version: paste the newest recipe-import.ts into recipe-imports and Deploy.' : e.message }
 }

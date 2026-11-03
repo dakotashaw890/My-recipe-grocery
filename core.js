@@ -1,25 +1,6 @@
 // Whole Kitchen: the main app (screens, recipes, planner, shopping, pantry).
 // Loaded after units/groups/planner/family/cooking/shop.js; sync, storage and the rest load after it.
-// V9: apply only to ingredients that still exactly match the user's exported snapshot.
 async function loadScriptOnce(src){window.loadedScripts??={};return window.loadedScripts[src]??=new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=()=>{delete window.loadedScripts[src];rej(new Error('Could not load '+src))};document.head.appendChild(el)})}
-async function applyV9Corrections(){
- try{await loadScriptOnce('v9-corrections.js?v=24')}catch(e){return alert('The corrections couldn\'t download. Check your connection and try again.')}
- const V9_CORRECTIONS=window.V9_CORRECTIONS||{};
- if(!await ask('Apply reviewed corrections to matching ingredients? First export a fresh backup. Your later edits and other family data are preserved.'))return;
- let applied=0,skipped=0;
- for(const [name,changes] of Object.entries(V9_CORRECTIONS)){
-  const r=state.data.recipes[recipeIdByName(name)];if(!r){skipped+=changes.length;continue;}
-  for(const change of changes){const current=r.ingredients[change.index];if(!current||current.name!==change.old.name){skipped++;continue;}
-   // Only overwrite fields that still match the uploaded snapshot, not later user edits.
-   let did=false;for(const field of ['qty','unit','recipeQty','recipeUnit','container','containerSize','fraction','catalog','auditStatus']){
-    if(JSON.stringify(current[field]??null)===JSON.stringify(change.old[field]??null)&&JSON.stringify(change.old[field]??null)!==JSON.stringify(change.new[field]??null)){
-     current[field]=change.new[field];did=true;
-    }else if(JSON.stringify(change.old[field]??null)!==JSON.stringify(change.new[field]??null))skipped++;
-   }if(did)applied++;
-  }
- }
- state.auditVersion=9;save();alert('Version 9: '+applied+' ingredient records updated. '+skipped+' changed fields skipped to protect newer edits. See separate review CSV for ambiguous recipes.');
-}
 const BUDGET_PRICE_BY_NAME={"milk":3.8,"eggs":3.2,"ground beef":6.2,"chicken":4.5,"boneless skinless chicken breasts":4.5,"butter":4.8,"rice":3.2,"shredded cheese":4.5,"potatoes":4.8,"bread":2.5,"flour":3.4,"bacon":5.8,"olive oil":6.8,"tomato paste":1.2,"chicken broth":2.3,"beef broth":2.4};
 function budgetEstimate(k){const key=k.toLowerCase().trim(),p=displayPackage(key);if(!p)return null;let base=BUDGET_PRICE_BY_NAME[key];if(base==null){const d=departmentFor(key);base={'Produce':2.5,'Meat & Seafood':5.5,'Dairy & Refrigerated':3.5,'Bakery':3.2,'Frozen':3.8,'Pantry & Canned':2.6,'Other / Uncategorized':3.0}[d]}return base??null}
 function effectivePrice(k){if(typeof effectivePriceV25==='function')return effectivePriceV25(k);const m=state.itemMeta?.[k];if(m?.price!=null&&Number.isFinite(Number(m.price)))return {value:Number(m.price),source:m.priceSource==='auto'?'Automatic':m.priceSource==='paid'?'Last paid':'Manual'};const estimate=budgetEstimate(k);return estimate==null?null:{value:estimate,source:'Estimate'}}
@@ -131,7 +112,7 @@ function storageFullWarning(){
  if(document.getElementById('storageFull'))return;
  const shared=typeof syncActive==='function'&&syncActive();
  const el=document.createElement('div');el.id='storageFull';el.className='storage-full';el.setAttribute('role','alert');
- el.innerHTML=`<b>Your phone's storage for Whole Kitchen is full.</b> ${shared?'Changes still reach your family, but this phone can\'t keep them if the app closes.':'Your last change couldn\'t be saved on this phone.'} Download a backup now (⚙️ Settings → Backup files), then free up space on the phone. <button class="btn secondary" onclick="exportData()">Download backup</button>`;
+ el.innerHTML=`<b>Your phone's storage for Whole Kitchen is full.</b> ${shared?'Changes still reach your family, but this phone can\'t keep them if the app closes.':'Your last change couldn\'t be saved on this phone.'} Download a backup now (⚙️ Settings → Backups), then free up space on the phone. <button class="btn secondary" onclick="exportData()">Download backup</button>`;
  document.querySelector('main')?.prepend(el);
 }
 function refreshSavedViews(){
@@ -153,8 +134,9 @@ function fmt(v){
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',1800)}
 function showScreen(id){
   if(typeof noteScreen==='function')noteScreen(id);
+  if(id==='settings'&&typeof resetSettingsPage==='function')resetSettingsPage();
   document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));
-  document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.screen===(['ingredients','spending','online','settings'].includes(id)?'more':id)));
+  document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.screen===(['ingredients','spending','online','settings','pantry'].includes(id)?'more':id)));
   if(id==='home')renderHome(); if(id==='recipes')renderRecipes(); if(id==='plan')renderPlanner(); if(id==='shopping')renderShopping();if(id==='ingredients')renderIngredients();if(id==='spending')renderSpending();if(id==='pantry')renderPantry();if(id==='settings'&&typeof renderSettingsExtras==='function')renderSettingsExtras();
   window.scrollTo(0,0);
 }
@@ -496,7 +478,7 @@ function importData(ev){
      const photos=s.photos||{};delete s.photos;for(const [id,url] of Object.entries(photos))await storePhoto(url,id);await moveInlinePhotos(s);}catch(e){console.warn('Photos from the backup could not all be stored',e)}
     ensureRecipeIds(s);state=s;save();showScreen('home');toast('Backup imported')};rd.readAsText(f)
 }
-async function resetApp(){if(typeof syncActive==='function'&&syncActive())return alert('This phone is syncing with your family. To protect the shared data, choose "Stop syncing on this phone" in Family sync first.');if(await ask('Start over on this phone?\n\nThis removes this phone\'s recipes, plan and edits. A backup is saved first (Automatic backups).',{ok:'Start over',danger:true})){try{await window.photosReady;if(typeof createSnapshot==='function')await createSnapshot('Before resetting the app')}catch(_){}localStorage.removeItem(KEY);state=loadState();showScreen('home');toast('App reset');if(typeof maybeWelcome==='function')maybeWelcome()}}
+async function resetApp(){if(typeof syncActive==='function'&&syncActive())return alert('This phone is syncing with your family. To protect the shared data, choose "Stop syncing on this phone" in Settings → Family sharing first.');if(await ask('Start over on this phone?\n\nThis removes this phone\'s recipes, plan and edits. A backup is saved first (Settings → Backups).',{ok:'Start over',danger:true})){try{await window.photosReady;if(typeof createSnapshot==='function')await createSnapshot('Before resetting the app')}catch(_){}localStorage.removeItem(KEY);state=loadState();showScreen('home');toast('App reset');if(typeof maybeWelcome==='function')maybeWelcome()}}
 
 let onlineMeals={};
 async function searchOnline(){
@@ -641,9 +623,9 @@ function openWelcome(){
 function startKitchen(how){
  delete state.welcome;
  save();closeModal();
- if(how==='join'){showScreen('settings');setTimeout(()=>document.getElementById('familyCard')?.scrollIntoView({block:'start',behavior:'smooth'}),200);toast('Create an account or sign in, then enter the join code')}
+ if(how==='join'){openSettingsPage('family');toast('Create an account or sign in, then enter the join code')}
  else if(how==='restore'){showScreen('settings');setTimeout(()=>document.getElementById('importFile')?.click(),250)}
  else {showScreen('recipes');toast('Tap ＋ Add or 🔗 Import to add your first recipe')}
- if(how==='empty')loadScriptOnce('onboarding.js?v=42').then(()=>startOnboarding()).catch(()=>{})
+ if(how==='empty')loadScriptOnce('onboarding.js?v=44').then(()=>startOnboarding()).catch(()=>{})
 }
 window.addEventListener('load',()=>maybeWelcome());

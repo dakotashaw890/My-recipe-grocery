@@ -68,7 +68,7 @@ function nutritionHTML(id, servings) {
   const signedIn = typeof syncAuth !== 'undefined' && !!syncAuth;
   if (!nf.counted) return `<div class="card nutrition nf-empty"><div class="nf-head"><h3>Nutrition</h3></div>
     <p class="small muted">Calories, protein, carbs and more per serving, from the USDA food database.</p>
-    ${nf.missingFacts.length ? (signedIn ? `<button class="btn secondary" onclick="lookUpNutrition(decodeURIComponent('${encId(id)}'))">🔎 Look up nutrition facts</button>` : '<p class="small muted">Sign in under ⚙️ Family sync to look up nutrition facts.</p>') : ''}
+    ${nf.missingFacts.length ? (signedIn ? `<button class="btn secondary" onclick="lookUpNutrition(decodeURIComponent('${encId(id)}'))">🔎 Look up nutrition facts</button>` : '<p class="small muted">Sign in under ⚙️ Settings → Family sharing to look up nutrition facts.</p>') : ''}
     ${nf.missingWeight.length ? `<p class="small">Needs a weight to count: ${nf.missingWeight.map(n => `<button class="linkish" onclick="askNutritionWeight(decodeURIComponent('${encId(id)}'),decodeURIComponent('${encId(n)}'))">${esc(n)}</button>`).join(', ')}</p>` : ''}</div>`;
   const p = nf.per, partial = nf.counted < nf.of, approx = partial || nf.estimate ? '≈' : '';
   const kcal = { protein: p.protein * 4, carbs: p.carbs * 4, fat: p.fat * 9 }, kTotal = kcal.protein + kcal.carbs + kcal.fat || 1;
@@ -178,7 +178,7 @@ function openWeekNutrition() {
     <p class="small muted">${esc(typeof planWeekLabel === 'function' ? planWeekLabel() : '')} · per person, one serving of each planned meal</p>`;
   if (!w.meals.length) return openModal(head + '<p class="small muted">Nothing is planned this week yet.</p>');
   if (!w.withFacts) return openModal(head + `<div class="card nf-empty"><p class="small">None of this week's ${w.meals.length} planned meals have nutrition facts yet.</p>
-    ${signedIn ? `<button class="btn" onclick="lookUpWeekNutrition()">🔎 Look up nutrition for the week</button>` : '<p class="small muted">Sign in under ⚙️ Family sync to look up nutrition facts.</p>'}</div>`);
+    ${signedIn ? `<button class="btn" onclick="lookUpWeekNutrition()">🔎 Look up nutrition for the week</button>` : '<p class="small muted">Sign in under ⚙️ Settings → Family sharing to look up nutrition facts.</p>'}</div>`);
   const kcal = { protein: a.protein * 4, carbs: a.carbs * 4, fat: a.fat * 9 }, kT = kcal.protein + kcal.carbs + kcal.fat || 1;
   const approx = w.missing.length || w.meals.some(m => m.partial) ? '≈' : '';
   const ring = ringSVG(['protein', 'carbs', 'fat'].map(k => ({ frac: kcal[k] / kT, color: MACRO_COLORS[k] })), 124, 12,
