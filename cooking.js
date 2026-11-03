@@ -43,7 +43,7 @@ function timerDone(t) {
   try { navigator.vibrate?.([400, 200, 400, 200, 400]) } catch (_) {}
   try {
     if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible')
-      navigator.serviceWorker?.getRegistration().then(reg => reg?.showNotification('⏱ Time\'s up', { body: t.label, tag: 'gingham-timer', renotify: true, vibrate: [400, 200, 400] }));
+      navigator.serviceWorker?.getRegistration().then(reg => reg?.showNotification('⏱ Time\'s up', { body: t.label, tag: 'gingham-timer', renotify: true, vibrate: [400, 200, 400], icon: 'icon-192.png', badge: 'badge-96.png' }));
   } catch (_) {}
   if (!alarmLoop) { beep(); alarmLoop = setInterval(beep, 1600) }
 }

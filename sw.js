@@ -1,5 +1,5 @@
-const CACHE='gingham-v41';
-const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./ui.js?v=24','./units.js?v=38','./groups.js?v=25','./planner.js?v=27','./family.js?v=24','./cooking.js?v=24','./shop.js?v=32','./starter-recipes.js?v=39','./week.js?v=37','./core.js?v=39','./shop-extras.js?v=35','./onboarding.js?v=39','./sharing.js?v=39','./ingredient-catalog.js?v=39','./catalog.js?v=39','./sync-config.js?v=17','./storage.js?v=39','./sync.js?v=40','./extras.js?v=39','./kitchen.js?v=39','./pictures.js?v=24','./imports.js?v=39','./weights.js?v=39','./report.js?v=39','./handsfree.js?v=39','./reminders.js?v=39','./prices.js?v=25','./nutrition.js?v=37','./community.js?v=39','./setup-check.js?v=39','./import-apps.js?v=39','./substitutions.js?v=27','./account.js?v=39','./app.css?v=40','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
+const CACHE='gingham-v42';
+const CORE=['./','./index.html','./manifest.json?v=17b','./icon-192.png','./icon-512.png','./badge-96.png','./ui.js?v=24','./units.js?v=38','./groups.js?v=25','./planner.js?v=27','./family.js?v=24','./cooking.js?v=40','./shop.js?v=32','./starter-recipes.js?v=39','./week.js?v=37','./core.js?v=39','./shop-extras.js?v=35','./onboarding.js?v=39','./sharing.js?v=39','./ingredient-catalog.js?v=39','./catalog.js?v=39','./sync-config.js?v=17','./storage.js?v=39','./sync.js?v=41','./extras.js?v=39','./kitchen.js?v=39','./pictures.js?v=24','./imports.js?v=39','./weights.js?v=39','./report.js?v=39','./handsfree.js?v=39','./reminders.js?v=39','./prices.js?v=25','./nutrition.js?v=37','./community.js?v=39','./setup-check.js?v=39','./import-apps.js?v=39','./substitutions.js?v=27','./account.js?v=39','./app.css?v=40','./ingredient-pictures.js?v=24','./cropper.min.js?v=1.6.2','./cropper.min.css?v=1.6.2'];
 const IMAGES=[];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(async c=>{
   await c.addAll(CORE);
@@ -29,7 +29,7 @@ self.addEventListener('fetch',e=>{
 // Prep reminders (v38): the family's Supabase helper sends them; show them, and open Whole Kitchen when tapped
 self.addEventListener('push',e=>{
   let m={};try{m=e.data?e.data.json():{}}catch(_){m={title:'Whole Kitchen',body:e.data?e.data.text():''}}
-  e.waitUntil(self.registration.showNotification(m.title||'Whole Kitchen',{body:m.body||'',tag:m.tag||'gingham',icon:'icon-192.png',badge:'icon-192.png',data:{url:m.url||'./index.html'},renotify:!!m.tag}));
+  e.waitUntil(self.registration.showNotification(m.title||'Whole Kitchen',{body:m.body||'',tag:m.tag||'gingham',icon:'icon-192.png',badge:'badge-96.png',data:{url:m.url||'./index.html'},renotify:!!m.tag}));
 });
 self.addEventListener('notificationclick',e=>{
   e.notification.close();

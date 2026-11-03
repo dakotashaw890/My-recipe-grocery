@@ -69,11 +69,13 @@ function googleSignIn(after) {
     if (u?.id && syncAuth) { syncAuth.user = { id: u.id, email: u.email, name: u.user_metadata?.full_name || u.user_metadata?.name || '' }; writeStore(AUTH_STORE, syncAuth) }
     if (typeof renderFamilyCard === 'function') renderFamilyCard();
   }).catch(() => {});
-  window.addEventListener('load', () => setTimeout(() => {
+  window.addEventListener('load', () => setTimeout(async () => {
     try { closeModal() } catch (_) {}
-    if (kind === 'recovery') { showScreen('settings'); openNewPassword(true); if (syncInfo?.familyId) runSync(); return }
+    if (kind === 'recovery') { showScreen('settings'); if (syncInfo?.familyId) runSync(); else await reconnectFamily().catch(() => ''); openNewPassword(true); return }
     const how = kind === 'signup' ? 'Email confirmed, you\'re signed in' : kind === 'magiclink' ? 'Signed in' : 'Signed in with Google';
     if (syncInfo?.familyId) { runSync(); toast('✓ ' + how); return }
+    const back = await reconnectFamily().catch(e => { console.warn('Family lookup failed', e); return '' });
+    if (back) { showScreen('home'); toast('✓ ' + how + '. Reconnected to ' + back); return }
     showScreen(after === 'home' ? 'home' : 'settings');
     setTimeout(() => document.getElementById('familyCard')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
     toast('✓ ' + how + '. Now create your family or join one.');
@@ -448,7 +450,9 @@ function familySignIn(create) {
       const j = await authCall('signup', { email, password });
       if (!keepSession(j)) return 'Account created. Open the confirmation email Supabase sent you, then come back and sign in.';
     } else keepSession(await authCall('token?grant_type=password', { email, password }));
-    if (syncInfo?.familyId) runSync();
+    if (syncInfo?.familyId) { runSync(); return }
+    const back = await reconnectFamily().catch(e => { console.warn('Family lookup failed', e); return '' });
+    if (back) { toast('✓ Reconnected to ' + back); return `Welcome back. You're reconnected to ${back}.` }
   });
 }
 // Forgot password: Supabase emails a link; it opens the app signed in, and the app asks for a new password.
@@ -500,26 +504,46 @@ function familyJoin() {
     if (!code) throw new SyncError('Enter the join code shown on the other phone.');
     if (!await ask('Joining replaces the recipes, plan, pantry and lists on this phone with the family\'s shared copy.\n\nA backup of this phone\'s current data is saved first (Settings → Automatic backups).')) return;
     const [fam] = await rpc('rg_join_family', { p_code: code, p_display_name: displayName });
-    await window.photosReady;
-    familyMessage('Downloading your family\'s data…');
-    if (typeof createSnapshot === 'function') await createSnapshot('Before joining a family');
-    const rows = await fetchRows(fam.id, null);
-    const next = clone(state), photos = {}, hashes = {};
-    delete next.welcome;
-    pendingPhotos.clear();
-    clearSharedData(next);
-    for (const row of rows) if (!row.deleted) { setEntry(next, photos, row.key, row.value); hashes[row.key] = entryHash(row.key, row.value) }
-    if (typeof replaceAllPhotos === 'function') { try { await replaceAllPhotos(photos) } catch (_) { window.photoCache = photos } } else window.photoCache = photos;
-    state = next;
-    syncInfo = { familyId: fam.id, familyName: fam.name, joinCode: fam.join_code, displayName, cursor: newestTime(rows, null), hashes, lastSyncAt: Date.now() };
-    persistSync();
-    (writeState() || storageFullWarning());
-    savePending();
-    refreshSavedViews();
-    setSyncStatus('ok');
+    await loadFamily(fam, displayName);
     toast('Joined ' + fam.name);
-    downloadPendingPhotos();
   });
+}
+// Replace this phone's shared data with the family's copy (a backup of this phone is saved first).
+async function loadFamily(fam, displayName) {
+  await window.photosReady;
+  familyMessage('Downloading your family\'s data…');
+  if (typeof createSnapshot === 'function') await createSnapshot('Before joining a family');
+  const rows = await fetchRows(fam.id, null);
+  const next = clone(state), photos = {}, hashes = {};
+  delete next.welcome;
+  pendingPhotos.clear();
+  clearSharedData(next);
+  for (const row of rows) if (!row.deleted) { setEntry(next, photos, row.key, row.value); hashes[row.key] = entryHash(row.key, row.value) }
+  if (typeof replaceAllPhotos === 'function') { try { await replaceAllPhotos(photos) } catch (_) { window.photoCache = photos } } else window.photoCache = photos;
+  state = next;
+  syncInfo = { familyId: fam.id, familyName: fam.name, joinCode: fam.join_code, displayName, cursor: newestTime(rows, null), hashes, lastSyncAt: Date.now() };
+  persistSync();
+  (writeState() || storageFullWarning());
+  savePending();
+  refreshSavedViews();
+  setSyncStatus('ok');
+  downloadPendingPhotos();
+}
+// After signing in (email, Google, or an email link): if this account already belongs to a family, reconnect to it,
+// so a new phone or a reinstall needs no join code. Returns the family's name, or '' if the account has none yet.
+async function reconnectFamily() {
+  if (!syncAuth || syncInfo?.familyId) return '';
+  const uid = syncAuth.user?.id || (await fetch(SYNC_URL + '/auth/v1/user', { headers: { apikey: SYNC_KEY_ANON, Authorization: 'Bearer ' + await accessToken() } }).then(r => r.ok ? r.json() : null).catch(() => null))?.id;
+  if (!uid) return '';
+  const mine = await rest('GET', `rg_members?select=family_id,display_name,joined_at&user_id=eq.${uid}&order=joined_at.desc&limit=1`);
+  const m = Array.isArray(mine) ? mine[0] : null; if (!m) return '';
+  const fams = await rest('GET', `rg_families?select=id,name,join_code&id=eq.${m.family_id}`);
+  const fam = Array.isArray(fams) ? fams[0] : null; if (!fam) return '';
+  // this phone has its own plans or recipes (not just the examples)? check before replacing them
+  const own = Object.keys(state.plan || {}).length || Object.values(state.data?.recipes || {}).some(r => !/example$/i.test(r?.sourceType || ''));
+  if (own && !await ask(`Reconnect to “${fam.name}”?\n\nYour account belongs to this family. Reconnecting replaces the recipes, plan and lists on this phone with the family's copy. A backup of this phone's current data is saved first (Settings → Automatic backups).`, { ok: 'Reconnect' })) return '';
+  await loadFamily(fam, m.display_name || '');
+  return fam.name;
 }
 async function familyStop() {
   if (!await ask('Stop syncing on this phone?\n\nThis phone keeps its current data but no longer sends or receives changes. The family\'s shared data is not affected.')) return;
