@@ -56,7 +56,7 @@ function renderTour() {
   } else {
     const items = [
       ['📖', 'Recipes', 'Add your own, tap 🔗 Import for websites, or snap a recipe card (handwriting too). From TikTok or Instagram, tap Share → Whole Kitchen.'],
-      ['📅', 'Plan', 'Tap a day to add a meal, or ✨ Suggest empty meals to fill the week using your preferences.'],
+      ['📅', 'Plan', 'Tap a day to add a meal, or ✨ Suggest meals to fill the empty spots using your preferences.'],
       ['🛒', 'Shop', 'The list builds itself from your plan. Check things off, ＋ Add extras, and ⇄ Swap when the store is out.'],
       ['🧂', 'Check you have', 'Seasonings and staples wait in a folded section. Tap “I\'m out” there, or “Out?” while cooking, to put them on the list.'],
       ['🍳', 'Cook', 'Open a recipe and tap Cook for big step-by-step text and timers. The screen stays on.'],

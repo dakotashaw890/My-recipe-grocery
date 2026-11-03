@@ -66,15 +66,15 @@ function planWeekLabel() {
 }
 function movePlanWeek(n) { planWeekOffset = n === 0 ? 0 : planWeekOffset + n; renderPlanner(); document.getElementById('plan')?.scrollIntoView({ block: 'start' }) }
 function renderPlanner() {
-  { const pl = document.getElementById('planPrefsLine'); if (pl && typeof prefsSummary === 'function') { const t = prefsSummary(); pl.textContent = t ? 'Preferences: ' + t : '' } }
+  { const pl = document.getElementById('planPrefsLine'); if (pl && typeof prefsSummary === 'function') { const t = prefsSummary(); pl.innerHTML = t ? `<button type="button" class="prefs-line" onclick="openPlanPrefs()"><span aria-hidden="true">⚙️</span> ${esc(t)}</button>` : '' } }
   const host = document.getElementById('planner'); if (!host) return;
   const today = todayISO(), dates = weekDates();
   const planned = dates.reduce((n, d) => n + MEALS.reduce((m, meal) => m + planEntries(d, meal).length, 0), 0);
   const nav = `<div class="week-nav"><button class="iconbtn" aria-label="Previous week" onclick="movePlanWeek(-1)">‹</button>
     <div class="week-label"><b>${esc(planWeekLabel())}</b><span class="small muted">${planned} meal${planned === 1 ? '' : 's'} planned</span></div>
     <button class="iconbtn" aria-label="Next week" onclick="movePlanWeek(1)">›</button></div>
-    ${planned ? `<div class="week-tools"><button type="button" class="btn secondary week-nf-btn" onclick="loadScriptOnce('nutrition.js?v=37').then(()=>openWeekNutrition())">📊 Week nutrition</button></div>` : ''}
     ${planWeekOffset !== 0 ? `<div class="week-today"><button class="btn ghost" onclick="movePlanWeek(0)">Back to this week</button></div>` : ''}`;
+  { const slot = document.getElementById('planNfSlot'); if (slot) slot.innerHTML = planned ? `<button type="button" class="btn secondary week-nf-btn" onclick="openWeekNutritionNow()">📊 Nutrition</button>` : '' }
   host.innerHTML = nav + dates.map(date => {
     const past = date < today, isToday = date === today;
     const rows = MEALS.map(meal => {
@@ -182,6 +182,21 @@ async function deleteMeal() {
   const key = window.editPlanTarget?.key; if (!key) return;
   if (!await ask('Remove this meal from the plan?\n\nThe recipe stays in your recipes.', { ok: 'Remove' })) return;
   delete state.plan[key]; save(); closeModal();
+}
+function openWeekNutritionNow() { loadScriptOnce('nutrition.js?v=37').then(() => openWeekNutrition()) }
+// The ⋯ menu beside "Meal Plan": the less-used week actions, in the same style as Shopping options.
+function openPlanMenu() {
+  const dates = weekDates(), n = dates.reduce((t, d) => t + MEALS.reduce((m, meal) => m + planEntries(d, meal).length, 0), 0);
+  const week = planWeekOffset === 0 ? 'this week' : planWeekOffset === 1 ? 'next week' : 'this week shown';
+  const plural = n === 1 ? '' : 's', pref = typeof prefsSummary === 'function' ? prefsSummary() : '';
+  const item = (icon, label, sub, action, cls = '') => `<button class="menu-item ${cls}" onclick="${action}"><span class="menu-icon" aria-hidden="true">${icon}</span><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span></button>`;
+  openModal(`<div class="row between"><h2>Plan options</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
+    <div class="menu-list">
+      ${item('⚙️', 'Suggestion preferences', pref ? esc(pref) : 'Time limits, a weekly budget and recipe groups', 'closeModal();openPlanPrefs()')}
+      ${item('🔁', 'Same again next week', n ? `Copy ${week}'s ${n} meal${plural} 7 days ahead` : 'Nothing planned to copy', 'closeModal();copyPlan()')}
+      ${n ? item('📊', 'Week nutrition', 'Calories and nutrients for the planned meals', 'closeModal();openWeekNutritionNow()') : ''}
+      ${item('🗑️', 'Clear ' + (planWeekOffset === 0 ? 'this week' : planWeekOffset === 1 ? 'next week' : 'the week'), n ? `Remove ${n} planned meal${plural} (${planWeekLabel().replace(/^.*· /, '')})` : 'Nothing planned', 'closeModal();clearPlan()', 'menu-danger')}
+    </div>`);
 }
 async function clearPlan() {
   const dates = new Set(weekDates()), keys = Object.keys(state.plan).filter(k => dates.has(planDateOf(k)));

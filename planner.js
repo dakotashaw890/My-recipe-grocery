@@ -1,4 +1,4 @@
-// Planning preferences for "Suggest empty meals" (v21): time limits, a weekly budget, and recipe groups.
+// Planning preferences for "Suggest meals" (v21): time limits, a weekly budget, and recipe groups.
 'use strict';
 
 const DAY_SHORT = { Sunday: 'Su', Monday: 'Mo', Tuesday: 'Tu', Wednesday: 'We', Thursday: 'Th', Friday: 'Fr', Saturday: 'Sa' };
@@ -44,7 +44,7 @@ function renderPlanPrefs() {
   const timeSel = (id, v) => `<select id="${id}">${TIME_CHOICES.map(t => `<option value="${t ?? ''}" ${t === (v ?? null) ? 'selected' : ''}>${t ? 'Up to ' + formatMinutes(t) : 'Any time'}</option>`).join('')}</select>`;
   const chip = (list, id, label) => `<button type="button" class="chip ${p[list].includes(id) ? 'on' : ''}" aria-pressed="${p[list].includes(id)}" onclick="togglePrefGroup('${list}','${id}')">${esc(label)}</button>`;
   openModal(`<div class="row between"><h2>Planning preferences</h2><button class="iconbtn" aria-label="Close" onclick="closeModal()">✕</button></div>
-    <p class="small muted">Used by <b>Suggest empty meals</b>. If nothing fits a preference, it's relaxed for that meal and you'll see a note.</p>
+    <p class="small muted">Used by <b>Suggest meals</b>. If nothing fits a preference, it's relaxed for that meal and you'll see a note.</p>
     <div class="card"><h3>⏱ Time</h3><p class="small muted">Prep + cook time. Recipes without times can still be picked.</p>
       <div class="formrow"><div><label for="ppWeekday">Weekdays (Mon–Fri)</label>${timeSel('ppWeekday', p.weekdayMax)}</div><div><label for="ppWeekend">Weekends</label>${timeSel('ppWeekend', p.weekendMax)}</div></div></div>
     <div class="card"><h3>💰 Money</h3><label for="ppBudget">Weekly grocery budget for planned meals ($)</label>
@@ -107,7 +107,7 @@ function savePlanPrefs() {
   if (typeof renderPlanner === 'function') renderPlanner();
 }
 
-// ---------- Suggest empty meals ----------
+// ---------- Suggest meals ----------
 function recipeCostFor(id, servings) { const c = typeof recipeCost === 'function' ? recipeCost(id, servings) : null; return c ? c.total : null }
 function smartFillPlan() {
   const p = planPrefs(), ids = Object.keys(state.data.recipes).filter(Boolean);

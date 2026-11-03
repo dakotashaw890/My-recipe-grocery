@@ -66,7 +66,7 @@ function freshState(){const data={recipes:{},ingredients:{}};return {welcome:tru
 // it never causes saved data to be replaced.
 function schemaMigrations(){return [
  {version:1,run(s){ // add starter recipes the user does not already have
-  if(!s.starterVersion||s.starterVersion<3){Object.entries(STARTER_RECIPES).forEach(([name,recipe])=>{if(!s.data.recipes[name])s.data.recipes[name]=clone(recipe)});s.starterVersion=3}
+  if(!s.starterVersion||s.starterVersion<3)s.starterVersion=3   // example recipes are no longer added (v42)
  }},
  {version:2,run(s){ // remove the malformed "she'll noodle(s)" ingredient everywhere
   if(s.migrations?.removedShellTypo)return;
@@ -91,7 +91,7 @@ function loadState(){
     const backupKey=KEY+'-unreadable-'+Date.now();
     try{localStorage.setItem(backupKey,raw)}catch(_){}
     console.error('Saved data could not be read',e);
-    setTimeout(()=>alert('Your saved data could not be read, so the app started with default recipes. A copy of the old data was kept on this device under "'+backupKey+'". Use Settings → Import backup with a recent backup file, or contact the developer before making changes.'),600);
+    setTimeout(()=>alert('Your saved data could not be read, so the app started fresh. A copy of the old data was kept on this device under "'+backupKey+'". Use Settings → Import backup with a recent backup file, or contact the developer before making changes.'),600);
     return freshState();
   }
   s.ingredientConversions??={};s.recipeGroups??={};s.planPrefs??={};s.people??={};s.ratings??={};s.stores??={};s.deletedIngredients??=[];s.favorites??=[];s.plan??={};s.checks??={};s.selected??={};s.packagePrefs??={};
@@ -419,7 +419,7 @@ const RECIPE_MEAL_TYPES=['Breakfast','Lunch','Dinner','Snack'];
 function inferRecipeMealTypes(name,recipe){const n=(String(name||'')+' '+(recipe?.ingredients||[]).map(i=>i.name).join(' ')).toLowerCase();if(/\b(snack|popcorn|trail mix|energy bite|granola bar|chips|dip|fruit cup)\b/.test(n))return ['Snack'];if(/\b(pancake|waffle|french toast|breakfast|oatmeal|cereal|egg muffin|biscuits? and gravy|hash brown|bagel)\b/.test(n))return ['Breakfast'];if(/\b(sandwich|wrap|salad|soup|slider|sub\b|quesadilla)\b/.test(n))return ['Lunch','Dinner'];return ['Dinner']}
 function recipeMealTypes(name){const r=state.data.recipes[name];return Array.isArray(r?.mealTypes)&&r.mealTypes.length?r.mealTypes:inferRecipeMealTypes(r?.name||name,r)}
 function recipeFitsMeal(name,meal){return recipeMealTypes(name).includes(meal)}
-function fillPlan(){return smartFillPlan()}
+function fillPlan(){if(!Object.keys(state.data.recipes||{}).length){showScreen('recipes');return toast('Add a few recipes first, then Whole Kitchen can suggest meals')}return smartFillPlan()}
 function renderSpending(){state.spending??={trips:[],budget:0};const trips=state.spending.trips,total=trips.reduce((s,t)=>s+Number(t.total),0),month=localDate().slice(0,7),monthly=trips.filter(t=>t.date?.startsWith(month)).reduce((s,t)=>s+Number(t.total),0),budget=Number(state.spending.budget)||0;document.getElementById('spendingDashboard').innerHTML=`<div class="card"><div class="muted small">This month</div><h1>$${monthly.toFixed(2)}</h1><label>Monthly budget ($)</label><div class="row"><input id="spendBudget" type="number" aria-label="Monthly grocery budget in dollars" min="0" step="1" value="${budget}"><button class="btn" onclick="saveBudget()">Save</button></div>${budget?`<div class="budget-progress"><div style="width:${Math.min(100,monthly/budget*100)}%"></div></div><p>${monthly>budget?'Over budget by $'+(monthly-budget).toFixed(2):'$'+(budget-monthly).toFixed(2)+' remaining'}</p>`:''}<div class="small muted">All recorded trips: $${total.toFixed(2)}</div></div>`;document.getElementById('tripHistory').innerHTML='<h2>Purchase history</h2>'+trips.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="card"><div class="row between"><div><b>${esc(t.store)}</b><div class="small muted">${esc(t.date)} · ${esc(t.notes||'')}</div></div><b>$${Number(t.total).toFixed(2)}</b></div><button class="btn secondary" onclick="deleteTrip('${esc(t.id)}')">Delete</button></div>`).join('');const date=document.getElementById('tripDate');if(date&&!date.value)date.value=localDate()}
 function saveBudget(){const n=Number(document.getElementById('spendBudget').value);if(!Number.isFinite(n)||n<0)return alert('Enter a valid budget');state.spending??={trips:[]};state.spending.budget=n;save();renderSpending();toast('Budget saved')}
 function addTrip(){const store=document.getElementById('tripStore').value.trim(),date=document.getElementById('tripDate').value,total=Number(document.getElementById('tripTotal').value),notes=document.getElementById('tripNotes').value.trim();if(!store||!date||!Number.isFinite(total)||total<=0)return alert('Enter a store, date and positive total.');state.spending??={trips:[],budget:0};state.spending.trips.push({id:String(Date.now()),store,date,total,notes});save();['tripStore','tripTotal','tripNotes'].forEach(id=>document.getElementById(id).value='');renderSpending();toast('Grocery trip saved')}
@@ -632,22 +632,18 @@ window.addEventListener('load',()=>setTimeout(()=>loadScriptOnce('ingredient-pic
 // ---------- First time on a new phone: how do you want to start? ----------
 function maybeWelcome(){if(/[?&]r=|#recipe=|#access_token=/.test(location.href))return;if(state.welcome&&!(typeof syncActive==='function'&&syncActive()))setTimeout(openWelcome,350)}
 function openWelcome(){
- const n=Object.keys(STARTER_RECIPES).length;
  openModal(`<div class="welcome"><img class="welcome-logo" src="icon-192.png" alt="" width="64" height="64"><h2>Welcome to Whole Kitchen</h2>
   <p class="muted">Plan meals, build the shopping list and keep your family's recipes in one place. How would you like to start?</p>
-  <button class="welcome-choice" onclick="startKitchen('examples')"><b>📖 Start with ${n} example recipes</b><span>Weeknight family favorites you can edit or delete. Good for trying things out.</span></button>
-  <button class="welcome-choice" onclick="startKitchen('empty')"><b>✨ Start with an empty recipe box</b><span>Add your own recipes, import from websites, or snap a photo of a recipe card.</span></button>
+  <button class="welcome-choice" onclick="startKitchen('empty')"><b>✨ Start my recipe box</b><span>Add your own recipes, import them from websites and TikTok, or snap a photo of a recipe card.</span></button>
   <button class="welcome-choice" onclick="startKitchen('join')"><b>👨‍👩‍👧 Join my family's kitchen</b><span>Someone already uses Whole Kitchen? Sign in and enter their join code to share everything.</span></button>
   <button class="welcome-choice" onclick="startKitchen('restore')"><b>📂 Restore a backup file</b><span>Moving from another phone with a Whole Kitchen backup.</span></button></div>`);
 }
 function startKitchen(how){
  delete state.welcome;
- if(how==='examples'){Object.assign(state.data.recipes,clone(STARTER_RECIPES));ensureRecipeIds(state)}
  save();closeModal();
  if(how==='join'){showScreen('settings');setTimeout(()=>document.getElementById('familyCard')?.scrollIntoView({block:'start',behavior:'smooth'}),200);toast('Create an account or sign in, then enter the join code')}
  else if(how==='restore'){showScreen('settings');setTimeout(()=>document.getElementById('importFile')?.click(),250)}
- else if(how==='empty'){showScreen('recipes');toast('Tap ＋ Add or 🔗 Import to add your first recipe')}
- else {showScreen('recipes');toast('Added '+Object.keys(STARTER_RECIPES).length+' example recipes')}
- if(how==='empty'||how==='examples')loadScriptOnce('onboarding.js?v=39').then(()=>startOnboarding()).catch(()=>{})
+ else {showScreen('recipes');toast('Tap ＋ Add or 🔗 Import to add your first recipe')}
+ if(how==='empty')loadScriptOnce('onboarding.js?v=42').then(()=>startOnboarding()).catch(()=>{})
 }
 window.addEventListener('load',()=>maybeWelcome());

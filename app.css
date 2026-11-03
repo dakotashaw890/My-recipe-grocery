@@ -2030,3 +2030,15 @@ div.share-choice { cursor: default }
 /* v40: forgot password */
 .forgot-line { margin: 6px 0 0 }
 .forgot-line .linkish { padding: 8px 2px }
+
+/* v42: Meal Plan header: ⋯ menu + one action row, like Shopping */
+.plan-main { margin-bottom: 4px; flex-wrap: nowrap; }
+.plan-main > .btn { flex: 0 1 auto; }
+.plan-nf-slot:empty { display: none; }
+.plan-nf-slot .week-nf-btn { min-height: 44px; padding: 8px 14px; font-size: .95rem; white-space: nowrap; }
+#planPrefsLine { margin: 8px 0 10px; }
+#planPrefsLine:empty { display: none; }
+.prefs-line { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: .82rem; text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prefs-line:hover { color: var(--ink); }
+.menu-item.menu-danger b { color: var(--tomato, #C8412F); }
+.plan-main > .btn { white-space: nowrap; }

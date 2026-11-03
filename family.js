@@ -54,7 +54,7 @@ function openRateRecipe(rid, afterCooking) {
     <button type="button" class="thumb ${v > 0 ? 'on up' : ''}" aria-pressed="${v > 0}" aria-label="${esc(p.name)} liked it" onclick="rateTap('${encId(rid)}','${p.id}',1)">👍</button>
     <button type="button" class="thumb ${v < 0 ? 'on down' : ''}" aria-pressed="${v < 0}" aria-label="${esc(p.name)} didn't like it" onclick="rateTap('${encId(rid)}','${p.id}',-1)">👎</button></div>` }).join('');
   openModal(`<div class="row between"><h2>${afterCooking ? 'How was it?' : 'Rate this recipe'}</h2><button class="iconbtn" aria-label="Close" onclick="finishRating('${encId(rid)}')">✕</button></div>
-    <p class="small muted">${esc(r.name)}. Ratings help <b>Suggest empty meals</b> pick what your family likes.</p>
+    <p class="small muted">${esc(r.name)}. Ratings help <b>Suggest meals</b> pick what your family likes.</p>
     <div class="rate-list">${rows}</div>
     ${peopleList().length ? '' : `<p class="tiny muted">Rate for each person: <button type="button" class="linkish" onclick="openPeopleEditor(()=>openRateRecipe(decodeURIComponent('${encId(rid)}'),${!!afterCooking}))">add who eats at your table</button>.</p>`}
     <div class="actions"><button class="btn" onclick="finishRating('${encId(rid)}')">Done</button></div>`);
