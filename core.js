@@ -485,7 +485,7 @@ function importData(ev){
      const photos=s.photos||{};delete s.photos;for(const [id,url] of Object.entries(photos))await storePhoto(url,id);await moveInlinePhotos(s);}catch(e){console.warn('Photos from the backup could not all be stored',e)}
     ensureRecipeIds(s);state=s;save();showScreen('home');toast('Backup imported')};rd.readAsText(f)
 }
-async function resetApp(){if(typeof syncActive==='function'&&syncActive())return alert('This phone is syncing with your family. To protect the shared data, choose "Stop syncing on this phone" in Settings → Family sharing first.');if(await ask('Start over on this phone?\n\nThis removes this phone\'s recipes, plan and edits. A backup is saved first (Settings → Backups).',{ok:'Start over',danger:true})){try{await window.photosReady;if(typeof createSnapshot==='function')await createSnapshot('Before resetting the app')}catch(_){}localStorage.removeItem(KEY);state=loadState();showScreen('home');toast('App reset');if(typeof maybeWelcome==='function')maybeWelcome()}}
+async function resetApp(){if(typeof syncActive==='function'&&syncActive())return alert('This phone is syncing with your family. To protect the shared data, sign out in Settings first.');if(await ask('Start over on this phone?\n\nThis removes this phone\'s recipes, plan and edits. A backup is saved first (Settings → Backups).',{ok:'Start over',danger:true})){try{await window.photosReady;if(typeof createSnapshot==='function')await createSnapshot('Before resetting the app')}catch(_){}localStorage.removeItem(KEY);state=loadState();showScreen('home');toast('App reset');if(typeof maybeWelcome==='function')maybeWelcome()}}
 
 let onlineMeals={};
 async function searchOnline(){

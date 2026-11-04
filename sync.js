@@ -398,7 +398,7 @@ async function runSync() {
     if (!syncAuth) setSyncStatus('signedout', 'Signed out. Sign in again to keep syncing.');
     else if (e.status === 0 && syncInfo?.paused) setSyncStatus('paused', e.message);
     else if (e instanceof TypeError || navigator.onLine === false) setSyncStatus('offline', 'Offline. Changes are saved on this phone and will sync later.');
-    else if (e.status === 403) setSyncStatus('error', 'This account no longer belongs to the family. Stop syncing on this phone and join again.');
+    else if (e.status === 403) setSyncStatus('error', 'This account no longer belongs to the family. Sign out, sign in again and join with a code.');
     else setSyncStatus('error', e.message);
   } finally {
     syncRunning = false;
@@ -545,13 +545,15 @@ async function reconnectFamily() {
   return fam.name;
 }
 async function familyStop() {
-  if (!await ask('Stop syncing on this phone?\n\nThis phone keeps its current data but no longer sends or receives changes. The family\'s shared data is not affected.')) return;
+  if (!await ask('Sign out of Whole Kitchen on this phone?\n\nYour recipes, plan and lists stay on this phone, but it stops syncing with your family. Sign in again any time and it reconnects to your family automatically.', { ok: 'Sign out' })) return;
   const token = syncAuth?.access_token;
   syncAuth = null; syncInfo = null; writeStore(AUTH_STORE, null); writeStore(SYNC_STORE, null);
   pendingPhotos.clear(); savePending();
   if (token) authCall('logout', {}, token).catch(() => {});
   setSyncStatus('idle');
   renderFamilyCard();
+  if (typeof renderSettingsHome === 'function') renderSettingsHome();
+  toast('Signed out');
 }
 function familyResume() { if (syncInfo) { syncInfo.paused = false; persistSync(); runSync() } }
 async function familyUseShared() {
@@ -606,7 +608,7 @@ async function renderFamilyCard() {
       <div id="familyMembers" class="small muted"></div>
       <div class="actions"><button class="btn secondary" onclick="runSync()">Sync now</button><button class="btn secondary" onclick="shareJoinCode()">Share join code</button>
       ${syncInfo.paused ? '<button class="btn" onclick="familyResume()">Resume sync</button><button class="btn secondary" onclick="familyUseShared()">Use family\'s copy</button>' : ''}
-      <button class="btn ghost" onclick="familyStop()">Stop syncing on this phone</button><button class="btn ghost" onclick="openNewPassword(false)">Change password</button></div>`;
+      <button class="btn ghost" onclick="familyStop()">Sign out</button><button class="btn ghost" onclick="openNewPassword(false)">Change password</button></div>`;
   }
   card.innerHTML = `<h3>👨‍👩‍👧 Family sync</h3>${body}<div id="familyMsg" class="small muted" role="status">${esc(keepMsg)}</div>`;
   if (syncActive()) {

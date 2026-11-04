@@ -1,7 +1,7 @@
 // Settings (v44): a list of grouped rows, like most phone apps. Each row opens its own page inside the
 // Settings screen; the cards on those pages (#familyCard, #remindersCard, ...) are the same ones as before.
 let settingsPage = null;
-const APP_VERSION = '46';
+const APP_VERSION = '47';
 
 function openSettingsPage(name) {
   showScreen('settings');   // draws every card fresh (signed in or not, reminders on or off) and resets to the list
@@ -51,6 +51,7 @@ function renderSettingsHome() {
     else if (!av.querySelector('svg')) av.innerHTML = '<svg class="ico" aria-hidden="true"><use href="#i-user"/></svg>';
     av.classList.toggle('on', !!email);
   }
+  const so = document.getElementById('setSignout'); if (so) { so.hidden = !auth; const w = document.getElementById('setSignoutWho'); if (w) w.textContent = auth?.user?.email ? 'Signed in as ' + auth.user.email : '' }
   const v = document.getElementById('setVersion'); if (v) v.textContent = `Whole Kitchen · version ${APP_VERSION}`;
   if (typeof listSnapshots === 'function') listSnapshots().then(s => {
     const last = s[0]; set('setRowBackups', last ? `Last automatic copy ${new Date(last.id).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · save or restore` : 'Save a backup file or go back to an earlier copy');

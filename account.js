@@ -98,7 +98,7 @@ async function runDeleteAccount() {
 }
 async function eraseThisPhone(skipAsk) {
   if (!skipAsk) {
-    if (typeof syncActive === 'function' && syncActive()) return alert('This phone is syncing with your family. Choose "Stop syncing on this phone" in Settings → Family sharing first (or delete your account).');
+    if (typeof syncActive === 'function' && syncActive()) return alert('This phone is syncing with your family. Sign out in Settings first (or delete your account).');
     if (!await ask('Erase everything on this phone?\n\nRecipes, plans, lists, photos and automatic backups on this phone are deleted. This can\'t be undone, so download a backup file first if you might want them.', { ok: 'Erase', danger: true })) return;
   }
   try { for (const k of Object.keys(localStorage)) if (k.startsWith(KEY) || k.startsWith('rg-') || k.startsWith('gingham')) localStorage.removeItem(k) } catch (_) {}

@@ -60,7 +60,7 @@ function renderCookMode() {
     <div id="cookTimers" class="cook-timers">${typeof timersHTML === 'function' ? timersHTML() : ''}</div>
     <div class="cook-tabs"><button class="${c.showIngredients ? '' : 'on'}" onclick="cookView.showIngredients=false;renderCookMode()" ${total ? '' : 'disabled'}>Steps</button><button class="${c.showIngredients ? 'on' : ''}" onclick="cookView.showIngredients=true;renderCookMode()">Ingredients</button></div>
     ${c.showIngredients ? `<ul class="cook-ingredients">${ingredients}</ul>${total ? '' : '<p class="cook-sub">This recipe has no written steps yet. Add them with Edit recipe.</p>'}`
-      : `<div class="cook-count">Step ${c.step + 1} of ${total}</div><div class="cook-step" aria-live="polite">${esc(stepText)}</div>${typeof stepWithTimers === 'function' ? stepWithTimers(c.steps[c.step], c.step + 1) : ''}`}
+      : `<div class="cook-count">Step ${c.step + 1} of ${total}</div><div class="cook-step${stepText.length > 320 ? ' xlong' : stepText.length > 170 ? ' long' : ''}" aria-live="polite">${esc(stepText)}</div>${typeof stepWithTimers === 'function' ? stepWithTimers(c.steps[c.step], c.step + 1) : ''}`}
     ${c.showIngredients ? '' : `<div class="cook-nav"><button onclick="cookMove(-1)" ${c.step === 0 ? 'disabled' : ''}>‹ Back</button><button class="next" onclick="${c.step === total - 1 ? 'closeCookMode(true)' : 'cookMove(1)'}">${c.step === total - 1 ? 'Done ✓' : 'Next ›'}</button></div>`}`;
 }
 function cookMove(d) { cookView.step = Math.min(cookView.steps.length - 1, Math.max(0, cookView.step + d)); renderCookMode(); if (typeof handsFreeStepChanged === 'function') handsFreeStepChanged() }

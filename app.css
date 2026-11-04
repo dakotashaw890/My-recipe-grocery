@@ -2162,3 +2162,11 @@ h3, .recipe-card h3 { font-family: inherit; font-weight: 700; letter-spacing: -0
 .h-ico .set-ico .ico { width: 18px; height: 18px; }
 .home-shop-icon.set-ico { width: 44px; height: 44px; font-size: 0; }
 .view-head .set-head { margin-bottom: 8px; } .view-head .set-head h2 { font-size: 1.45rem; }
+
+/* v46: cook mode: long steps get a smaller size, and Back / Next sit on a solid bar so nothing shows through them */
+.cook-step.long { font-size: clamp(21px, 5.4vw, 30px); line-height: 1.38; }
+.cook-step.xlong { font-size: clamp(19px, 4.7vw, 25px); line-height: 1.42; }
+.cook-nav { background: var(--cook-bg); margin: 8px -16px 0; padding: 10px 16px 0; box-shadow: 0 -14px 18px -6px var(--cook-bg); z-index: 2; }
+.cook-nav button:disabled { opacity: 1; background: #ffffff0d; color: #F6EEDF59; }
+.step-timers { margin-bottom: 8px; }
+.set-signout { margin-top: 22px; } .set-signout + .set-danger { margin-top: 12px; }
